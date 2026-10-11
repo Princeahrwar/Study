@@ -1,0 +1,25 @@
+%% lld/04 - epoch-based reclamation: why a retired object is safe to free
+sequenceDiagram
+  autonumber
+  participant C as Control thread
+  participant E as Epoch manager
+  participant R1 as Reader 1
+  participant R2 as Reader 2
+
+  Note over E: global epoch = N
+
+  R1->>E: enter() - pins epoch N
+  C->>C: build new rule table
+  C->>C: publish pointer (release store)
+  C->>E: retire(old table) into limbo[N]
+  C->>E: try_advance()
+  E-->>C: blocked - R1 still pinned at N
+
+  R1->>E: exit()
+  R2->>E: enter() - pins epoch N
+  C->>E: try_advance()
+  E->>E: all pinned readers at N, advance to N+1
+  Note over E: anything retired in limbo[N-1] is now unreachable
+  E->>E: free limbo[N-1]
+
+  Note over R1,R2: readers never blocked, never took a lock

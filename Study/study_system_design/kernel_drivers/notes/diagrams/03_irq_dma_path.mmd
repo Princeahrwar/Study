@@ -1,0 +1,25 @@
+%% Module 2 preview - rkdma packet arrival path
+sequenceDiagram
+  autonumber
+  participant HW as Device
+  participant TH as IRQ top half
+  participant BH as Threaded IRQ / bottom half
+  participant RING as mmap'd RX ring
+  participant APP as Userspace reader
+
+  HW->>HW: DMA payload into mapped buffer
+  HW->>TH: assert interrupt
+  TH->>TH: ack and mask device IRQ
+  TH-->>BH: wake threaded handler
+  Note over TH: minimal work only - no sleeping, no allocation
+
+  loop bounded budget (NAPI style)
+    BH->>HW: read completed descriptor
+    BH->>BH: dma_sync_single_for_cpu
+    BH->>RING: publish index with release store
+  end
+
+  BH->>HW: unmask IRQ when budget unspent
+  RING-->>APP: acquire load of producer index
+  APP->>APP: process in place - zero copies
+  APP->>RING: publish consumer index (release)

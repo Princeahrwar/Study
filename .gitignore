@@ -1,0 +1,15 @@
+# macOS
+.DS_Store
+
+# Build output
+**/build/
+*.o
+*.a
+*.out
+
+# Compiled benchmark binaries
+Study/study_system_design/os_and_arch/benchmarks/cache
+Study/study_system_design/os_and_arch/benchmarks/tlb2
+
+# Word exports (duplicates of the .md notes)
+*.docx
