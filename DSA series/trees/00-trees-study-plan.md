@@ -13,7 +13,7 @@
 2. Every topic with real code also gets a companion `.cpp` file. It is compiled with `-Wall -Wextra -fsanitize=address,undefined` and carries its own checks. Every code block in the tutorial is checked against that tested file, so what you read is what was run.
 3. You study the file and ask doubts here. I clarify or patch the file.
 4. When you say "next", I write the next topic.
-5. Files live in `DSA study/trees/`, next to `DSA study/linked list/`.
+5. Files live in `Desktop/My Projects/DSA series/trees/` on your Mac, next to `linked list/`, and in the Study-Plan project under `DSA series/trees/`.
 
 Depth over speed. Some topics (red-black deletion, lazy segment trees) are deliberately split across two files.
 

@@ -17,4 +17,5 @@ Self-study material for Senior/Staff systems interviews.
 | High-level / distributed design | [hld](Study/study_system_design/hld/notes) |
 | Embedded and edge AI | [embedded_ai](Study/study_system_design/embedded_ai/notes) |
 | Interview prep | [interviews](Study/study_system_design/interviews) |
-| DSA | [DSA series](DSA%20series) |
+| DSA: linked lists | [DSA series/linked list](DSA%20series/linked%20list) |
+| DSA: trees | [DSA series/trees](DSA%20series/trees) |
