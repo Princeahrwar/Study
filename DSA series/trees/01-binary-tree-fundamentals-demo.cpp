@@ -386,6 +386,130 @@ void inorderIndexed(const IndexTree& t, std::int32_t i, std::vector<int>& out) {
 }
 
 // ============================================================================
+// General (N-ary) trees
+// ============================================================================
+
+template <typename T>
+struct NaryNode {
+    T val;
+    std::vector<NaryNode*> children;   // left to right
+
+    explicit NaryNode(const T& v) : val(v) {}
+};
+
+// Frees every node without recursion. Unlike destroyTree, this needs a stack:
+// the rotation trick only works when every node has exactly two child slots.
+// Null entries are skipped, so a partly built tree can be freed too.
+template <typename T>
+void destroyNary(NaryNode<T>* root) {
+    std::vector<NaryNode<T>*> stack;
+    if (root != nullptr) stack.push_back(root);
+    while (!stack.empty()) {
+        NaryNode<T>* node = stack.back();
+        stack.pop_back();
+        for (NaryNode<T>* child : node->children)
+            if (child != nullptr) stack.push_back(child);
+        delete node;
+    }
+}
+
+template <typename T>
+void naryPreorder(const NaryNode<T>* node, std::vector<T>& out) {
+    if (node == nullptr) return;
+    out.push_back(node->val);                                     // visit first
+    for (const NaryNode<T>* child : node->children) naryPreorder(child, out);
+}
+
+template <typename T>
+void naryPostorder(const NaryNode<T>* node, std::vector<T>& out) {
+    if (node == nullptr) return;
+    for (const NaryNode<T>* child : node->children) naryPostorder(child, out);
+    out.push_back(node->val);                                     // visit last
+}
+
+template <typename T>
+std::vector<std::vector<T>> naryLevelOrder(const NaryNode<T>* root) {
+    std::vector<std::vector<T>> levels;
+    if (root == nullptr) return levels;
+
+    std::queue<const NaryNode<T>*> q;
+    q.push(root);
+    while (!q.empty()) {
+        const std::size_t width = q.size();   // same snapshot as the binary version
+        std::vector<T> level;
+        level.reserve(width);
+        for (std::size_t i = 0; i < width; ++i) {
+            const NaryNode<T>* node = q.front();
+            q.pop();
+            level.push_back(node->val);
+            for (const NaryNode<T>* child : node->children) q.push(child);
+        }
+        levels.push_back(std::move(level));
+    }
+    return levels;
+}
+
+// Height in EDGES, same convention as height(): empty tree = -1, single node = 0.
+template <typename T>
+int naryHeight(const NaryNode<T>* node) {
+    if (node == nullptr) return -1;
+    int tallest = -1;   // a leaf has no children, so it ends at -1 + 1 = 0
+    for (const NaryNode<T>* child : node->children) tallest = std::max(tallest, naryHeight(child));
+    return tallest + 1;
+}
+
+// N-ary -> binary: left = first child, right = next sibling. No recursion.
+template <typename T>
+TreeNode<T>* toLeftChildRightSibling(const NaryNode<T>* root) {
+    if (root == nullptr) return nullptr;
+    TreeNode<T>* out = new TreeNode<T>(root->val);
+    try {
+        std::vector<std::pair<const NaryNode<T>*, TreeNode<T>*>> stack;
+        stack.emplace_back(root, out);
+        while (!stack.empty()) {
+            auto [src, dst] = stack.back();
+            stack.pop_back();
+            TreeNode<T>** link = &dst->left;    // the first child hangs off left
+            for (const NaryNode<T>* child : src->children) {
+                *link = new TreeNode<T>(child->val);
+                stack.emplace_back(child, *link);
+                link = &(*link)->right;         // each later child hangs off the previous one's right
+            }
+        }
+    } catch (...) {
+        destroyTree(out);
+        throw;
+    }
+    return out;
+}
+
+// Binary (left-child, right-sibling) -> N-ary. No recursion.
+template <typename T>
+NaryNode<T>* fromLeftChildRightSibling(const TreeNode<T>* root) {
+    if (root == nullptr) return nullptr;
+    if (root->right != nullptr)   // the root of a tree has no siblings; this would be a forest
+        throw std::invalid_argument("fromLeftChildRightSibling: root has a right sibling");
+    NaryNode<T>* out = new NaryNode<T>(root->val);
+    try {
+        std::vector<std::pair<const TreeNode<T>*, NaryNode<T>*>> stack;
+        stack.emplace_back(root, out);
+        while (!stack.empty()) {
+            auto [src, dst] = stack.back();
+            stack.pop_back();
+            for (const TreeNode<T>* c = src->left; c != nullptr; c = c->right) {
+                dst->children.push_back(nullptr);            // grow first: if this throws, nothing leaks
+                dst->children.back() = new NaryNode<T>(c->val);
+                stack.emplace_back(c, dst->children.back());
+            }
+        }
+    } catch (...) {
+        destroyNary(out);
+        throw;
+    }
+    return out;
+}
+
+// ============================================================================
 // Test helpers
 // ============================================================================
 
@@ -458,6 +582,24 @@ Opt leftSkewed(int n) {    // 1 -> 2 -> ... -> n, every node a left child
         if (k < n) v.push_back(null);   // no trailing gap: keep the canonical form
     }
     return v;
+}
+
+// The N-ary example from Section 11: 1 has children 2, 3, 4; 2 has 5, 6; 4 has 7.
+NaryNode<int>* buildNarySample() {
+    auto* root = new NaryNode<int>(1);
+    for (int v : {2, 3, 4}) root->children.push_back(new NaryNode<int>(v));
+    for (int v : {5, 6}) root->children[0]->children.push_back(new NaryNode<int>(v));
+    root->children[2]->children.push_back(new NaryNode<int>(7));
+    return root;
+}
+
+template <typename T>
+bool sameNary(const NaryNode<T>* a, const NaryNode<T>* b) {   // structural equality (test-only)
+    if (a == nullptr || b == nullptr) return a == b;
+    if (!(a->val == b->val) || a->children.size() != b->children.size()) return false;
+    for (std::size_t i = 0; i < a->children.size(); ++i)
+        if (!sameNary(a->children[i], b->children[i])) return false;
+    return true;
 }
 
 }  // namespace
@@ -703,6 +845,118 @@ int main() {
         std::vector<int> out;
         inorderIndexed(t, 0, out);
         check(out == std::vector<int>{4, 2, 5, 1, 3}, "index-pool inorder matches pointer inorder");
+    }
+
+    // ---- general (N-ary) trees
+    {
+        NaryNode<int>* t = buildNarySample();
+        std::vector<int> pre, post;
+        naryPreorder(t, pre);
+        naryPostorder(t, post);
+        check(pre == std::vector<int>{1, 2, 5, 6, 3, 4, 7}, "N-ary preorder");
+        check(post == std::vector<int>{5, 6, 2, 3, 7, 4, 1}, "N-ary postorder");
+        const std::vector<std::vector<int>> levels{{1}, {2, 3, 4}, {5, 6, 7}};
+        check(naryLevelOrder(t) == levels, "N-ary level order");
+        check(naryHeight(t) == 2 && naryHeight<int>(nullptr) == -1, "N-ary height in edges");
+
+        TreeNode<int>* b = toLeftChildRightSibling(t);
+        std::vector<int> bPre, bIn;
+        preorder(b, bPre);
+        inorder(b, bIn);
+        check(bPre == pre, "LCRS: binary preorder == N-ary preorder");
+        check(bIn == post, "LCRS: binary inorder == N-ary postorder");
+        check(b->right == nullptr, "LCRS: the root has no right link");
+        check(height(b) == 4, "LCRS changes the height: 2 edges become 4");
+
+        NaryNode<int>* back = fromLeftChildRightSibling(b);
+        check(sameNary(t, back), "LCRS round trip restores the same N-ary tree");
+
+        TreeNode<int>* forest = new TreeNode<int>(1);
+        forest->right = new TreeNode<int>(2);
+        bool threw = false;
+        try {
+            fromLeftChildRightSibling(forest);
+        } catch (const std::invalid_argument&) {
+            threw = true;
+        }
+        check(threw, "fromLeftChildRightSibling rejects a root with a sibling");
+
+        destroyTree(forest);
+        destroyNary(back);
+        destroyTree(b);
+        destroyNary(t);
+        check(toLeftChildRightSibling<int>(nullptr) == nullptr &&
+                  fromLeftChildRightSibling<int>(nullptr) == nullptr && naryLevelOrder<int>(nullptr).empty(),
+              "N-ary empty-tree cases");
+    }
+
+    // ---- N-ary extremes: a 1,000,000-child star and a 1,000,000-deep chain, no recursion anywhere
+    {
+        constexpr int kWide = 1'000'000;
+        auto* star = new NaryNode<int>(0);
+        star->children.reserve(kWide);
+        for (int k = 1; k <= kWide; ++k) star->children.push_back(new NaryNode<int>(k));
+        TreeNode<int>* starBin = toLeftChildRightSibling(star);   // becomes a right chain of 1,000,000
+        NaryNode<int>* starBack = fromLeftChildRightSibling(starBin);
+        check(starBack->children.size() == static_cast<std::size_t>(kWide) &&
+                  starBack->children.back()->val == kWide,
+              "1,000,000-child star survives the LCRS round trip");
+        check(naryHeight(star) == 1, "a star has height 1");
+        destroyNary(starBack);
+        destroyTree(starBin);
+        destroyNary(star);
+
+        auto* chain = new NaryNode<int>(0);
+        NaryNode<int>* last = chain;
+        for (int k = 1; k < kWide; ++k) {
+            last->children.push_back(new NaryNode<int>(k));
+            last = last->children[0];
+        }
+        TreeNode<int>* chainBin = toLeftChildRightSibling(chain);   // becomes a left chain
+        NaryNode<int>* chainBack = fromLeftChildRightSibling(chainBin);
+        const NaryNode<int>* walk = chainBack;
+        int depth = 0;
+        while (!walk->children.empty()) {
+            walk = walk->children[0];
+            ++depth;
+        }
+        check(depth == kWide - 1 && walk->val == kWide - 1, "1,000,000-deep N-ary chain survives the round trip");
+        destroyNary(chainBack);
+        destroyTree(chainBin);
+        destroyNary(chain);
+    }
+
+    // ---- N-ary exception safety: a copy that throws halfway through a conversion leaks nothing
+    {
+        auto* t = new NaryNode<Bomb>(Bomb(1));
+        for (int v = 2; v <= 6; ++v) t->children.push_back(new NaryNode<Bomb>(Bomb(v)));
+        for (int v = 7; v <= 9; ++v) t->children[0]->children.push_back(new NaryNode<Bomb>(Bomb(v)));
+        const int liveBefore = Bomb::live;
+
+        Bomb::copiesUntilThrow = 4;
+        bool threw = false;
+        try {
+            toLeftChildRightSibling(t);
+        } catch (const std::runtime_error&) {
+            threw = true;
+        }
+        Bomb::copiesUntilThrow = -1;
+        check(threw && Bomb::live == liveBefore, "failed toLeftChildRightSibling frees the partial copy");
+
+        TreeNode<Bomb>* b = toLeftChildRightSibling(t);
+        const int liveWithBinary = Bomb::live;
+        Bomb::copiesUntilThrow = 4;
+        threw = false;
+        try {
+            fromLeftChildRightSibling(b);
+        } catch (const std::runtime_error&) {
+            threw = true;
+        }
+        Bomb::copiesUntilThrow = -1;
+        check(threw && Bomb::live == liveWithBinary, "failed fromLeftChildRightSibling frees the partial copy");
+        destroyTree(b);
+        destroyNary(t);
+        check(Bomb::live == liveBefore - 9, "every Bomb in the N-ary test is destroyed");
     }
 
     std::cout << (g_checks - g_failures) << "/" << g_checks << " checks passed\n";

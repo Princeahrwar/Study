@@ -262,7 +262,7 @@ while (head != nullptr) {
 ## 8. Full, Compilable Reference Implementation
 
 ```cpp
-#pragma once
+#include <cstddef>
 #include <iostream>
 #include <stdexcept>
 #include <utility>

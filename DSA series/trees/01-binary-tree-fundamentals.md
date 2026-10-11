@@ -1,6 +1,6 @@
 # Topic 01: Binary Tree Fundamentals (C++)
 
-*Part of the [Trees Study Plan](./00-trees-study-plan.md), Phase 1. Companion code: [`01-binary-tree-fundamentals-demo.cpp`](./01-binary-tree-fundamentals-demo.cpp), 56 checks, clean under `-fsanitize=address,undefined` with GCC and warning-free with Clang. Every code block below is taken verbatim from that file unless it is marked as illustrative.*
+*Part of the [Trees Study Plan](./00-trees-study-plan.md), Phase 1. Companion code: [`01-binary-tree-fundamentals-demo.cpp`](./01-binary-tree-fundamentals-demo.cpp), 73 checks, clean under `-fsanitize=address,undefined` with GCC and warning-free with Clang. Every code block below is taken verbatim from that file unless it is marked as illustrative.*
 
 ---
 
@@ -214,7 +214,7 @@ The pitfall is the one from the linked list track's iterator-stability row: `nod
 ### 5.5 Two more you will see later
 
 - **Parent array:** each node stores only its parent's index. You can only walk up, but that is all union-find needs (Topic 28).
-- **Left-child, right-sibling:** any N-ary tree can be stored as a binary tree by making `left` point to the first child and `right` to the next sibling. Two pointers per node regardless of how many children a node has.
+- **Left-child, right-sibling:** any N-ary tree can be stored as a binary tree by making `left` point to the first child and `right` to the next sibling. Two pointers per node regardless of how many children a node has. Section 11.4 implements it in both directions.
 
 ### 5.6 Side by side
 
@@ -822,7 +822,206 @@ Output for the running example and the expression tree (tilt your head to the le
 
 ---
 
-## 11. Complexity summary
+## 11. Beyond binary: general (N-ary) trees
+
+A general tree lets a node have any number of children, in order. File systems, the DOM, org charts, a process tree, and a parsed config file are all general trees. Everything from Sections 7 to 9 carries over: the recursion just loops over a list of children instead of making two calls.
+
+### 11.1 The node
+
+```cpp
+template <typename T>
+struct NaryNode {
+    T val;
+    std::vector<NaryNode*> children;   // left to right
+
+    explicit NaryNode(const T& v) : val(v) {}
+};
+```
+
+On a 64-bit build, `sizeof(NaryNode<int>)` is 32 bytes: the `int`, padding, and a 24-byte `std::vector` (begin, end, capacity), **plus** a separate heap block for the child pointers of every internal node. That is two allocations per internal node, against one for a binary node.
+
+Our running example for this section, in LeetCode's N-ary format `[1, null, 2, 3, 4, null, 5, 6, null, null, 7]`:
+
+```mermaid
+graph TD
+    R((1)) --> A((2))
+    R --> B((3))
+    R --> C((4))
+    A --> D((5))
+    A --> E((6))
+    C --> F((7))
+```
+
+### 11.2 Traversals and height
+
+```cpp
+template <typename T>
+void naryPreorder(const NaryNode<T>* node, std::vector<T>& out) {
+    if (node == nullptr) return;
+    out.push_back(node->val);                                     // visit first
+    for (const NaryNode<T>* child : node->children) naryPreorder(child, out);
+}
+
+template <typename T>
+void naryPostorder(const NaryNode<T>* node, std::vector<T>& out) {
+    if (node == nullptr) return;
+    for (const NaryNode<T>* child : node->children) naryPostorder(child, out);
+    out.push_back(node->val);                                     // visit last
+}
+
+template <typename T>
+std::vector<std::vector<T>> naryLevelOrder(const NaryNode<T>* root) {
+    std::vector<std::vector<T>> levels;
+    if (root == nullptr) return levels;
+
+    std::queue<const NaryNode<T>*> q;
+    q.push(root);
+    while (!q.empty()) {
+        const std::size_t width = q.size();   // same snapshot as the binary version
+        std::vector<T> level;
+        level.reserve(width);
+        for (std::size_t i = 0; i < width; ++i) {
+            const NaryNode<T>* node = q.front();
+            q.pop();
+            level.push_back(node->val);
+            for (const NaryNode<T>* child : node->children) q.push(child);
+        }
+        levels.push_back(std::move(level));
+    }
+    return levels;
+}
+
+// Height in EDGES, same convention as height(): empty tree = -1, single node = 0.
+template <typename T>
+int naryHeight(const NaryNode<T>* node) {
+    if (node == nullptr) return -1;
+    int tallest = -1;   // a leaf has no children, so it ends at -1 + 1 = 0
+    for (const NaryNode<T>* child : node->children) tallest = std::max(tallest, naryHeight(child));
+    return tallest + 1;
+}
+```
+
+On the example: preorder `1 2 5 6 3 4 7`, postorder `5 6 2 3 7 4 1`, levels `[[1], [2, 3, 4], [5, 6, 7]]`, height 2.
+
+**There is no inorder.** With three children there is no single "between the subtrees" position for the node. That one missing traversal is why BSTs, and everything built on them, are binary.
+
+### 11.3 Freeing it: no O(1) trick this time
+
+```cpp
+// Frees every node without recursion. Unlike destroyTree, this needs a stack:
+// the rotation trick only works when every node has exactly two child slots.
+// Null entries are skipped, so a partly built tree can be freed too.
+template <typename T>
+void destroyNary(NaryNode<T>* root) {
+    std::vector<NaryNode<T>*> stack;
+    if (root != nullptr) stack.push_back(root);
+    while (!stack.empty()) {
+        NaryNode<T>* node = stack.back();
+        stack.pop_back();
+        for (NaryNode<T>* child : node->children)
+            if (child != nullptr) stack.push_back(child);
+        delete node;
+    }
+}
+```
+
+`destroyTree` (Section 6.3) freed a binary tree in O(1) extra space by rotating. That trick needs every node to have the same two slots to rotate through, so it does not carry over. This version needs a stack, which means it can allocate, which means it is **not** `noexcept`. That is a real engineering cost of vector-of-children nodes, and one reason trees in production often use an arena (Topic 33) or the binary encoding below.
+
+### 11.4 Left-child, right-sibling: any tree as a binary tree
+
+Section 5.5 mentioned this encoding. Here it is in both directions: `left` points to a node's **first child**, `right` points to its **next sibling**.
+
+```mermaid
+graph TD
+    R((1)) -->|left: first child| A((2))
+    A -->|right: next sibling| B((3))
+    B -->|right| C((4))
+    A -->|left| D((5))
+    D -->|right| E((6))
+    C -->|left| F((7))
+```
+
+```cpp
+// N-ary -> binary: left = first child, right = next sibling. No recursion.
+template <typename T>
+TreeNode<T>* toLeftChildRightSibling(const NaryNode<T>* root) {
+    if (root == nullptr) return nullptr;
+    TreeNode<T>* out = new TreeNode<T>(root->val);
+    try {
+        std::vector<std::pair<const NaryNode<T>*, TreeNode<T>*>> stack;
+        stack.emplace_back(root, out);
+        while (!stack.empty()) {
+            auto [src, dst] = stack.back();
+            stack.pop_back();
+            TreeNode<T>** link = &dst->left;    // the first child hangs off left
+            for (const NaryNode<T>* child : src->children) {
+                *link = new TreeNode<T>(child->val);
+                stack.emplace_back(child, *link);
+                link = &(*link)->right;         // each later child hangs off the previous one's right
+            }
+        }
+    } catch (...) {
+        destroyTree(out);
+        throw;
+    }
+    return out;
+}
+
+// Binary (left-child, right-sibling) -> N-ary. No recursion.
+template <typename T>
+NaryNode<T>* fromLeftChildRightSibling(const TreeNode<T>* root) {
+    if (root == nullptr) return nullptr;
+    if (root->right != nullptr)   // the root of a tree has no siblings; this would be a forest
+        throw std::invalid_argument("fromLeftChildRightSibling: root has a right sibling");
+    NaryNode<T>* out = new NaryNode<T>(root->val);
+    try {
+        std::vector<std::pair<const TreeNode<T>*, NaryNode<T>*>> stack;
+        stack.emplace_back(root, out);
+        while (!stack.empty()) {
+            auto [src, dst] = stack.back();
+            stack.pop_back();
+            for (const TreeNode<T>* c = src->left; c != nullptr; c = c->right) {
+                dst->children.push_back(nullptr);            // grow first: if this throws, nothing leaks
+                dst->children.back() = new NaryNode<T>(c->val);
+                stack.emplace_back(c, dst->children.back());
+            }
+        }
+    } catch (...) {
+        destroyNary(out);
+        throw;
+    }
+    return out;
+}
+```
+
+How to read them:
+
+- **`TreeNode<T>** link`** is the pointer-to-pointer idea from linked list Topic 02. `link` always points at the slot the next child should go into: first `dst->left`, then the previous child's `right`. Writing `*link = new ...` fills the slot, and `link = &(*link)->right` moves to the next one. No "is this the first child?" special case.
+- **Exception safety is the same pattern as `cloneTree`:** every new node is attached before anything else can throw, so the `catch` frees exactly the partial result. In `fromLeftChildRightSibling` the vector slot is created *before* the node (`push_back(nullptr)` first). If it were the other way round, a `push_back` that throws would leak the node it was given. That is also why `destroyNary` skips null entries.
+- **A root with a `right` link is rejected,** because in this encoding it would mean the root has siblings, which is a forest, not a tree.
+
+Three facts about this encoding, all checked by the companion:
+
+| Fact | Why it holds | Consequence |
+|---|---|---|
+| Binary **preorder** = N-ary preorder | Node, then first child's subtree, then the siblings: the same order | Preorder-based code works unchanged |
+| Binary **inorder** = N-ary **postorder** | Everything under `left` (all the children) comes before the node; siblings come after | The binary "between" position turns into "after all children" |
+| The height changes | A node with k children becomes a right chain of length k | A star with 1,000,000 children has height 1, but its encoding has height 1,000,000. Any recursion on the encoded tree must handle that depth |
+
+That last row is why the conversions are iterative. The companion converts a 1,000,000-child star and a 1,000,000-deep chain both ways, which would overflow the stack if either direction were recursive.
+
+### 11.5 Which representation, when
+
+| Need | Use | Why |
+|---|---|---|
+| Fast access to the k-th child; degree known to be small | `std::vector` of children | O(1) indexing; the vector's heap block is the cost |
+| Fixed maximum degree (a trie over 26 letters, a quadtree) | A fixed array of child pointers | No second allocation; unused slots cost memory |
+| Unbounded degree with a fixed node size | Left-child, right-sibling | Every node is two pointers; k-th child is O(k) |
+| The tree arrives as "n nodes and n − 1 edges" | An adjacency list (`std::vector<std::vector<int>>`) | How interview and graph problems usually give it; Topic 24 |
+
+---
+
+## 12. Complexity summary
 
 | Operation | Time | Extra space |
 |---|---|---|
@@ -835,12 +1034,15 @@ Output for the running example and the expression tree (tilt your head to the le
 | `cloneTree` | O(n) | O(h) on the heap, none on the call stack |
 | `fromLevelOrder` / `toLevelOrder` | O(n) | O(w) |
 | Implicit-array child or parent lookup | O(1) | none |
+| N-ary preorder / postorder / level order / height | O(n) | O(h) recursion, or O(w) queue |
+| `destroyNary` | O(n) | O(n) worst case (a wide node pushes all its children) |
+| `toLeftChildRightSibling` / `fromLeftChildRightSibling` | O(n) | O(n) worst case on the heap, none on the call stack |
 
 With ⌊log₂ n⌋ ≤ h ≤ n − 1 throughout.
 
 ---
 
-## 12. Pitfalls
+## 13. Pitfalls
 
 1. **Mixing height conventions.** Edges vs nodes, −1 vs 0 for the empty tree. Decide once, write it in a comment above the function, and say it out loud in interviews.
 2. **Using `min` where a null child is not a leaf.** See Section 9.1. The bug passes every test where all internal nodes have two children.
@@ -854,7 +1056,7 @@ With ⌊log₂ n⌋ ≤ h ≤ n − 1 throughout.
 
 ---
 
-## 13. Interview notes
+## 14. Interview notes
 
 Before writing code on any tree question, it is worth asking or stating:
 
@@ -867,7 +1069,7 @@ And when you give the complexity, give both numbers: "O(n) time, O(h) space, whi
 
 ---
 
-## 14. Practice for this topic
+## 15. Practice for this topic
 
 Do these after implementing `BinaryTree` and the traversals yourself once, from memory. Recursive solutions are fine for now; Topic 02 revisits the first three iteratively.
 
@@ -881,19 +1083,22 @@ Do these after implementing `BinaryTree` and the traversals yourself once, from 
 8. LeetCode 104: Maximum Depth of Binary Tree (note which convention it uses)
 9. LeetCode 111: Minimum Depth of Binary Tree (write the DFS and the early-exit BFS)
 10. LeetCode 1302: Deepest Leaves Sum
-11. LeetCode 589 and 590: N-ary Tree Preorder and Postorder Traversal (the same idea with a child list)
-12. LeetCode 559: Maximum Depth of N-ary Tree
-13. LeetCode 150: Evaluate Reverse Polish Notation (postfix from Section 10, evaluated with a stack instead of a tree)
+11. LeetCode 589 and 590: N-ary Tree Preorder and Postorder Traversal (Section 11.2)
+12. LeetCode 559: Maximum Depth of N-ary Tree (careful: it counts nodes, so it is `naryHeight` + 1)
+13. LeetCode 429: N-ary Tree Level Order Traversal
+14. LeetCode 150: Evaluate Reverse Polish Notation (postfix from Section 10, evaluated with a stack instead of a tree)
 
 ---
 
-## 15. Run the companion
+## 16. Run the companion
 
 ```text
 g++ -std=c++17 -Wall -Wextra -fsanitize=address,undefined 01-binary-tree-fundamentals-demo.cpp -o demo && ./demo
 ```
 
-It prints the sideways trees from Section 10.1, the two `sizeof` values from Section 5, and ends with `56/56 checks passed`. The checks cover all traversals, both buggy versions and their exact wrong outputs, the level-order round trips, every Rule-of-5 operation including self-assignment, the strong exception guarantee with a throwing copy constructor, and million-node left and right chains that are built, cloned, assigned and destroyed without recursion.
+It prints the sideways trees from Section 10.1, the two `sizeof` values from Section 5, and ends with `73/73 checks passed`. The checks cover all traversals, both buggy versions and their exact wrong outputs, the level-order round trips, every Rule-of-5 operation including self-assignment, the strong exception guarantee with a throwing copy constructor, million-node left and right chains that are built, cloned, assigned and destroyed without recursion, and the N-ary section: traversals, both conversions, the preorder and postorder identities, and a million-child star and million-deep chain converted both ways.
+
+With sanitizers on, the million-node tests take about 15 seconds. Without them (`-O2`), the whole run takes under a second.
 
 ---
 

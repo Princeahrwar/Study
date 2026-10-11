@@ -11,7 +11,7 @@
 1. Each topic gets its own numbered tutorial file (`01-...md`, `02-...md`, ...), written with production-grade C++ code, complexity analysis, pitfalls, and Mermaid diagrams — not a chat-only summary.
 2. You study the file, ask doubts here, and I'll clarify or patch the file.
 3. When you say "next" / "move on", I write the next topic's file.
-4. Save these into your `linked-lists/` folder under `Desktop/My Projects/Study/study_system_design/`.
+4. Files live in `Desktop/My Projects/DSA series/linked list/` on your Mac, and in the Study-Plan project under `DSA series/linked list/`. Topic N covers Phase N.
 
 No fixed deadline — depth over speed, per your usual approach.
 
@@ -96,6 +96,21 @@ No fixed deadline — depth over speed, per your usual approach.
 
 ---
 
+## Progress
+
+| # | Topic | Files | Status |
+|---|---|---|---|
+| 01 | Foundations of singly linked lists | [`01-foundations-singly-linked-list.md`](./01-foundations-singly-linked-list.md) | Done |
+| 02 | Core patterns: dummy node, two pointers, Floyd's cycle detection, reversal, recursion | [`02-core-patterns-two-pointers-reversal.md`](./02-core-patterns-two-pointers-reversal.md) + [`02-two-pointers-reversal-demo.cpp`](./02-two-pointers-reversal-demo.cpp) | Done |
+| 03 | Doubly and circular linked lists | — | Next |
+| 04 | Merging and sorting | — | — |
+| 05 | Classic interview problems (incl. LRU and LFU caches) | — | — |
+| 06 | Systems-level and advanced topics | — | — |
+| 07 | Modern C++ and engineering considerations | — | — |
+| 08 | Practice and mock strategy | — | — |
+
+---
+
 ## Next step
 
-Say the word and I'll write **Topic 1: Foundations of Singly Linked Lists** as its own detailed file.
+Topics 01 and 02 are done. Say "next" in the linked list chat for Topic 03: doubly and circular linked lists.
