@@ -1,141 +1,103 @@
-# Study — Senior/Staff Systems Interview Program
+# Study
 
-Goal: move from Senior SWE (Ruckus, Wi-Fi platform, C/C++, embedded Linux) to
-a Senior/Staff Systems offer at Google, Nvidia, Meta, Microsoft, Cisco, or
-Palo Alto Networks. Everything lives under `study_system_design/` — this
-file is the entry point and the honest status board for what's built versus
-what's still planned.
+A self-study program for senior systems-engineering work and interviews: fifteen tracks, six projects, one numbered tree. The same tree is mirrored in the Study-Plan project.
 
 ## Start here
 
-Read `study_system_design/00_roadmap/HOW_TO_USE.md` first — it explains how
-the whole program fits together and how to actually retain the material
-(three rules: exercises before moving on, write summaries from memory, say
-answers out loud on a timer). Then `study_system_design/00_roadmap/CURRICULUM.md`
-for the full dependency-ordered topic list.
+1. Skim [`00_MASTER_PLAN.md`](00_MASTER_PLAN.md) once for the order of the tracks and the week-by-week schedule.
+2. Open the `00_plan.md` of the track you are on. It lists the topics and which are written.
+3. Take the topics one at a time, in order, and finish each one before starting the next.
 
-For the LLD track specifically — the reading order and the buildable coding
-environment (Mac toolchain fully installed and verified: cmake, googletest,
-sanitizers, mermaid-cli, pandoc/LibreOffice) — go to
-`study_system_design/lld/GETTING_STARTED.md`.
+---
 
-## Program structure
+## The tree
 
-```
-  study_system_design/
-    00_roadmap/                the curriculum, capstone specs, this index's source
-    lld/00_foundations/        22 files (00-21), numbered to match the
-                                user's 9-phase syllabus exactly: C++
-                                mechanics -> OOAD/UML -> SOLID/idioms ->
-                                patterns -> concurrency -> data structures ->
-                                architecture -> testing/framework/AI [DONE]
-    lld/01_machine_coding_problems/  worked interview problems [36 of 36 written (37 with optional Chess) — COMPLETE]
-    lld/notes/                 LLD Phase C — systems LLD, modern C++, concurrency [DONE — Staff level]
-    lld/include,src,tests/     buildable CMake project, verified: 10/10 tests
-                                pass under ASan+UBSan, 8 workspace stubs
-                                compile clean out of the box [DONE]
-    lld/docs/                  all 70 LLD files as .docx, diagrams embedded
-                                as rendered images [DONE]
-    os_and_arch/                CPU/cache/memory architecture                 [DONE — Staff level]
-    kernel_drivers/             Linux kernel modules, interrupts, DMA         [DONE — Staff level]
-    hld/                        distributed systems: caching, storage, telemetry [DONE — Staff level; classic HLD fundamentals still planned, see below]
-    embedded_ai/                RTOS constraints, edge AI acceleration        [DONE — advanced level; ground-up embedded fundamentals still planned]
-    interviews/                 company playbooks, mock bank, behavioral prep [DONE]
-    capstones/                  3 portfolio projects tying it together        [specs written, implementation pending]
-```
+| Folder | Track | What is inside |
+|---|---|---|
+| [`01_dsa/`](01_dsa/00_plan.md) | Data structures and algorithms | 13 areas, one folder each; [practice log](01_dsa/practice_log.md) |
+| [`02_c_language/`](02_c_language/00_plan.md) | C in depth | Types and UB, pointers, memory, layout, linking, question bank |
+| [`03_cpp/`](03_cpp/00_plan.md) | C++ | `01_primer/` (from scratch) and `02_interview/` (internals) |
+| [`04_computer_organization/`](04_computer_organization/00_plan.md) | Computer organization | Bits to out-of-order cores, caches, DRAM, coherence, GPUs, PCIe, virtualization |
+| [`05_operating_systems/`](05_operating_systems/00_plan.md) | Operating systems | Processes to the user/kernel boundary |
+| [`06_linux/`](06_linux/00_plan.md) | Linux | Shell, `/proc`, containers, debugging, `perf` and eBPF |
+| [`07_networking/`](07_networking/00_plan.md) | Networking | L2 to TLS, sockets, the Linux stack, firewalls and IPS |
+| [`08_kernel/`](08_kernel/00_plan.md) | Kernel internals | Your own kernel in QEMU: syscalls, memory, locking, RCU, debugging |
+| [`09_drivers/`](09_drivers/00_plan.md) | Device drivers | Modules to PCIe and NAPI |
+| [`10_lld/`](10_lld/00_plan.md) | Low-level design | Foundations, 33 problems, systems LLD, a buildable CMake project |
+| [`11_hld/`](11_hld/00_plan.md) | System design | Fundamentals, 19 design problems, domain designs |
+| [`12_gpu_cuda/`](12_gpu_cuda/00_plan.md) | GPU and CUDA | Architecture, CUDA, the system view |
+| [`13_embedded/`](13_embedded/00_plan.md) | Embedded and edge AI | RTOS constraints; stretch topics |
+| [`14_projects/`](14_projects/00_plan.md) | Projects | Six specs: `rkv`, `rkdma`, `pfilt`, `nanoinfer`, `telemetrix`, `tinyos` |
+| [`15_interviews/`](15_interviews/00_plan.md) | Interviews | Stories, mocks, flashcards, optional company notes |
+| [`99_toolchain/`](99_toolchain/README.md) | Toolchain | Mac, Linux VM, QEMU kernels, cloud GPU |
 
-## What's genuinely new-to-this-program vs already existed
+Inside a track: numbered tutorials in study order (`NN_topic.md`), the code that goes with a tutorial beside it (`NN_topic_demo.cpp`), and `diagrams/` and `labs/` where needed. A gap in the numbers is a topic that is planned but not written yet.
 
-This program started from a solid but *advanced-only* base — strong on CPU
-architecture, kernel internals, lock-free C++, and distributed-systems
-topics, but written for someone who already has that foundation. It didn't
-cover classic OOD/design patterns, classic HLD fundamentals (CAP theorem,
-load balancers, DNS/CDN, DB scaling basics), true embedded-systems-from-zero
-(microcontrollers, GPIO, RTOS concepts), or AI's role in any of this. Status:
+---
 
-- **LLD — COMPLETE.** (`lld/00_foundations/`, `lld/01_machine_coding_problems/`,
-  `lld/notes/`, `lld/include,src,tests/`, `lld/docs/`). Built and reviewed
-  five times: once against external LLD roadmaps/checklists, once against a
-  full 9-phase modern-C++-LLD syllabus supplied directly, once to physically
-  reorder and renumber every file in `00_foundations/` (`00`-`19`) to match
-  that syllabus's exact phase sequence, once to finish every remaining gap
-  in the machine-coding roadmap, and once to add a full C++ language primer
-  (`00_foundations/cpp_primer/`, 14 files — inheritance/polymorphism, templates, smart pointers,
-  lambdas, STL, exceptions, headers/build — from scratch) once it became
-  clear the intended reader is stronger in C than in modern C++ specifically.
-  Foundations: Phase 1 Modern C++ mechanics (RAII/ownership/move semantics,
-  STL), Phase 2 OOAD & UML,
-  Phase 3 SOLID & C++ idioms (Pimpl/CRTP/Type Erasure/NVI), Phase 4 all 12
-  GoF patterns (with modern alternatives — `std::function` Strategy,
-  `weak_ptr` Observer, `std::variant`/`std::visit` Visitor), Phase 5
-  concurrency (mutex/atomic/condition_variable through threads/futures/
-  Dining Philosophers through CAS/memory-order fundamentals and a
-  striped-lock thread-safe HashMap), Phase 6 specialized data structures
-  (Trie, interval structures, graph+topological sort, LFU), Phase 7
-  application architecture (layered design, event bus, exception strategy,
-  Result pattern), plus cross-cutting testing (gtest/gmock/TSan), the
-  machine-coding framework (now naming all 5 distinct LLD interview formats —
-  OOD/whiteboard, Machine Coding, Concurrency Design, API Design, Schema
-  Design — not just the machine-coding one), a DRY/KISS/YAGNI/Law-of-Demeter
-  and anti-pattern catalog, a C++ OOP rapid-fire Q&A, AI scope, and
-  dedicated API Design and Schema Design interview tutorials
-  (signatures/contracts/naming with no implementation for the former;
-  ER modeling, cardinality, normalization to 3NF, denormalization and
-  indexing, worked against the Splitwise/Library problems, for the
-  latter — the 4th and 5th of the 5 named LLD interview formats, both now
-  written in full). The `cpp_primer/` C++ syntax primer was also reviewed
-  a second time and closed six real gaps found by grepping the whole track
-  for concepts that were *used* in code constantly but never actually
-  *taught*: the `explicit` keyword, the four cast operators
-  (`static_cast`/`dynamic_cast`/`const_cast`/`reinterpret_cast`), `friend`
-  classes, `enum class`, the subscript (`operator[]`) and copy-assignment
-  (`operator=`, with the self-assignment-check idiom) operators, and the
-  five named shapes of inheritance (single/hierarchical/multilevel/
-  multiple/hybrid). **All 36 roadmap problems
-  written** (37 with optional Chess), spanning Tier 1 through Tier 6
-  (embedded/HAL-flavoured differentiators in Tier 4 — Traffic Light
-  Controller, Pluggable Sensor/HAL Framework, OTA Update Manager; Tier 5
-  added after cross-checking against public LLD curricula — URL Shortener,
-  Ride-Sharing, In-Memory File System; Tier 6 added after cross-checking
-  against a popular YouTube LLD course — Document Editor, Music Player,
-  Payment Gateway, Discount Coupon Engine, Chat Room, Dating App,
-  including this program's only dedicated Chain-of-Responsibility and
-  Mediator implementations). A verified,
-  buildable CMake practice project and 76 `.docx` conversions with embedded
-  diagrams round it out. Start here if design patterns aren't yet reflexive.
-- **HLD fundamentals** (CAP theorem, consistency models, load balancing,
-  DNS/CDN, database replication/sharding basics, message queues, API
-  design) — **planned, not yet written.** The existing `hld/notes/` assumes
-  this layer and starts from estimation/rate-limiters/caching internals.
-- **Embedded systems from zero** (MCU vs MPU, memory maps, GPIO/ADC/DAC,
-  UART/SPI/I2C, bare-metal interrupts, RTOS task/scheduling/queue/semaphore
-  concepts) — **planned, not yet written.** The existing `embedded_ai/` and
-  `kernel_drivers/` assume embedded Linux and kernel-driver experience
-  already in place.
-- **AI usage and scope**, applied to each domain — **started.**
-  `lld/00_foundations/19_ai_and_lld.md` covers it for LLD specifically. A
-  program-wide `ai_scope/` view (how AI changes HLD design work, embedded
-  firmware development, and what each target company is asking about AI
-  competency in loops) is planned next.
+## Studying one topic
 
-## Next up
+1. **Read** it once, carefully, and trace the worked examples on paper.
+2. **Rebuild** the main code or diagram from memory with the file closed, then compare.
+3. **Run** the companion code. Change something and predict the result before you run it.
+4. **Practise**: the problems and exercises at the end. This is where most of the learning happens.
+5. **Explain** it out loud as if an interviewer had asked, and write a short summary from memory as `NN_summary.md` beside the tutorial. What you cannot reconstruct is what to re-read tomorrow.
 
-LLD is done. In priority order for what's next (by explicit agreement —
-HLD deferred until the user starts studying LLD):
+Ask doubts in the track's chat and say "next" when you are ready for the following topic. Measure on your own machine whenever a tutorial gives a number; your ARM Mac will disagree with x86 figures in places, and those differences are good material for an interview.
 
-1. Classic HLD fundamentals track, positioned before the existing `hld/notes/`.
-2. Embedded systems from zero, positioned before `kernel_drivers/` and
-   `embedded_ai/`.
-3. Program-wide AI-scope guide.
-4. `.docx` conversion for HLD/embedded tracks once they're written
-   (mechanism already built and proven for LLD — `lld/docs/`).
+---
 
-## How to navigate day to day
+## How the tutorials are written
 
-Everything is plain Markdown with inline Mermaid diagrams — viewable as-is
-in any Markdown-aware editor (VS Code, GitHub, Claude Code) with diagrams
-rendering natively. No build step required for reading. `.mmd` diagram
-source files that predate this reorganization (in `hld/diagrams/`,
-`lld/notes/diagrams/`, `kernel_drivers/notes/diagrams/`) still need
-`mmdc` to render to an image — see
-`study_system_design/00_roadmap/INDEX.md` for the command.
+There is no fixed template; each one follows its topic. What every tutorial aims for:
+
+- **Understanding from the mechanism up.** An intuition or a picture first, then how it really works, with diagrams.
+- **Worked examples with real values**, traced step by step.
+- **Tested code** beside the tutorial, compiled with warnings and sanitizers and ending in `N/N checks passed`. Code shown in the text is copied from the tested file.
+- **Interview questions with answer outlines**, and **problems worked in full** with exercises, using LeetCode numbers where they exist.
+- **General knowledge, not history or company lore.** The content applies across companies; company-specific notes live only in `15_interviews/`, and are optional.
+
+---
+
+## Status words
+
+Used in the topic tables of the track plans.
+
+| Status | Meaning |
+|---|---|
+| **Done** | Studied, with exercises and a summary |
+| **Written** | Ready to study |
+| **Exists, rewrite due** | An older, dense note; it is rewritten before you study it |
+| **To write** | Planned; written when the track reaches it |
+| **Stretch** | Worth doing only after the schedule |
+
+---
+
+## Progress
+
+| Track | Status | Next |
+|---|---|---|
+| DSA | Arrays 01–03, LL 01–02, Trees 01 written | Arrays & strings 04 |
+| C | Planned | C 01 |
+| C++ | Primer written | CPP 01 |
+| Computer organization | CO 01–04 and 06–15 written (31 in the plan); 3 older notes | CO 16 (05 optional) |
+| Operating systems | 6 older notes | OS 01 |
+| Linux | Planned | LX 01 |
+| Networking | 2 older notes | NET 01 |
+| Kernel | 1 older note | K 01 |
+| Drivers | 5 older notes | DRV 01 |
+| LLD | Fully written | LLD 01–02 |
+| HLD | 7 older notes | HLD 01 |
+| GPU and CUDA | Planned | GPU 01 |
+| Embedded | 3 older notes | EMB 01 |
+| Projects | 6 specs | `rkv` M1 |
+| Interviews | Mock bank and core numbers exist | Story bank |
+
+---
+
+## Where things are saved
+
+- **Mac:** `Desktop/My Projects/Study/`
+- **Study-Plan project:** the same paths, starting with `Study/`
+
+Every new or changed file is saved to both.

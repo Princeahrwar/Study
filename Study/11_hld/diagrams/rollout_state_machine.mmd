@@ -1,0 +1,32 @@
+%% 11_hld/03_systems_domain/03_edge_to_cloud_fleet_management - staged rollout with device-side autonomous revert
+stateDiagram-v2
+  [*] --> Stable
+
+  Stable --> Canary: operator starts rollout
+  Canary --> Soak: 1% of fleet updated
+  Soak --> Halted: health gate FAILS
+  Soak --> Wave5: health gate passes after soak
+
+  Wave5 --> Halted: regression detected
+  Wave5 --> Wave25: gate passes
+  Wave25 --> Halted: regression detected
+  Wave25 --> Full: gate passes
+  Full --> Stable: fleet converged
+
+  Halted --> Stable: rolled back, incident opened
+
+  state "Device-side (independent of the controller)" as Dev {
+    [*] --> Applying
+    Applying --> SelfTest: image written, one-shot boot flag set
+    SelfTest --> Confirmed: healthy AND controller reachable
+    SelfTest --> Reverting: watchdog fires OR health check fails
+    Reverting --> LastKnownGood: bootloader falls back
+    LastKnownGood --> [*]: reports the failure upstream
+    Confirmed --> [*]: marks slot permanent
+  }
+
+  note right of Halted
+    A controller-driven rollback is useless when
+    the bad config broke connectivity TO the controller.
+    That is what the device-side path exists for.
+  end note

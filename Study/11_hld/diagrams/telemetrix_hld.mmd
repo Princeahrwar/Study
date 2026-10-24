@@ -1,0 +1,35 @@
+%% Project 05 (`telemetrix`) - edge to cloud telemetry ingest
+flowchart TB
+  subgraph EDGE["Edge - 50k access points"]
+    AG["Agent<br/>bounded ring + WAL<br/>batch and compress"]
+  end
+
+  subgraph GW["Gateway tier"]
+    LB["TLS terminate<br/>authn per device"]
+    CR["Credit-based backpressure<br/>shed policy on overload"]
+    SH["Shard by device id<br/>consistent hash + vnodes"]
+  end
+
+  subgraph INGEST["Ingest tier"]
+    W["Writers<br/>idempotent on (device, series, ts)"]
+    RU["Rollup 10s to 1m to 1h"]
+  end
+
+  subgraph STORE["Storage"]
+    HOT["Hot tier<br/>recent, high resolution"]
+    COLD["Cold tier<br/>downsampled, object storage"]
+  end
+
+  subgraph CP["Control plane - separate path"]
+    CFG["Versioned config<br/>canary cohort<br/>automatic rollback"]
+  end
+
+  AG -- "1.0 M samples/s<br/>~16 MB/s encoded" --> LB
+  LB --> CR
+  CR --> SH
+  SH --> W
+  W --> HOT
+  RU --> COLD
+  HOT --> RU
+  CR -. "credits withdrawn<br/>edge buffers to WAL" .-> AG
+  CFG -. "config push, never on the data path" .-> AG

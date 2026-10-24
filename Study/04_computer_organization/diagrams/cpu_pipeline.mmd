@@ -1,0 +1,29 @@
+%% 04_computer_organization/12_inside_a_modern_core - out-of-order core: in-order at the edges, dataflow in the middle
+flowchart LR
+  subgraph FE["Front end (in order)"]
+    F["Fetch<br/>speculative, uses BTB"]
+    D["Decode<br/>uop cache bypasses this"]
+    R["Rename<br/>kills WAR and WAW"]
+  end
+
+  subgraph BE["Back end (out of order)"]
+    S["Scheduler<br/>issues when operands ready"]
+    P1["ALU ports"]
+    P2["Load ports"]
+    P3["Store ports"]
+    ROB["Reorder buffer<br/>300-600 entries"]
+  end
+
+  RET["Retire<br/>in order, commits state"]
+
+  F --> D --> R --> S
+  S --> P1
+  S --> P2
+  S --> P3
+  P1 --> ROB
+  P2 --> ROB
+  P3 --> ROB
+  ROB --> RET
+
+  MISP["Branch mispredict"] -. "flush, 15-20 cycles" .-> F
+  P1 -.-> MISP
