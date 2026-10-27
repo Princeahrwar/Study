@@ -77,7 +77,7 @@ Used in the topic tables of the track plans.
 
 | Track | Status | Next |
 |---|---|---|
-| DSA | Arrays and strings 01 to 07, Hashing 01 to 04, LL 01 to 02, Trees 01 written | 03 binary search and sorting |
+| DSA | Arrays and strings 01 to 07, Hashing 01 to 04, Binary search 01, LL 01 to 02, Trees 01 written | Binary search 02, on the answer |
 | C | Planned | C 01 |
 | C++ | Primer written | CPP 01 |
 | Computer organization | CO 01 to 31 written; track complete | The next track |
