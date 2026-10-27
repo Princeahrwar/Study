@@ -1,6 +1,6 @@
 # DRV 07 — DMA: coherent, streaming, and the stale-data failure modes
 
-> Prerequisite: `05_interrupt_handling.md`, `04_computer_organization/older_notes/07_cache_coherence_mesi.md`.
+> Prerequisite: `05_interrupt_handling.md`, `04_computer_organization/19_cache_coherence.md`.
 > This is the core of Project 02 (`rkdma`) and a favourite Nvidia interview topic.
 
 ## The three address spaces

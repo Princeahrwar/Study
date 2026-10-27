@@ -271,7 +271,7 @@ The takeaway: **the signature in assembly is not the signature in C.** Adding a 
 
 Variadic functions (`printf`) spill the argument registers into a save area, and on x86-64 the caller sets `al` to the number of vector registers used. Windows x64 uses a different convention (arguments in `rcx, rdx, r8, r9`, a 32-byte shadow space, 32-bit `long`); Apple arm64 follows AAPCS64 with changes (reserved `x18`, variadic arguments always on the stack). If an interviewer asks "what is the calling convention?", open with "on which platform?"; the two columns above are the Linux answer.
 
-**System calls use a different register convention from function calls.** Linux x86-64: the syscall number goes in `rax`, the arguments in `rdi, rsi, rdx, r10, r8, r9` (`r10` takes the place of `rcx`, because the `syscall` instruction overwrites `rcx` and `r11`), and the result comes back in `rax`, where a small negative value means an error (-errno). Linux AArch64: `svc #0` with the number in `x8`, the arguments in `x0` to `x5`, and the result in `x0`. I checked the x86-64 version with inline `syscall`: `write(1, msg, 3)` returned 3, and `write(-1, msg, 3)` returned -9 (-EBADF). The libc wrappers (`write`, `read`) turn a negative result into `-1` and set `errno`. Tutorial 26 covers what the hardware does on the way into the kernel.
+**System calls use a different register convention from function calls.** Linux x86-64: the syscall number goes in `rax`, the arguments in `rdi, rsi, rdx, r10, r8, r9` (`r10` takes the place of `rcx`, because the `syscall` instruction overwrites `rcx` and `r11`), and the result comes back in `rax`, where a small negative value means an error (-errno). Linux AArch64: `svc #0` with the number in `x8`, the arguments in `x0` to `x5`, and the result in `x0`. I checked the x86-64 version with inline `syscall`: `write(1, msg, 3)` returned 3, and `write(-1, msg, 3)` returned -9 (-EBADF). The libc wrappers (`write`, `read`) turn a negative result into `-1` and set `errno`. [Tutorial 26](26_interrupts_exceptions_and_dma.md) covers what the hardware does on the way into the kernel.
 
 ---
 
@@ -391,7 +391,7 @@ For `int sum(int *a, int n)` (the loop from tutorial 06), instruction counts for
 | x86-64 | 21 | 13 (one is a padding `nop`) | 41 |
 | AArch64 | 25 | 12 | 35 |
 
-`-O0` keeps `s` and `i` in memory. `-O1` gets the 4-instruction loop of tutorial 06. At `-O2`, clang **vectorises and unrolls** the loop (tutorial 21): the code grows to about 40 instructions, but it processes several elements per iteration. More instructions are not slower code, and fewer are not faster: look at the loop body and at memory traffic.
+`-O0` keeps `s` and `i` in memory. `-O1` gets the 4-instruction loop of tutorial 06. At `-O2`, clang **vectorises and unrolls** the loop ([tutorial 21](21_simd_and_vector_processing.md)): the code grows to about 40 instructions, but it processes several elements per iteration. More instructions are not slower code, and fewer are not faster: look at the loop body and at memory traffic.
 
 ### Things the compiler does that look like magic
 
@@ -470,7 +470,7 @@ void compiler_barrier(void) { __asm__ volatile("" ::: "memory"); }
 
 This emits **no instruction**, yet it matters: the `"memory"` clobber says "anything in memory may have changed", so the compiler may not move loads or stores across it. It does **not** stop the CPU from reordering; that needs a fence instruction (tutorial 20).
 
-**When to use assembly at all.** For one operation, prefer a builtin (`__builtin_clz`, `__builtin_popcount`, `__builtin_bswap32`, `__builtin_add_overflow`); for SIMD, intrinsics (tutorial 21); for atomics, `std::atomic` or `<stdatomic.h>` (tutorial 20). Inline assembly is for one special instruction (`rdtsc`, `isb`, `mrs`), and a `.S` file for entry points, context switches and boot code. Assembly gains nothing in speed over a good compiler for ordinary code and costs portability and readability.
+**When to use assembly at all.** For one operation, prefer a builtin (`__builtin_clz`, `__builtin_popcount`, `__builtin_bswap32`, `__builtin_add_overflow`); for SIMD, intrinsics ([tutorial 21](21_simd_and_vector_processing.md)); for atomics, `std::atomic` or `<stdatomic.h>` (tutorial 20). Inline assembly is for one special instruction (`rdtsc`, `isb`, `mrs`), and a `.S` file for entry points, context switches and boot code. Assembly gains nothing in speed over a good compiler for ordinary code and costs portability and readability.
 
 ---
 

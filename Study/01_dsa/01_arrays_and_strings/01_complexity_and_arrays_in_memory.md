@@ -1,6 +1,6 @@
 # DSA 01.01: Complexity Analysis and Arrays in Memory
 
-*Part of the [Arrays and Strings plan](00_plan.md) · Time: about 4 hours (1.5 reading, 2.5 problems) · You need: loops, functions, `std::vector` basics*
+*Part of the [Arrays and Strings plan](00_plan.md) · Time: about 4 hours (1.5 reading, 2.5 problems) · You need: loops, functions, `std::vector` basics · Companion code: [`01_complexity_and_arrays_demo.cpp`](01_complexity_and_arrays_demo.cpp) (every complete function, plus the numbers quoted in the text; short loop fragments are illustrative and not in it)*
 
 By the end of this tutorial you can:
 

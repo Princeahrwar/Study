@@ -1,6 +1,6 @@
 # The mock bank
 
-Twelve scenarios with rubrics. Run one per week under a real clock, out loud,
+Fourteen scenarios with rubrics. Run one per week under a real clock, out loud,
 writing on paper or a whiteboard — not in your head. Save each attempt as
 `YYYY-MM-DD_<name>.md` in this directory with your answer and your self-score.
 
@@ -181,6 +181,62 @@ Staff answer: stabilise before understanding (stop the bleeding), build
 observability before refactoring, find the one person who knows something, write
 down what you learn as you learn it, and communicate a plan with dates. The
 failure mode is starting with a rewrite.
+
+---
+
+## M13: Timestamps that jump by 71 minutes (30 min, hardware/firmware)
+
+> "Our devices log a timestamp from a free-running 64-bit microsecond counter that
+> the SoC exposes as two 32-bit registers. About once every few hundred
+> device-days a log line is wrong by exactly 71.6 minutes. The code reads high,
+> then low. Explain it, put a number on how often it should happen, and fix it."
+
+**Clock plan.** 0-5 min: recognise 2^32 us = 71.6 min, so the error is a carry
+from the low word into the high word, not a clock fault. 5-15: draw the
+timeline: read `hi`, the low word wraps, read `lo`; the pair is a value that
+never existed. 15-25: estimate the rate. The window is about 200 ns, the code
+reads 1000 times a second, so one carry in 5,000 lands in the window
+(2 x 10^-4); a carry comes once per 71.6 minutes, so one bad line per device in
+about 250 days, and for a fleet of 50,000 devices one somewhere every 7 minutes.
+25-30: fix and prevention.
+
+| | Answer |
+| --- | --- |
+| No hire | "Race condition, add a lock"; a lock cannot stop a free-running hardware counter |
+| Senior | Finds the torn read, proposes disabling interrupts or reading twice, cannot say how rare it is |
+| Staff | Names the carry, does the rate arithmetic, fixes it with the hi-lo-hi retry (read `hi`, `lo`, `hi` again; repeat if `hi` changed) or a latched/shadow register, and adds a test that forces the counter near the carry so the bug is reproducible in minutes instead of months |
+
+The same shape appears on any multi-word status register that hardware updates
+while software reads it, and the Gray-code and synchroniser material in
+`04_computer_organization/04_sequential_logic_and_state_machines` section 9 is
+the hardware side of the same problem: a multi-bit value crossing a boundary
+without a single atomic snapshot.
+
+---
+
+## M14: The filter that got 20 times slower (30 min, performance)
+
+> "An audio gain filter processes 10,000-sample blocks in about 20 us. When the
+> microphone is muted, blocks take about 400 us, and the code path is the same.
+> The filter is `y = 0.99 * y + x`. Why?"
+
+**Clock plan.** 0-5 min: the work per block is identical, so the cost is per
+operation, not per branch; ask what changes in the data. 5-15: with `x = 0` the
+state decays by 0.99 each sample and, after about 70,000 samples of silence,
+enters the subnormal range. 15-25: the arithmetic: a dependent multiply and add is
+about 6 cycles, 10,000 of them at 3.2 GHz is 19 us; if each multiply costs an extra
+130-cycle assist that becomes about 420 us, a factor of 22. 25-30: fixes and
+how to confirm.
+
+| | Answer |
+| --- | --- |
+| No hire | Blames cache misses or the OS because the code did not change |
+| Senior | Suspects denormals from experience, knows flush-to-zero exists, cannot say why only some inputs trigger it |
+| Staff | Gets the sample count and the 22x from the arithmetic, explains that the multiply with a subnormal input or result takes a microcode assist, names the fixes (set FTZ and DAZ for the thread, add a tiny DC offset or clamp the state to zero below a threshold), and says what they cost: FTZ changes results below 2^-126 or 2^-1022, so check the algorithm tolerates it; it is also per-thread state, so set it in each worker |
+
+On Arm the equivalent controls are the FZ bit in FPCR; the cost of a subnormal
+there is implementation-defined, so measure rather than assume. (See
+`04_computer_organization/05_computer_arithmetic_and_the_alu` section 5.5.)
 
 ---
 

@@ -36,7 +36,7 @@ void update(std::atomic<T>& a, F&& transform) {
 ```
 
 Under contention this degrades badly — every failed CAS is a coherence round trip
-(tutorial `04_computer_organization/older_notes/07_cache_coherence_mesi`). Mitigations, in order of preference:
+(tutorial `04_computer_organization/19_cache_coherence.md`). Mitigations, in order of preference:
 
 1. **Avoid the sharing.** Per-core state is always better than a clever shared
    structure. This is the answer far more often than people expect.

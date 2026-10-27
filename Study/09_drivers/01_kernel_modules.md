@@ -182,7 +182,7 @@ atomic section. `GFP_ATOMIC` never sleeps but draws from a smaller emergency poo
 and fails more readily. `CONFIG_DEBUG_ATOMIC_SLEEP` catches the mistake; without
 it you get a rare, load-dependent hang.
 
-Note `SLAB_HWCACHE_ALIGN` above — the kernel's own answer to false sharing (`04_computer_organization/older_notes/07_cache_coherence_mesi.md`).
+Note `SLAB_HWCACHE_ALIGN` above — the kernel's own answer to false sharing (`04_computer_organization/19_cache_coherence.md`).
 
 ## Reference counting and lifetime
 

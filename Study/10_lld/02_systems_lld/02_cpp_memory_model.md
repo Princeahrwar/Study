@@ -198,9 +198,11 @@ Structural advice that matters more than the flags:
   randomised multi-threaded harness plus TSAN is verifiable. The same queue
   embedded in a packet pipeline is not.
 - **Deterministic seeds** so failures reproduce.
-- **Run on the weak-ordering target.** TSAN on x86 will not catch a missing
-  `release` that x86 supplies for free. This is tutorial `04_computer_organization/older_notes/12_arm_vs_x86`'s point
-  and it is the single most common way lock-free code ships broken.
+- **Run on the weak-ordering target.** TSAN checks the C++ happens-before relation, so on x86 it does flag a missing
+  `release` or `acquire` when the flag guards plain data, even though x86 supplies the ordering for free
+  (`04_computer_organization/31_arm_vs_x86_and_putting_it_together.md`, Problem A). It cannot flag a weak order that involves only
+  atomic accesses, and it says nothing about the hardware, so the weak-ordering target is still the test.
+  This is the single most common way lock-free code ships broken.
 - For a core primitive, run it once through a model checker (CDSChecker, relacy)
   or write a herd7 litmus test.
 

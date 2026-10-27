@@ -1,6 +1,6 @@
 # DSA 01.02: Two Pointers
 
-*Part of the [Arrays and Strings plan](00_plan.md) · Time: about 4 hours (1 reading, 3 problems) · You need: [tutorial 01](01_complexity_and_arrays_in_memory.md), especially section 3.2 (read and write indices)*
+*Part of the [Arrays and Strings plan](00_plan.md) · Time: about 4 hours (1 reading, 3 problems) · You need: [tutorial 01](01_complexity_and_arrays_in_memory.md), especially section 3.2 (read and write indices) · Companion code: [`02_two_pointers_demo.cpp`](02_two_pointers_demo.cpp)*
 
 By the end of this tutorial you can:
 

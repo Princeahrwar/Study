@@ -373,7 +373,7 @@ BF16 is simply the top 16 bits of an FP32. Machine-learning hardware uses FP16 a
 
 6. **Bonus fact:** for positive floats, comparing the bit patterns as integers gives the same order as comparing the numbers (1.0f is `0x3F800000`, 2.0f is `0x40000000`). Radix sorts and some lock-free code use this.
 
-Floating-point *hardware* (how an adder or multiplier is built) is tutorial 05.
+Floating-point *hardware* (how an adder or multiplier is built, and what rounding costs) is [tutorial 05](05_computer_arithmetic_and_the_alu.md) section 5.
 
 ---
 

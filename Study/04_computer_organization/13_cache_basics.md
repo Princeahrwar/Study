@@ -103,7 +103,7 @@ Plotted against the footprint, this is a **staircase**: flat while the footprint
 1. **Each step is 3 to 6 times slower than the one before.** One dependent miss to DRAM costs as much as about 90 L1 hits.
 2. **The edges are the cache sizes.** The L1 step lies between 32 KB and 64 KB (section 4.2 pins it to 48 KB), the L2 step is at about 1 MB, and L3 ends between 4 and 8 MB. The `lscpu` report says the L3 is 33 MB, but it is shared by the whole socket and by other tenants, and a program in this VM sees the step at 4 to 8 MB. I cannot see from inside why; the lesson is that *the usable size is what you measure*.
 3. **A server's L3 is slower than a desktop's.** Tutorial 01's round numbers (10 to 15 ns) are for a small chip; a big mesh-connected server L3 is 20 to 30 ns, as here.
-4. **Huge pages shorten the DRAM step** (95 against 135 ns): fewer address translations (tutorial 15).
+4. **Huge pages shorten the DRAM step** (95 against 135 ns): fewer address translations (tutorial 15). This also reconciles the two DRAM figures in this tutorial: the 60 to 100 ns of the table in section 1 is the usual bare-metal figure for the memory access itself, and 95 ns with huge pages is inside it; the extra 40 ns with 4 KB pages is mostly address translation, a TLB miss and, in a guest, a nested page walk (tutorials 15 and 27).
 5. **Run-to-run noise is 10 to 30% at the DRAM end** on a shared VM. The steps are real; the third digit is not.
 
 Cost depends on the *footprint*, not on the number of instructions. The same dependent walk is 3 times slower when its data move from L1 to L2, about 16 times slower in L3 and about 90 times slower in DRAM.
@@ -346,7 +346,7 @@ Reads are simple: a hit returns the data, a miss fetches the line. Writes need t
 ### 7.1 On a write hit: write-through or write-back
 
 - **Write-through:** update the cache **and** the next level on every store. The cache never holds the only copy, so lines can be dropped any time and the design is simple. Cost: every store uses next-level bandwidth.
-- **Write-back:** update only the cache and set the line's **dirty** bit. The next level is updated when the dirty line is **evicted**. Many stores to one line cost one write. Cost: the next level is out of date, so another core or a device must be told (coherence, tutorial 19; DMA, tutorial 26), and evicting a dirty line costs a write.
+- **Write-back:** update only the cache and set the line's **dirty** bit. The next level is updated when the dirty line is **evicted**. Many stores to one line cost one write. Cost: the next level is out of date, so another core or a device must be told (coherence, tutorial 19; DMA, [tutorial 26](26_interrupts_exceptions_and_dma.md)), and evicting a dirty line costs a write.
 
 ### 7.2 On a write miss: write-allocate or not
 

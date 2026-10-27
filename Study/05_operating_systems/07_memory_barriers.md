@@ -1,6 +1,6 @@
 # OS 07 — Memory barriers and the memory model
 
-> Prerequisite: `04_computer_organization/older_notes/07_cache_coherence_mesi.md`, `04_computer_organization/older_notes/12_arm_vs_x86.md`.
+> Prerequisite: `04_computer_organization/20_memory_consistency_and_atomics.md` (the hardware models, litmus tests, fences and atomics, measured), `04_computer_organization/19_cache_coherence.md`, `04_computer_organization/31_arm_vs_x86_and_putting_it_together.md`.
 > This is the hardest tutorial in the OS track and the highest-value one for
 > lock-free work. `10_lld/02_systems_lld/02_cpp_memory_model` builds directly on it.
 
@@ -14,7 +14,7 @@ Your code must be correct under both. The compiler will reorder, and it will do
 so aggressively — a plain `volatile` stops the compiler but says nothing to the
 hardware, which is precisely why `volatile` is not a concurrency tool in C++.
 
-Coherence (`04_computer_organization/older_notes/07_cache_coherence_mesi.md`) is a third, separate thing: it makes all cores agree on
+Coherence (`04_computer_organization/19_cache_coherence.md`) is a third, separate thing: it makes all cores agree on
 the value of *one* location. Ordering is about *several* locations. Keeping
 these three straight is genuinely half the battle.
 
@@ -176,7 +176,7 @@ public:
 
 private:
     // Each index alone on its line: otherwise producer and consumer thrash
-    // the same line and you lose most of the benefit (`04_computer_organization/older_notes/07_cache_coherence_mesi.md`).
+    // the same line and you lose most of the benefit (`04_computer_organization/19_cache_coherence.md`).
     alignas(kLine) std::atomic<size_t> head_{0};
     alignas(kLine) std::atomic<size_t> tail_{0};
     alignas(kLine) T buf_[Capacity];
@@ -196,7 +196,7 @@ interviewer will probe:
    full-versus-empty unambiguous without wasting a slot.
 
 Weaken any `release` to `relaxed` and this still passes every test on x86 and
-fails on ARM. That is exercise 3 of `04_computer_organization/older_notes/12_arm_vs_x86.md`, and it is the best single
+fails on ARM. That is Problem A of `04_computer_organization/31_arm_vs_x86_and_putting_it_together.md` (on x86 the two builds are the same machine code and both pass; ThreadSanitizer flags the weakened one, and the Arm listing shows `ldr`/`str` where the correct build has `ldar`/`stlr`), and it is the best single
 demonstration of why the memory model is not academic.
 
 ## Tools that actually find these bugs

@@ -362,7 +362,7 @@ How the pipeline stays precise:
 
 Because everything is judged in program order at the end, the **oldest** exception wins. Example: a `lw` page-faults in MEM in the same cycle in which a younger instruction was found illegal in ID. The younger one is marked too, but the `lw` reaches MEM first, so the handler sees the `lw`'s fault and the younger instruction is simply flushed. If it was a real problem, it will be hit again when the program reruns.
 
-An **interrupt** is not caused by any instruction. The pipeline chooses an instruction boundary: older instructions finish, younger ones are flushed, and the saved PC is the first instruction that did not complete, so the program resumes exactly there. The privilege levels, vectors and the cost of a system call are in tutorial 26.
+An **interrupt** is not caused by any instruction. The pipeline chooses an instruction boundary: older instructions finish, younger ones are flushed, and the saved PC is the first instruction that did not complete, so the program resumes exactly there. The privilege levels, vectors and the cost of a system call are in [tutorial 26](26_interrupts_exceptions_and_dma.md).
 
 **Imprecise exceptions** are what you get if instructions can finish out of order and nothing tracks program order: the exception may be reported after later instructions have already written their results, and restarting is almost impossible. Old machines with long floating-point pipelines had this problem. Modern general-purpose cores always give precise exceptions, using a **reorder buffer** in the out-of-order case (tutorial 11).
 
@@ -416,7 +416,7 @@ time per instruction = (800 / depth + 20) x (1 + 0.02 x (depth - 1))
 | 80 | 30 ps | 2.58 | 77 ps |
 | 120 | 27 ps | 3.38 | 90 ps |
 
-The gains flatten, the best is around 40 to 50 stages in this toy, and past it deeper is slower. The toy even ignores two more reasons that stop real designs much earlier: **power** (more registers and a faster clock mean more switching, tutorial 28) and **memory** (a cache miss takes the same time in nanoseconds, so a faster clock means more cycles lost). The Pentium 4 "Prescott" core went to 31 stages and the industry then went back to shorter pipelines. Current big cores have a branch misprediction penalty of roughly 15 to 20 cycles, and the number of cycles a branch mistake costs is one of the most important numbers in a core (tutorial 10).
+The gains flatten, the best is around 40 to 50 stages in this toy, and past it deeper is slower. The toy even ignores two more reasons that stop real designs much earlier: **power** (more registers and a faster clock mean more switching, [tutorial 28](28_performance_and_power.md)) and **memory** (a cache miss takes the same time in nanoseconds, so a faster clock means more cycles lost). The Pentium 4 "Prescott" core went to 31 stages and the industry then went back to shorter pipelines. Current big cores have a branch misprediction penalty of roughly 15 to 20 cycles, and the number of cycles a branch mistake costs is one of the most important numbers in a core (tutorial 10).
 
 ---
 

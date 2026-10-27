@@ -45,7 +45,7 @@ Y is pulled to 0 only when **both** A and B are 1 (both NMOS conduct). In every 
 Two facts follow that matter later:
 
 - **AND and OR cost more than NAND and NOR.** An AND is a NAND followed by an inverter (6 transistors). So hardware designers think in NAND and NOR.
-- **A gate is not instant.** The output changes a small delay after the inputs change, on the order of tens of picoseconds in a modern process. A signal that passes through a chain of gates takes the sum of those delays. The clock period must be longer than the **slowest chain** between two storage elements (the **critical path**), so a few tens of gate delays per cycle is all a fast CPU has. This is why section 8 cares about how an adder is wired, and why tutorial 28 ties clock speed and power to switching.
+- **A gate is not instant.** The output changes a small delay after the inputs change, on the order of tens of picoseconds in a modern process. A signal that passes through a chain of gates takes the sum of those delays. The clock period must be longer than the **slowest chain** between two storage elements (the **critical path**), so a few tens of gate delays per cycle is all a fast CPU has. This is why section 8 cares about how an adder is wired, and why [tutorial 28](28_performance_and_power.md) ties clock speed and power to switching.
 
 You will never draw transistors again in this track. Real designers write Verilog or VHDL, and tools turn that into gates. But everything a CPU does is these gates.
 
@@ -278,7 +278,7 @@ A mux can also build **any function**. Majority from section 5, with A and B as 
  1 1 | 1       -> a 4:1 mux with data inputs 0, C, C, 1
 ```
 
-That idea is how an FPGA works: a **lookup table (LUT)** is a mux whose data inputs are stored bits, so a 6-input LUT is a 64:1 mux that can compute any function of 6 variables (tutorial 24).
+That idea is how an FPGA works: a **lookup table (LUT)** is a mux whose data inputs are stored bits, so a 6-input LUT is a 64:1 mux that can compute any function of 6 variables ([tutorial 24](24_accelerators_and_fpgas.md)).
 
 ### Decoder and demux
 
@@ -315,15 +315,15 @@ The XOR of all bits is 1 when an odd number of bits are 1. A tree of XOR gates c
 
 ### Tri-state buffer
 
-A **tri-state buffer** has a third output state besides 0 and 1: **high impedance** ("Z", effectively disconnected), chosen by an enable input. Several drivers can then share one wire, as long as only one is enabled at a time; a bus works this way (tutorial 25). Two drivers enabled with opposite values is **bus contention**, a near short circuit that wastes power and can damage the chip.
+A **tri-state buffer** has a third output state besides 0 and 1: **high impedance** ("Z", effectively disconnected), chosen by an enable input. Several drivers can then share one wire, as long as only one is enabled at a time; a bus works this way ([tutorial 25](25_buses_pcie_and_io_mapping.md)). Two drivers enabled with opposite values is **bus contention**, a near short circuit that wastes power and can damage the chip.
 
 ### Where the CPU uses these
 
 | Block | Where you meet it |
 |---|---|
 | Mux | Choosing the ALU result; picking which register to read; forwarding paths in a pipeline (tutorial 09) |
-| Decoder | Instruction decode (opcode to control signals); address decode that picks one device from the address bits (tutorial 25); register write-enable |
-| Priority encoder | An interrupt controller picking the highest-priority pending interrupt (tutorial 26); arbiters; the `clz` instruction behind `__builtin_clz` |
+| Decoder | Instruction decode (opcode to control signals); address decode that picks one device from the address bits ([tutorial 25](25_buses_pcie_and_io_mapping.md)); register write-enable |
+| Priority encoder | An interrupt controller picking the highest-priority pending interrupt ([tutorial 26](26_interrupts_exceptions_and_dma.md)); arbiters; the `clz` instruction behind `__builtin_clz` |
 | Comparator | Branch conditions; comparing cache tags to the address (tutorial 13) |
 | Adder | ALU, PC + 4, address calculation, counters |
 | XOR / parity tree | Parity bits and ECC memory (tutorial 17), CRC |
@@ -394,7 +394,7 @@ c(i+1) = G(i) + P(i)·c(i)
 c2     = G1 + P1·G0 + P1·P0·c0          (c1 substituted in; no waiting for c1)
 ```
 
-Each carry becomes a short AND-OR of the inputs. Real 64-bit adders arrange this as a **prefix tree** with depth proportional to log₂(64) = 6 levels instead of 64. Tutorial 05 (optional) goes deeper; for now, remember: **the wiring of an adder decides its speed**.
+Each carry becomes a short AND-OR of the inputs. Real 64-bit adders arrange this as a **prefix tree** with depth proportional to log₂(64) = 6 levels instead of 64. [Tutorial 05](05_computer_arithmetic_and_the_alu.md) section 2 goes deeper (parallel-prefix adders, carry-save adders); for now, remember: **the wiring of an adder decides its speed**.
 
 ---
 

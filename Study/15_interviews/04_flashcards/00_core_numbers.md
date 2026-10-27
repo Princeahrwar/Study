@@ -59,3 +59,48 @@ absolutes; the starred ones you should have measured yourself.
     Rate-monotonic bound, n->inf => 69.3%
     EDF bound => 100%
     Branchless wins above ~6% mispredict rate (1 cycle vs 17 x P)
+
+## Measured in the computer-organization tutorials (study VM, 2 vCPUs, about 3.2 GHz)
+
+These came from one cloud VM, one session, run-to-run noise of 10 to 30%. They are
+here to give you the right order of magnitude and the right ratios, and they are
+separate from the numbers you measure yourself above. Where the VM reports a
+different CPU than it runs on (it did), the measured figure wins.
+
+    Arithmetic, latency in cycles (throughput per cycle in brackets)
+    integer add                       1   (4)
+    integer multiply                  3   (1)
+    multiply, high half               4   (1)
+    popcnt, lzcnt                     3   (1)
+    divide, 32-bit                    11 to 12   (one per 6)
+    divide, 64-bit                    14 to 15   (one per 10)
+    divide by a constant (magic)      ~4  (multiply, shift, fix-up)
+    FP add                            2   (2)
+    FP multiply, FMA                  4   (2)
+    FP divide, single / double        11 / 14 to 15
+    FP square root, single / double   13 / 19
+    subnormal assist                  ~130 cycles (~40 ns); flush-to-zero removes it
+
+    Memory, pointer chase
+    L1 hit                            5 cycles   ~1.5 ns   (48 KB, 12-way here)
+    L2 hit                            14 cycles  4 to 5 ns  (~1 MB)
+    L3 hit                            77 cycles  ~24 ns     (big server mesh)
+    DRAM                              ~95 ns with huge pages, ~150 ns with 4 KB pages
+    line from another core's cache    56 to 102 ns
+
+    Operating-system rungs (each about 10x the one above)
+    raw system call                   115 to 126 ns
+    minor page fault                  1.1 to 1.3 us
+    context switch, one way           1.2 to 1.5 us
+    wake a thread on another CPU      ~10 us
+    fork + exec + wait                0.8 to 1.2 ms
+
+    Rules and shapes to say without looking
+    adder depth                       log2(n) levels; 64-bit Kogge-Stone: 6 levels, 321 cells
+    rounding                          round up if G and (R or S or L); ties go to even
+    sticky bit                        without it a 5-bit adder was wrong on 2,292 of 173,056 pairs
+    divide by constant                m = ceil(2^k / d); check x * e < 2^k
+    AMAT                              T_L1 + m_L1 * (T_L2 + m_L2 * T_mem), local miss rates
+    synchroniser MTBF                 e^(t_r / tau) / (T_W * f_clk * f_data); each extra flop multiplies it
+    async FIFO                        Gray-coded (n+1)-bit pointers; empty: equal; full: top two bits differ
+    break-even for power gating       energy to enter and leave / power saved = ~2.5 ms in the worked example

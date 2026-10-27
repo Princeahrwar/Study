@@ -267,7 +267,7 @@ Modern high-performance cores **mix the two**. On x86 (tutorial 06's micro-ops):
 
 - Most instructions are decoded by **hardwired decoders** into one or a few **micro-ops** (µops), simple RISC-like operations that the core executes, often out of order (tutorial 11). `add [mem], eax` becomes a load, an add and a store.
 - Instructions that need more than a few µops (`rep movsb`, `cpuid`, some complex arithmetic and system instructions) are handled by a **microcode ROM**: the decoder jumps into it and a sequencer emits the µops, exactly the µPC-and-control-store idea in section 7.
-- The microcode has a **patch** mechanism: the firmware or the operating system can load a microcode update at boot. This is how many CPU errata and some security mitigations (the speculative-execution fixes of tutorial 30) were delivered without new silicon. On Linux, `grep microcode /proc/cpuinfo` shows the revision that is loaded (a virtual machine may show a dummy value, as mine does: `0x1`).
+- The microcode has a **patch** mechanism: the firmware or the operating system can load a microcode update at boot. This is how many CPU errata and some security mitigations (the speculative-execution fixes of [tutorial 30](30_hardware_security.md)) were delivered without new silicon. On Linux, `grep microcode /proc/cpuinfo` shows the revision that is loaded (a virtual machine may show a dummy value, as mine does: `0x1`).
 
 Don't confuse the two words: **micro-ops** are the internal instructions every x86 instruction becomes; **microcode** is the ROM sequence that produces µops for the few instructions too complex for the hardwired decoders.
 

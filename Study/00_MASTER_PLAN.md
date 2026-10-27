@@ -15,7 +15,7 @@
 | 30 | ~22 weeks | ~week 12 |
 | 35+ | ~19 weeks | ~week 10 |
 
-The track budgets add up to about 675 hours; 26 weeks at 25 hours is 650. The gap is covered by the overflow rule in section 5: when a week runs over, drop a stretch item, never the practice.
+The track budgets in the table in section 2 add up to about 745 hours (the DSA and computer-organization tracks grew after coverage reviews); 26 weeks at 25 hours is 650, so at that pace the full program is nearer 30 weeks than 26. The overflow rule in section 5 still applies: when a week runs over, drop a stretch item, never the practice. The pace table above and the week tables in section 5 are to be re-cut once you choose a pace.
 
 This file is the order and the schedule. The method is in [`README.md`](README.md), and each track's `00_plan.md` has its topics and their status.
 
@@ -64,10 +64,10 @@ Each track has a `00_plan.md` with its topics, status, week, labs, interview que
 
 | # | Track | Code | Topics | Weeks | Hours |
 |---|---|---|---|---|---|
-| 01 | [DSA](01_dsa/00_plan.md) | DSA | 13 areas, ~79 core tutorials (3 written), ~265 problems | 1–23 | ~200 |
+| 01 | [DSA](01_dsa/00_plan.md) | DSA | 15 areas, 103 tutorials (88 core, 14 written), ~310 problems | 1–23 | ~230 core |
 | 02 | [C language](02_c_language/00_plan.md) | C | 8 | 1–8 | ~18 |
 | 03 | [C++](03_cpp/00_plan.md) | CPP | Primer (14, written) + 8 interview topics | 9–16 | ~20 |
-| 04 | [Computer organization](04_computer_organization/00_plan.md) | CO | 31 (CO 01–04 and 06–15 written, 3 older notes) | 1–6 | ~66 core, ~80 all |
+| 04 | [Computer organization](04_computer_organization/00_plan.md) | CO | 31 (all written) | 1–6 | ~70 core, ~83 all |
 | 05 | [Operating systems](05_operating_systems/00_plan.md) | OS | 15 (6 exist) | 5–13 | ~35 |
 | 06 | [Linux](06_linux/00_plan.md) | LX | 6 | 3–9, 24 | ~12 |
 | 07 | [Networking](07_networking/00_plan.md) | NET | 9 core (2 exist) + 1 optional | 10–15 | ~25 |

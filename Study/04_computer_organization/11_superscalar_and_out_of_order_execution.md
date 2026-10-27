@@ -315,7 +315,7 @@ A branch resolves when it **executes**, usually long before it commits. If it wa
 
 Step 3 can be done in three ways: restore a **checkpoint** of the RAT taken at each branch (fast, costs storage); **walk back** through the ROB undoing mappings with the saved old mappings (slower, no extra storage); or wait until the branch commits and copy the committed RAT (simple and slow). Big cores use checkpoints for branches. The penalty in tutorial 10 (about 12 to 20 cycles) is mostly the **front-end refill**, not the time to clean the ROB. Instructions older than the branch are not touched and keep running.
 
-**Wrong-path work leaves traces.** The flushed instructions never became architectural, but a flushed load may already have brought a line into the cache. This is the root of Spectre (tutorial 10, section 12, and tutorial 30).
+**Wrong-path work leaves traces.** The flushed instructions never became architectural, but a flushed load may already have brought a line into the cache. This is the root of Spectre ([tutorial 10](10_branch_prediction.md), section 12, and [tutorial 30](30_hardware_security.md), section 4).
 
 ---
 
@@ -410,7 +410,7 @@ Why not a 20-wide core with a 5000-entry window?
 - **The program does not have that much ILP.** Dependences, branch mispredictions (tutorial 10) and cache misses limit the parallelism that exists. Idealised studies find that ordinary integer code has modest ILP unless the window is huge and prediction is nearly perfect.
 - **The scheduler does not scale.** Every finished result must be compared with every waiting operand (**wakeup**), and the scheduler must pick ready instructions for the ports every cycle (**select**). The cost grows faster than linearly with the window and the width. This is why the scheduler is much smaller than the ROB.
 - **Everything else grows too:** more physical registers with more ports, a bigger rename stage, more bypass wires, a bigger predictor, more power.
-- **Returns diminish.** Past a few wide, deep cores per chip, extra transistors are better spent on more cores (tutorial 18), vectors (tutorial 21) or accelerators (tutorials 22 to 24).
+- **Returns diminish.** Past a few wide, deep cores per chip, extra transistors are better spent on more cores (tutorial 18), vectors ([tutorial 21](21_simd_and_vector_processing.md)) or accelerators (tutorials 22 to 24).
 
 ---
 
@@ -464,7 +464,16 @@ A **VLIW** (very long instruction word) machine puts the whole job on the compil
 | In general-purpose code | wins | the compiler could not find enough ILP across branches and misses |
 | Today | all big CPU cores | digital signal processors (for example Qualcomm Hexagon, TI C6000), where loops are regular |
 
-The lesson is not that VLIW is bad. When latencies are fixed and loops are regular, a compiler does the job cheaply. When memory latency varies, dynamic scheduling wins. GPUs take a third route: they do not hunt for ILP in one thread but hide latency with thousands of threads (tutorial 22).
+The lesson is not that VLIW is bad. When latencies are fixed and loops are regular, a compiler does the job cheaply. When memory latency varies, dynamic scheduling wins. GPUs take a third route: they do not hunt for ILP in one thread but hide latency with thousands of threads ([tutorial 22](22_gpu_execution_model.md)).
+
+### 10.5 Ideas you may be asked about that are not in every core
+
+None of these was measured here; the descriptions are from the literature (*standard*).
+
+- **Trace cache** (Pentium 4). Stores decoded uops in the order the program *executed* them, across taken branches, so one fetch can deliver a path of several basic blocks. Replaced in later Intel cores by the micro-op cache of tutorial 12, which is indexed by address: it keeps most of the benefit with simpler hardware.
+- **Runahead execution.** When a load miss reaches the head of the reorder buffer and the window is full, the core takes a checkpoint and keeps executing speculatively past the miss, only to find more loads that will miss and start their memory requests early; when the first miss returns, it discards the speculative work and restarts. It raises memory-level parallelism without a bigger window, at the cost of energy for work that is thrown away.
+- **Value prediction.** Guess the *result* of a load (or of an instruction with a regular result) so that its dependent instructions start before the data arrive, and check later. It breaks true dependence chains, which renaming cannot, but accuracy has to be very high because a wrong guess costs a flush, and it is not part of mainstream cores as far as published documentation shows.
+- **Software-assisted designs.** Transmeta's Crusoe and NVIDIA's Denver cores run a VLIW-like machine under a run-time translator that converts x86 or Arm code and re-schedules it, moving the work of out-of-order hardware into software: a way to get ILP without the hardware cost, at the price of translation time on cold code.
 
 ---
 
@@ -502,7 +511,7 @@ Many "efficiency" cores in phones and PCs are still out of order, only narrower 
 6. **"A store writes the cache when it executes."** It writes after it commits; before that it is only in the store queue.
 7. **Forgetting memory disambiguation.** A load cannot simply pass older stores; either it waits, or it speculates and may have to replay.
 8. **"The pointer chase is slow only because of cache misses."** It is slow because the misses are **serialised**: an array walk with the same misses overlaps them.
-9. **Counting the IPC as the goal.** IPC 4 while spinning on a lock is worthless; useful work per cycle is what counts (tutorial 28).
+9. **Counting the IPC as the goal.** IPC 4 while spinning on a lock is worthless; useful work per cycle is what counts ([tutorial 28](28_performance_and_power.md)).
 10. **"Fewer instructions is faster."** Four accumulators execute more instructions and run faster. Stalls are the currency, not instructions.
 
 ---

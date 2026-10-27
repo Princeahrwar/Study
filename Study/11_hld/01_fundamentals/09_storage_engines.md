@@ -123,7 +123,7 @@ Store by column instead of by row. Parquet, ClickHouse, most analytics engines.
 - Terrible for single-row reads and updates; this is not an OLTP store.
 
 The complement is **vectorised execution**: process a batch of column values at a
-time, which is exactly the SIMD-friendly layout from `04_computer_organization/older_notes/11_simd_and_vectorization`. The
+time, which is exactly the SIMD-friendly layout from `04_computer_organization/21_simd_and_vector_processing`. The
 connection between columnar storage and SIMD is a nice cross-layer observation.
 
 ## Durability

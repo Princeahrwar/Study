@@ -17,7 +17,7 @@ By the end of this tutorial you can:
 
 Tutorials 13 and 14 treated the address that reaches the cache as a given. It is not: every address a program uses is a **virtual** address, and the hardware translates it on every single access. This tutorial is about that translation, what it costs, and how to keep the cost small.
 
-**Where the numbers come from.** Timings marked *measured* were taken on the same kind of cloud virtual machine as tutorial 14 (an Intel Xeon core under KVM, two virtual CPUs, 7 GB of memory, Linux 6.18, 4 KB pages, transparent huge pages in `madvise` mode), pinned to one core, compiled with GCC 13 and `-O2`. **A virtual machine adds a second layer of address translation, so TLB misses and page faults cost much more here than on bare metal** (section 6.4). Where it matters the text says what to expect on a physical machine. Run-to-run noise is 10 to 30%, so some numbers are ranges.
+**Where the numbers come from.** Timings marked *measured* were taken on the same kind of cloud virtual machine as tutorial 14 (an Intel Xeon core under KVM, two virtual CPUs, 7 GB of memory, Linux 6.18, 4 KB pages, transparent huge pages in `madvise` mode), pinned to one core, compiled with GCC 13 and `-O2`. **A virtual machine adds a second layer of address translation, so TLB misses and page faults cost much more here than on bare metal** (section 6.5). Where it matters the text says what to expect on a physical machine. **These numbers also move from one session to the next**: the host is shared, and how it backs the guest's memory changes, so the same program run in different sessions differed by 30 to 100% in the slow cases (a DRAM access was 125 ns in one session and 220 ns in another). Every figure is therefore a range over several runs, and the lesson to take from it is the size and the shape, not the digits.
 
 > **The one-sentence model.** Every address is virtual and is translated by a tree of page tables that the hardware caches in the TLB; almost every cost in this tutorial is a TLB miss, a page fault, or a flush of those caches.
 
@@ -240,36 +240,52 @@ Modern cores have two to four walkers, so several TLB misses can proceed at once
 
 To see the TLB, use a pointer chase (so that no memory-level parallelism hides the cost) with **one node per 4 KB page**, visited in random order, each node on a different cache line offset inside its page. The number of lines touched is then equal to the number of pages, so the *data* footprint is tiny while the *page* footprint grows. Run once on ordinary 4 KB pages and once with 2 MB transparent huge pages (checked in `/proc/self/smaps_rollup`: 1 GiB of `AnonHugePages`).
 
-*Measured*, ns per hop (two runs shown as a range):
+*Measured*, ns per hop. The 4 KB column is the range over four runs in two sessions; the huge-page column is the range over three of those four runs (the fourth behaved differently, see section 6.4):
 
 | Pages touched | Data lines | 4 KB pages | 2 MB pages (THP) | What happened |
 |---|---|---|---|---|
-| 32 | 2 KB | 1.2 to 1.6 | 1.2 to 1.6 | L1 data TLB hit and L1 cache hit: 5 cycles |
-| 96 | 6 KB | 1.2 to 1.5 | 1.5 to 1.6 | still inside the L1 TLB (96 entries) |
-| 128 | 8 KB | **3.6 to 3.7** | 3.7 to 3.8 | L1 TLB overflow: **+2.2 ns** for an L2-TLB hit |
-| 512 | 32 KB | 3.7 to 3.8 | 3.0 to 3.5 | flat: the L2 TLB covers it |
-| 1,024 | 64 KB | 6.3 to 6.4 | 5.9 to 7.2 | not the TLB: 1,024 lines no longer fit the 48 KB L1 cache |
-| 2,048 | 128 KB | 8.1 to 9.3 | 6.9 to 8.0 | the L2 TLB is full |
-| 3,072 | 192 KB | **14 to 17.5** | 13.4 to 14.2 | **L2 TLB overflow: page walks begin** |
-| 8,192 | 512 KB | 20 | 15 to 16 | walks, data from L2 |
-| 65,536 | 4 MB | 98 to 100 | 71 to 77 | data from L3, almost every access walks |
-| 262,144 | 16 MB | 243 to 263 | 194 to 206 | the page-table entries (2 MB of them) also miss the L1 and L2 caches |
+| 32 | 2 KB | 1.2 to 1.8 | 1.2 to 1.8 | L1 data TLB hit and L1 cache hit: 5 cycles |
+| 96 | 6 KB | 1.2 to 1.8 | 1.6 to 2.2 | still inside the L1 TLB (96 entries) |
+| 128 | 8 KB | **3.6 to 4.2** | 3.7 to 4.3 | L1 TLB overflow: **+2 to 2.5 ns** for an L2-TLB hit |
+| 512 | 32 KB | 3.7 to 4.8 | 3.0 to 4.2 | flat: the L2 TLB covers it |
+| 1,024 | 64 KB | 6.3 to 8.1 | 5.9 to 8.0 | not the TLB: 1,024 lines no longer fit the 48 KB L1 cache |
+| 2,048 | 128 KB | 8.1 to 10.1 | 6.9 to 8.0 | the L2 TLB is full |
+| 3,072 | 192 KB | **14 to 18** | 9.6 to 14 | **L2 TLB overflow: page walks begin** |
+| 8,192 | 512 KB | 20 to 24 | 15 to 26 | walks, data from L2 |
+| 65,536 | 4 MB | 98 to 129 | 71 to 81 | data from L3, almost every access walks |
+| 262,144 | 16 MB | 185 to 263 | 126 to 206 | data from DRAM; the page-table entries (2 MB of them) also miss the L1 and L2 caches |
 
 Reading the table:
 
-- The **first TLB step** is between 96 and 128 pages: this core has a **96-entry** L1 data TLB, and an L2-TLB hit costs about 2.2 ns, 7 cycles. The **second** is between 2,048 and 3,072 pages: the L2 TLB has about **2,048** entries. These are the reach figures of section 5.3, measured instead of read from a manual.
+- The **first TLB step** is between 96 and 128 pages: this core has a **96-entry** L1 data TLB, and an L2-TLB hit costs about 2 to 2.5 ns, 7 cycles. The **second** is between 2,048 and 3,072 pages: the L2 TLB has about **2,048** entries. These are the reach figures of section 5.3, measured instead of read from a manual.
 - The step between 768 and 1,024 pages is the L1 *data cache* (768 lines of 64 bytes = 48 KB), not the TLB. Both columns show it. When you do a TLB experiment, check that the data lines still fit the cache you think they do; the comparison with the 2 MB column is how to tell the two kinds of step apart.
-- Walks are expensive here: 100 to 250 ns per hop in the last rows, against roughly 55 ns for an L3 hit. A TLB miss costs about as much as a DRAM access.
+- The last two rows are **not** the cost of translation alone. Each hop also fetches its data: roughly 55 ns from L3, and 120 to 130 ns from DRAM in this VM. The translation is the part on top of that, and section 6.3 separates the two.
 
-### 6.3 What the huge-page column shows, and what it does not
+### 6.3 How much of a hop is the TLB miss?
 
-The 2 MB column helps only once the walks begin: 20 to 30% fewer nanoseconds from about 8,000 pages on, because a 2 MB page needs a walk of three reads instead of four, and covers the same memory with 512 times fewer page-table entries to be cached (one entry per 2 MB instead of 512). It does **not** move the first two steps: at 128 pages, which all lie in one 2 MB page, the L1-TLB step is still there. On bare metal one 2 MB entry would cover all 128 pages and the step would vanish.
+Take the data cost out by making the data come from DRAM in both cases and changing only the order of the chase. The buffer is 1 GiB of 128-byte nodes, far larger than any cache. In one order, every hop goes to a random place in the whole 1 GiB, so almost every hop misses the TLB. In the other, the chase visits all 8,192 nodes of a 1 MB block in random order and then jumps to the next block, so only 256 pages are live at a time: the L2 TLB covers them and almost no hop walks. The DRAM latency is the same in both.
 
-That is a property of virtual machines. The TLB caches the *final* translation from guest-virtual to host-physical address, and its page size is the **smaller** of the guest's page size and the host's. If the hypervisor backs the guest's memory with 4 KB pages, the TLB entry is 4 KB however large the guest's page is. You cannot see this from inside the guest except by experiments like this one.
+*Measured*, ns per hop, range over three runs:
 
-### 6.4 Why a walk is longer in a VM
+| Order of the chase | 4 KB guest pages | 2 MB guest pages (THP) |
+|---|---|---|
+| random over the whole 1 GiB (a walk on almost every hop) | 170 to 188 | 126 to 134 |
+| random inside a 1 MB block, then the next block (TLB hits) | 122 to 125 | 119 to 125 |
+| **difference: what the TLB miss added** | **45 to 65 ns** | **2 to 15 ns** |
 
-In a virtual machine the "physical" address that the guest's page tables produce is itself a *guest-physical* address, translated by a second set of tables owned by the hypervisor (Intel EPT, AMD NPT, Arm stage-2 translation). Every one of the four guest-table reads needs its own translation through the second tree, so the worst-case walk grows from 4 reads to **24** (each of the 4 guest levels needs 4 host reads plus the guest read, and the final data address needs 4 more). Caches and walk caches shorten this a lot, but it is why a TLB miss in the cloud can cost well over 100 ns (section 6.2), where a walk that hits the walk caches on bare metal typically costs 20 to 40 ns. Tutorial 27 covers nested paging properly; for now: **in a VM, TLB reach matters even more, and huge pages in the guest help only as far as the host also uses them.**
+An earlier session gave 55 to 75 ns for the 4 KB case, so say **about 45 to 75 ns**: roughly a third to a half of a DRAM access, not a whole one. The walk's leaf read hits the L2 or L3 cache here (1 GiB of mappings needs only 2 MB of leaf entries), and the walk caches skip the upper levels. With 2 MB guest pages the penalty almost vanishes, because a 2 MB entry covers all of the 1 GiB with a few hundred entries. (The same experiment shows the other half of DRAM latency: hops that stay inside one 4 KB page took 97 to 103 ns, about 25 ns less, because they hit the row buffer that the previous hop opened. Tutorial 16 uses this.)
+
+### 6.4 What the huge-page column shows, and what it does not
+
+In the table of section 6.2 the 2 MB column is lower once the walks begin (71 to 81 against 98 to 129 ns at 65,536 pages), because a 2 MB page needs a walk of three reads instead of four, and covers the same memory with 512 times fewer page-table entries to be cached. But in three of the four runs it did **not** move the first step: at 128 pages, which all lie in one 2 MB page, the L1-TLB step was still there. On bare metal one 2 MB entry would cover all 128 pages and the step would vanish.
+
+That is a property of virtual machines. The TLB caches the *final* translation from guest-virtual to host-physical address, and its page size is the **smaller** of the guest's page size and the host's. If the hypervisor backs the guest's memory with 4 KB pages, the TLB entry is 4 KB however large the guest's page is.
+
+In the fourth run the step did vanish (1.8 ns flat up to 256 pages), so the host had evidently given the guest large pages in that run; the same run also showed a plateau of about 30 ns from 1,536 pages on that I did not track down. You cannot see how the host backed the memory from inside the guest, and it changes from session to session. So: **measure on the machine you will run on, and do not promise a huge-page gain in a VM from the guest's settings alone.** (The random gathers of section 9.1 gained 1.3 to 2.7 times in every session.)
+
+### 6.5 Why a walk is longer in a VM
+
+In a virtual machine the "physical" address that the guest's page tables produce is itself a *guest-physical* address, translated by a second set of tables owned by the hypervisor (Intel EPT, AMD NPT, Arm stage-2 translation). Every one of the four guest-table reads needs its own translation through the second tree, so the worst-case walk grows from 4 reads to **24** (each of the 4 guest levels needs 4 host reads plus the guest read, and the final data address needs 4 more). Caches and walk caches shorten this a lot, but it is why a TLB miss costs 45 to 75 ns extra here (section 6.3), where a walk that hits the walk caches on bare metal typically costs 20 to 40 ns. [Tutorial 27](27_hardware_virtualization.md) covers nested paging properly; for now: **in a VM, TLB reach matters even more, and huge pages in the guest help only as far as the host also uses them.**
 
 ---
 ## 7. Page faults and demand paging
@@ -304,16 +320,16 @@ Linux counts the first two as `minor-faults` and `major-faults` (`perf stat -e m
 
 | What | Cost |
 |---|---|
-| first write to a fresh 4 KB page (a minor fault) | **1.5 µs per page** in steady state (3 to 5 µs on some runs, and 18 µs the very first time this VM used that memory, when the host also had to supply it) |
-| second write to the same page (present; only a TLB and a cache miss) | 30 ns |
-| the whole range pre-faulted in one call (`MAP_POPULATE`) | 1.1 µs per page |
-| first touch with 2 MB transparent huge pages | **280 to 300 µs per 2 MB page** (0.57 µs per 4 KB), sometimes 1.5 to 2 ms |
+| first write to a fresh 4 KB page (a minor fault) | **1.5 to 2.5 µs per page** in steady state (3 to 5 µs on some runs, and 18 µs the very first time this VM used that memory, when the host also had to supply it) |
+| second write to the same page (present; only a TLB and a cache miss) | 20 to 50 ns |
+| the whole range pre-faulted in one call (`MAP_POPULATE`) | 1.1 to 1.5 µs per page |
+| first touch with 2 MB transparent huge pages | **280 to 370 µs per 2 MB page** (0.55 to 0.72 µs per 4 KB), sometimes 1.5 to 2 ms |
 
-Where does 1.5 µs go? Entering and leaving the kernel (hundreds of nanoseconds, more in a VM), finding the region, taking a frame, **zeroing 4 KB** so that no process sees another's old data, and writing the entry. Three consequences:
+Where do 1.5 to 2.5 µs go? Entering and leaving the kernel (hundreds of nanoseconds, more in a VM), finding the region, taking a frame, **zeroing 4 KB** so that no process sees another's old data, and writing the entry. Three consequences:
 
-- Touching 1 GiB for the first time costs 262,144 faults, about **0.4 s**. A latency-sensitive program should touch (or `MAP_POPULATE`, or `mlockall`) its memory at start-up, not on the first request.
-- `MAP_POPULATE` is about 30% cheaper per page than faulting, because the kernel does not enter and leave the fault handler for each page; the zeroing is still there.
-- A 2 MB fault is cheaper per byte but is **one stall of about 0.3 ms**, mostly spent zeroing 2 MB. Averages improve and the tail gets worse (section 9.2).
+- Touching 1 GiB for the first time costs 262,144 faults, about **0.4 to 0.7 s**. A latency-sensitive program should touch (or `MAP_POPULATE`, or `mlockall`) its memory at start-up, not on the first request.
+- `MAP_POPULATE` is roughly a quarter cheaper per page than faulting, because the kernel does not enter and leave the fault handler for each page; the zeroing is still there.
+- A 2 MB fault is cheaper per byte but is **one stall of about 0.3 to 0.4 ms**, mostly spent zeroing 2 MB. Averages improve and the tail gets worse (section 9.2).
 
 ### 7.4 Page replacement, briefly
 
@@ -355,12 +371,12 @@ Two address spaces can share a physical page as long as neither changes it. **Co
 
 | Resident memory | `fork()` time in the parent | Per page |
 |---|---|---|
-| 0 | 48 µs | |
-| 64 MB (16,384 pages) | 836 µs | 51 ns |
-| 256 MB | 3.8 ms | 58 ns |
-| 1 GiB (262,144 pages) | **12.2 ms** | 47 ns |
+| 0 | 48 to 61 µs | |
+| 64 MB (16,384 pages) | 0.84 to 1.15 ms | 51 to 70 ns |
+| 256 MB | 3.8 to 4.2 ms | 58 to 64 ns |
+| 1 GiB (262,144 pages) | **12 to 13 ms** | 47 to 50 ns |
 
-The cost is proportional to the **number of pages**: about 50 ns each to copy an entry and mark it read-only. After the fork, the first write to each page took **2.5 to 2.8 µs** (a fault plus a 4 KB copy), against 1.5 µs for a fresh page.
+The cost is proportional to the **number of pages**: about 50 to 60 ns each to copy an entry and mark it read-only. After the fork, the first write to each page took **2.5 to 2.9 µs** (a fault plus a 4 KB copy), somewhat more than a fresh page.
 
 ### 8.3 What this means
 
@@ -379,11 +395,11 @@ A huge page (2 MB or 1 GB on x86-64) is a mapping that stops the walk early (sec
 
 | Array size | 4 KB pages | 2 MB pages (THP) | Speed-up |
 |---|---|---|---|
-| 64 MB | 7.3 to 8.2 | 5.9 to 6.0 | 1.25 to 1.4 |
-| 256 MB | 16.4 to 16.9 | 10.7 to 10.9 | **1.5** |
-| 1 GiB | 27 to 29 | 16 to 17 | **1.6 to 1.8** |
+| 64 MB | 6.4 to 8.2 | 3.7 to 6.0 | 1.3 to 1.8 |
+| 256 MB | 11.8 to 16.9 | 5.8 to 10.9 | **1.5 to 2.3** |
+| 1 GiB | 16 to 29 | 6.3 to 17 | **1.6 to 2.7** |
 
-The gain grows with the footprint, as the reach arithmetic says. (On the dependent chain of section 6.2 the gain was only 20 to 30% in this VM, probably because the hypervisor's own 4 KB mappings limit it.) The chain benchmark recorded in the operating-system note `05_operating_systems/10_virtual_memory_and_tlb.md` found gains of 1.2 to 1.3 times on one x86 Xeon and up to 4.4 times on an Arm machine, so measure on the hardware you will run on.
+The gain grows with the footprint, as the reach arithmetic says. (The ranges are wide because they span two sessions; within one session the 4 KB and 2 MB runs were taken back to back, so the speed-up is more stable than either column. On the dependent chain of section 6.2 the gain was only 20 to 30% in most runs, because the hypervisor's own 4 KB mappings limit it, section 6.4.) The chain benchmark recorded in the operating-system note `05_operating_systems/10_virtual_memory_and_tlb.md` found gains of 1.2 to 1.3 times on one x86 Xeon and up to 4.4 times on an Arm machine, so measure on the hardware you will run on.
 
 ### 9.2 What they cost
 
@@ -449,10 +465,10 @@ Cores that are idle or running another address space are skipped. Arm avoids the
 | Situation | Time per `mprotect` call |
 |---|---|
 | the process has one thread | 1.2 to 1.6 µs |
-| a second thread is **running** on the other CPU | **17 to 18 µs** |
-| a second thread exists but is **asleep** | 1.6 to 1.7 µs |
+| a second thread is **running** on the other CPU | **6 to 18 µs** (varied a lot between sessions) |
+| a second thread exists but is **asleep** | 1.3 to 1.7 µs |
 
-Having a busy second core makes the call about **ten times slower**, and the second thread is also interrupted every time. (Interrupts are especially slow in a VM, because each one is a VM exit; on bare metal the gap is smaller but of the same shape.) Operations that change mappings and cause shootdowns: `munmap`, `mprotect`, `mremap`, freeing large blocks back to the system, copy-on-write breaks in a multi-threaded process, page migration and reclaim, splitting a huge page, and JIT compilers patching code. A tail-latency spike on an otherwise idle, isolated core is often a shootdown from a neighbouring thread's `munmap`. Remedies: do not map and unmap in the steady state (allocate from pools and arenas), batch changes, and for protection changes in a loop use protection keys (section 11.3).
+Having a busy second core makes the call **five to twelve times slower**, and the second thread is also interrupted every time. (Interrupts are especially slow in a VM, because each one is a VM exit; on bare metal the gap is smaller but of the same shape.) Operations that change mappings and cause shootdowns: `munmap`, `mprotect`, `mremap`, freeing large blocks back to the system, copy-on-write breaks in a multi-threaded process, page migration and reclaim, splitting a huge page, and JIT compilers patching code. A tail-latency spike on an otherwise idle, isolated core is often a shootdown from a neighbouring thread's `munmap`. Remedies: do not map and unmap in the steady state (allocate from pools and arenas), batch changes, and for protection changes in a loop use protection keys (section 11.3).
 
 ---
 
@@ -495,9 +511,9 @@ Uses: a cryptographic library keeps its keys on pages that are accessible only i
 
 For speed, the kernel is mapped into the upper half of **every** address space (with U/S = 0, so user code cannot touch it). A system call then needs no page-table switch: the core enters the kernel and the kernel's code and data are already mapped.
 
-The Meltdown attack showed that on some processors, speculative execution in user mode could read kernel memory through that mapping before the permission check took effect (tutorial 30). The software fix is **kernel page-table isolation (KPTI)**: each process gets **two** sets of page tables. In user mode, the tables contain only the user pages and a tiny stub of kernel entry code. On each system call and interrupt, `CR3` is switched to the full tables, and switched back on the way out.
+The Meltdown attack showed that on some processors, speculative execution in user mode could read kernel memory through that mapping before the permission check took effect ([tutorial 30](30_hardware_security.md), section 4.2). The software fix is **kernel page-table isolation (KPTI)**: each process gets **two** sets of page tables. In user mode, the tables contain only the user pages and a tiny stub of kernel entry code. On each system call and interrupt, `CR3` is switched to the full tables, and switched back on the way out.
 
-The cost is the two `CR3` writes per kernel entry, and the TLB misses that follow. With PCID the old entries survive and the overhead is tens to hundreds of nanoseconds per call. **Without PCID every entry and exit flushes the whole TLB**, and a workload with millions of small system calls per second slows down severely. Only processors that are affected need it: on this VM `/sys/devices/system/cpu/vulnerabilities/meltdown` reads `Not affected`, and a trivial system call (`getppid`) took **95 ns**. If you do see KPTI on a machine you run, cut the number of kernel entries: batch system calls (`io_uring`, `sendmmsg`, `readv`), and use the vDSO for time.
+The cost is the two `CR3` writes per kernel entry, and the TLB misses that follow. With PCID the old entries survive and the overhead is tens to hundreds of nanoseconds per call. **Without PCID every entry and exit flushes the whole TLB**, and a workload with millions of small system calls per second slows down severely. Only processors that are affected need it: on this VM `/sys/devices/system/cpu/vulnerabilities/meltdown` reads `Not affected`, and a trivial system call (`getppid`) took **95 to 120 ns**. If you do see KPTI on a machine you run, cut the number of kernel entries: batch system calls (`io_uring`, `sendmmsg`, `readv`), and use the vDSO for time.
 
 ---
 
@@ -509,7 +525,7 @@ load rax, [virtual address]
                             compare the physical tag; data in about 5 cycles (tutorials 13 and 14)
                      no   → L2 TLB hit?   yes → about 7 cycles more, then as above
                                           no  → page walk: walk caches, then the leaf entry through
-                                                the data caches (tens of ns, over 100 ns in a VM),
+                                                the data caches (tens of ns; more in a VM),
                                                 fill both TLBs
                                                   entry not present, or permission wrong
                                                   → page fault: the kernel fixes it (1 µs to ms)
@@ -517,7 +533,7 @@ load rax, [virtual address]
   cache miss?        → L2 → L3 → DRAM, using the physical address (tutorials 13, 14 and 16)
 ```
 
-Three different latencies hide behind "the load took long": a **cache miss** (up to about 200 ns), a **TLB miss** (a walk: tens to hundreds of ns), and a **page fault** (microseconds to milliseconds). They can all happen on the same load, and each has a different fix.
+Three different latencies hide behind "the load took long": a **cache miss** (up to about 200 ns), a **TLB miss** (a walk: tens of ns, 45 to 75 ns extra in the VM of section 6.3), and a **page fault** (microseconds to milliseconds). They can all happen on the same load, and each has a different fix. [Tutorial 31](31_arm_vs_x86_and_putting_it_together.md) sections 10, 14 and 15 reuse this chain, with the fault costs measured per page and the path from `malloc` to a physical frame.
 
 ---
 
@@ -527,7 +543,7 @@ Three different latencies hide behind "the load took long": a **cache miss** (up
 |---|---|---|
 | Random access over more than ~8 MB is slower than the cache latencies explain | the working set exceeds the L2-TLB reach (section 5.3) | huge pages; process the data in page-sized chunks; shrink the structure |
 | A column walk or large-stride loop is slow even with padding | one page, so one TLB entry, per access | tile so that the pages of a tile fit the L1 TLB (a tile of *T* rows with a row stride above 4 KB touches *T* pages per array) |
-| Slow start-up or a latency spike on the first requests | demand-paging faults (1.5 µs per 4 KB page) | pre-fault (`MAP_POPULATE`, or touch every page, `mlockall`) before serving |
+| Slow start-up or a latency spike on the first requests | demand-paging faults (1.5 to 2.5 µs per 4 KB page) | pre-fault (`MAP_POPULATE`, or touch every page, `mlockall`) before serving |
 | Latency spikes on an isolated core that makes no system calls | shootdown IPIs from another thread's `munmap`/`mprotect`, or a compaction stall | no map/unmap in the steady state; pools and arenas; reserved huge pages; protection keys |
 | A snapshot (fork) stalls the whole service | `fork` copies page tables in proportion to resident pages | measure it; reduce resident memory; consider turning THP off for forking stores; a fork-free snapshot design |
 | Memory use doubles while a child process runs | copy-on-write of the pages the parent writes | expect up to 2× for write-heavy loads; plan headroom |
@@ -541,13 +557,13 @@ Three different latencies hide behind "the load took long": a **cache miss** (up
 2. **Getting the arithmetic wrong.** 4 KB page = 12 offset bits; entries are 8 bytes, so 512 per page and 9 index bits per level; four levels = 48 bits. Mixing these up is the commonest slip.
 3. **Forgetting what happens on a TLB miss.** The answer is a walk of up to four dependent reads, shortened by the walk caches, with the leaf read going through the data caches. Saying only "it's slow" scores nothing.
 4. **Saying "page fault" for every fault.** Minor faults are normal (first touch, copy-on-write); major faults (storage I/O) are the bug; an invalid access is a segmentation fault.
-5. **Believing `malloc` gives you memory.** It gives you addresses. The memory arrives at the first touch, 1.5 µs per 4 KB page (section 7.3). Pre-fault what a latency path needs.
-6. **Saying `fork` copies the memory.** It copies the page tables, in time proportional to the resident pages (50 ns each); the data are copied lazily, one page per first write.
+5. **Believing `malloc` gives you memory.** It gives you addresses. The memory arrives at the first touch, 1.5 to 2.5 µs per 4 KB page (section 7.3). Pre-fault what a latency path needs.
+6. **Saying `fork` copies the memory.** It copies the page tables, in time proportional to the resident pages (50 to 60 ns each); the data are copied lazily, one page per first write.
 7. **Assuming caches and TLBs are both coherent.** Caches are; TLBs are not. A changed mapping needs a shootdown (IPIs on x86, a broadcast instruction on Arm), and that is how a thread's `munmap` delays another thread.
-8. **Using `mprotect` or `munmap` in a hot loop of a multi-threaded program.** 1.5 µs alone, 17 µs with another thread running (section 10.3).
+8. **Using `mprotect` or `munmap` in a hot loop of a multi-threaded program.** 1.5 µs alone, 6 to 18 µs with another thread running (section 10.3).
 9. **Claiming huge pages are free, or that they never matter.** They change the reach by 512 times, and they cost compaction stalls, 2 MB fault stalls, bloat and coarse copy-on-write.
 10. **Not checking that the huge pages were granted.** Alignment, the `enabled` mode and fragmentation all decide. Read `AnonHugePages` before you conclude anything.
-11. **Using bare-metal numbers inside a VM.** A guest walk can need 24 reads, and a guest huge page does not give a huge TLB entry unless the host also uses large pages (section 6.3).
+11. **Using bare-metal numbers inside a VM.** A guest walk can need 24 reads, and a guest huge page does not give a huge TLB entry unless the host also uses large pages (section 6.4).
 12. **Pricing a context switch at "save the registers".** The cost that hurts is the cold caches, TLB and predictors afterwards, unless PCID/ASID keeps the TLB.
 
 ---
@@ -576,7 +592,7 @@ Three different latencies hide behind "the load took long": a **cache miss** (up
 
 **What is demand paging, and how do you avoid its latency?** Frames are attached at first touch. Pre-fault the memory at start-up (`MAP_POPULATE`, touching every page, `mlockall`), or use reserved huge pages.
 
-**What is copy-on-write? Why is `fork` fast but not free?** Pages are shared read-only and copied at the first write. `fork` copies only page tables, about 50 ns per resident page: 12 ms for 1 GiB, 0.2 s for 16 GiB. Then every first write costs a fault and a copy.
+**What is copy-on-write? Why is `fork` fast but not free?** Pages are shared read-only and copied at the first write. `fork` copies only page tables, about 50 to 60 ns per resident page: 12 to 13 ms for 1 GiB, 0.2 s for 16 GiB. Then every first write costs a fault and a copy.
 
 **When do you use huge pages, and what do they cost?** When the scattered working set exceeds the L2-TLB reach. They cost allocation and compaction stalls, bloat and coarse copy-on-write. For latency-critical code, reserve them (`hugetlbfs`) rather than rely on THP; always verify with `AnonHugePages`.
 
@@ -723,14 +739,14 @@ More memory, more faults.
 - **Table sizes:** flat 48-bit = 512 GiB; tree: 1 GiB of data ≈ 2 MiB of tables (515 pages); 2 MB pages: 12 KiB.
 - **PTE:** P, R/W, U/S, A, D, PS, G, NX, memory type (PAT/PCD/PWT), key (62:59), frame (51:12). Hardware sets A and D. Permissions must hold at every level.
 - **TLB:** entries = tag + frame + permissions + page size + PCID/ASID + global. L1 about 96 entries (reach 384 KB here), L2 about 2,048 (8 MB); hit in parallel with the VIPT L1 lookup. **Reach = entries × page size.** Measured knees: 96 and 2,048 pages.
-- **Walk:** up to 4 dependent reads; walk caches skip the top levels; leaf entries come through the data caches (8 per line). Measured here: a hop that missed the TLB took 100 to 250 ns in the VM, data access included. In a VM, up to 24 reads (nested paging, tutorial 27).
-- **Faults:** minor (about 1.5 µs; first touch, copy-on-write), major (storage; a bug in a data plane), invalid (SIGSEGV). The instruction restarts. `malloc` gives addresses; frames come at first touch. Pre-fault with `MAP_POPULATE`/`mlockall`.
+- **Walk:** up to 4 dependent reads; walk caches skip the top levels; leaf entries come through the data caches (8 per line). Measured here: a TLB miss added about 45 to 75 ns to a DRAM access with 4 KB guest pages, and about 10 ns with 2 MB guest pages. In a VM, up to 24 reads (nested paging, [tutorial 27](27_hardware_virtualization.md)).
+- **Faults:** minor (about 1.5 to 2.5 µs; first touch, copy-on-write), major (storage; a bug in a data plane), invalid (SIGSEGV). The instruction restarts. `malloc` gives addresses; frames come at first touch. Pre-fault with `MAP_POPULATE`/`mlockall`.
 - **Replacement:** OPT, LRU (approximated with A bits: clock), FIFO (Belady's anomaly: 9 to 10 faults on `1 2 3 4 1 2 5 1 2 3 4 5`). EAT = (1 − p) t_mem + p t_fault.
-- **COW and `fork`:** page tables copied, about 50 ns per page (12 ms per GiB); first write after fork 2.5 to 2.8 µs; memory creeps up toward 2×; huge pages make it worse.
-- **Huge pages:** 2 MB / 1 GB; reach × 512; 1.5 to 1.8 times on a 1 GiB random gather; cost: 0.3 ms fault, compaction, bloat, coarse COW. THP needs 2 MB alignment: verify `AnonHugePages`. Reserve (`hugetlbfs`) for data planes.
+- **COW and `fork`:** page tables copied, about 50 to 60 ns per page (12 to 13 ms per GiB); first write after fork 2.5 to 2.9 µs; memory creeps up toward 2×; huge pages make it worse.
+- **Huge pages:** 2 MB / 1 GB; reach × 512; 1.6 to 2.7 times on a 1 GiB random gather; cost: 0.3 ms fault, compaction, bloat, coarse COW. THP needs 2 MB alignment: verify `AnonHugePages`. Reserve (`hugetlbfs`) for data planes.
 - **Switching:** PCID/ASID tags avoid flushes; global pages survive. Thread switches keep the address space. Indirect cost (cold caches, TLB) exceeds direct cost.
-- **Shootdowns:** TLBs are not coherent; x86 uses IPIs, Arm a broadcast `TLBI`. `mprotect` 1.2 to 1.6 µs alone, 17 µs with a running second thread. Causes: `munmap`, `mprotect`, JIT, COW breaks, migration, THP split.
+- **Shootdowns:** TLBs are not coherent; x86 uses IPIs, Arm a broadcast `TLBI`. `mprotect` 1.2 to 1.6 µs alone, 6 to 18 µs with a running second thread. Causes: `munmap`, `mprotect`, JIT, COW breaks, migration, THP split.
 - **Protection:** NX and W^X, SMEP/SMAP (PXN/PAN), guard pages, NULL page unmapped; protection keys: 4 bits in the PTE, `PKRU`, `WRPKRU` in tens of cycles, no TLB flush.
-- **Layout and KPTI:** code, data, heap, mmap area, stack, vDSO; ASLR. Kernel in the upper half of every space; KPTI = two page-table sets, `CR3` switched on each kernel entry; cheap with PCID; not needed on unaffected CPUs (`getppid` 95 ns here).
+- **Layout and KPTI:** code, data, heap, mmap area, stack, vDSO; ASLR. Kernel in the upper half of every space; KPTI = two page-table sets, `CR3` switched on each kernel entry; cheap with PCID; not needed on unaffected CPUs (`getppid` 95 to 120 ns here).
 
 **Next:** tutorial 16, DRAM, Memory Controllers and NUMA (SRAM and DRAM cells, refresh, rows, banks and channels, row-buffer hits and DRAM timing, DDR4/DDR5 and HBM, bandwidth against latency and Little's law, address interleaving, controller scheduling, ECC and Rowhammer, NUMA placement and `numactl`). Say "next" when you are ready.

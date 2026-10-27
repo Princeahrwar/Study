@@ -332,7 +332,7 @@ Bounds with W = 4: rename 5 / 4 = **1.25**; loads 1 / 2 = 0.5; FP add 1 / 2 = 0.
 
 Unroll by 4, so that the index and the branch are paid once per 4 elements: (4 x 3 + 2) / 4 = 3.5 uops per element, so rename drops to 0.875. Now the **store port** (1.0) is the largest. *Measured:* 1.00 to 1.04. Unroll by 8: rename 0.81, store still 1.0, *measured* 1.02. No further gain.
 
-Unrolling helped because loop overhead was the limit; it stopped helping when something else became the limit. To go below 1 cycle per element you need fewer stores per element, which means SIMD (tutorial 21).
+Unrolling helped because loop overhead was the limit; it stopped helping when something else became the limit. To go below 1 cycle per element you need fewer stores per element, which means SIMD ([tutorial 21](21_simd_and_vector_processing.md)).
 
 ### 9.3 Example 2: a latency chain, then a port
 
@@ -583,7 +583,7 @@ Three programs on a 4-wide Skylake-style core. All run 1.0e9 cycles.
 
 (a) Fused uops: load 1, multiply 1, add 1, store 1, `add` 1, `cmp/jne` 1 = **6**. Rename 6 / 4 = **1.5**. Loads 1 / 2 = 0.5. FP (multiply and add) 2 / 2 = 1.0. Store 1 / 1 = 1.0. There is no chain except the 1-cycle index. The bottleneck is **rename: 1.5 cycles per element** (measured on the VM: 1.53).
 
-(b) Unroll by 4: (4 x 4 + 2) / 4 = 4.5 uops per element, so rename = **1.125**; FP and store are 1.0, so rename is still the largest (measured 1.22). Unroll by 8: 4.25 uops, rename **1.06**: almost tied with the FP ports and the store port at 1.0. Nothing more can be gained from unrolling. To go lower you must do more work per uop: SIMD (4 doubles per multiply, add and store), tutorial 21.
+(b) Unroll by 4: (4 x 4 + 2) / 4 = 4.5 uops per element, so rename = **1.125**; FP and store are 1.0, so rename is still the largest (measured 1.22). Unroll by 8: 4.25 uops, rename **1.06**: almost tied with the FP ports and the store port at 1.0. Nothing more can be gained from unrolling. To go lower you must do more work per uop: SIMD (4 doubles per multiply, add and store), [tutorial 21](21_simd_and_vector_processing.md).
 
 (c) The divider gives 4 cycles per element; the other bounds are about 1.25. The **divider decides: 4 cycles**. Compute `r = 1.0 / d` once and use `y[i] = x[i] * r`: the loop is then like section 9.2 (rename 1.25 rolled, store 1.0 unrolled), so about **1.25** cycles, 3.2 times faster (4 times when unrolled). The catch: `x * (1/d)` can differ from `x / d` in the last bit, so the compiler does it by itself only with `-ffast-math` (or `-freciprocal-math`).
 

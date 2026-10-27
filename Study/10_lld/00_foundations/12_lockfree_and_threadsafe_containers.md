@@ -70,8 +70,7 @@ The full six-value model is `05_operating_systems/07_memory_barriers.md`'s terri
 - **`memory_order_seq_cst`** (the default if you omit the argument) — the
   strongest, simplest-to-reason-about ordering: all threads agree on a
   single global order of every `seq_cst` operation. Costs more on some
-  architectures (notably ARM, where `04_computer_organization/older_notes/12_arm_vs_x86.md`'s weak
-  ordering means `seq_cst` needs real fences x86 gets closer to "for free")
+  architectures (notably ARM, where the weak ordering of `04_computer_organization/31_arm_vs_x86_and_putting_it_together.md`, section 3, means `seq_cst` needs real fences x86 gets closer to "for free")
   than acquire/release. **The pragmatic default for this program**: start
   with `seq_cst` (or no explicit order at all) for correctness while
   designing; drop to `acquire`/`release`/`relaxed` only in a profiled hot
@@ -167,7 +166,7 @@ independent keys, versus a single global mutex's hard serialization.
 `StripeCount` is a real, tunable tradeoff: too few stripes and you're
 close to a single global lock; too many and you waste memory on mostly-idle
 mutexes and hurt cache locality (each `Stripe` object, containing both a
-mutex and a map, becomes a meaningfully-sized unit — `04_computer_organization/older_notes/07_cache_coherence_mesi.md`'s
+mutex and a map, becomes a meaningfully-sized unit — `04_computer_organization/19_cache_coherence.md`'s
 false-sharing concern applies directly if stripes are packed tightly enough
 that two threads' stripes land on the same cache line). A common real-world
 choice is `StripeCount` proportional to expected thread count (a small

@@ -18,7 +18,7 @@
 | `percpu` counters | no | yes | ~free | High-rate statistics |
 
 `rwlock_t` is on the list mainly so you know to avoid it: readers still write the
-shared lock word, so they contend with each other exactly as `04_computer_organization/older_notes/07_cache_coherence_mesi.md`
+shared lock word, so they contend with each other exactly as `04_computer_organization/19_cache_coherence.md`
 describes. It usually performs worse than a plain spinlock and much worse than
 RCU. Saying that is a small, real signal.
 
@@ -175,7 +175,7 @@ for_each_possible_cpu(cpu)
     total += per_cpu(rx_count, cpu);
 ```
 
-This is the per-core counter pattern from `04_computer_organization/older_notes/07_cache_coherence_mesi.md`, provided by the kernel. Note
+This is the per-core counter pattern from `04_computer_organization/19_cache_coherence.md`, provided by the kernel. Note
 `get_cpu()`/`put_cpu()` disable preemption around the access if you need the
 pointer to stay valid — `this_cpu_*` handles that internally, which is why it is
 preferred.
@@ -216,7 +216,7 @@ livelock.
 
 **"How do you count packets at 10 Mpps?"**
 Per-CPU counters, summed on read. Never a shared atomic — and you can quote the
-5-7x false-sharing measurement from `04_computer_organization/older_notes/07_cache_coherence_mesi` to back it.
+false-sharing measurement in `04_computer_organization/19_cache_coherence.md` (atomic counters sharing a line ran 7 to 8 times slower) to back it.
 
 ## Exercises
 

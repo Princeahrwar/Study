@@ -77,10 +77,10 @@ Used in the topic tables of the track plans.
 
 | Track | Status | Next |
 |---|---|---|
-| DSA | Arrays 01–03, LL 01–02, Trees 01 written | Arrays & strings 04 |
+| DSA | Arrays and strings 01 to 07, Hashing 01 to 04, LL 01 to 02, Trees 01 written | 03 binary search and sorting |
 | C | Planned | C 01 |
 | C++ | Primer written | CPP 01 |
-| Computer organization | CO 01–04 and 06–15 written (31 in the plan); 3 older notes | CO 16 (05 optional) |
+| Computer organization | CO 01 to 31 written; track complete | The next track |
 | Operating systems | 6 older notes | OS 01 |
 | Linux | Planned | LX 01 |
 | Networking | 2 older notes | NET 01 |

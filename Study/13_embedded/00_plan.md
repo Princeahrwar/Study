@@ -1,6 +1,6 @@
 # Embedded Systems and Edge AI: Track Plan
 
-> **Track code:** EMB · **Weeks:** 23 for topic 01; everything else is stretch · **Budget:** ~4 hours core, ~25 hours with stretch · **Prerequisites:** OS 04–06 (scheduling, synchronisation); DRV 05–08 for the stretch topics
+> **Track code:** EMB · **Weeks:** 23 for topic 01; everything else is stretch · **Budget:** ~4 hours core, ~25 hours with stretch · **Prerequisites:** OS 04–06 (scheduling, synchronisation); DRV 05–08 for the stretch topics; CO 04 (clock domains), CO 25 and 26 (buses, interrupts, DMA)
 
 This is a small, targeted track. Topic 01 (RTOS design constraints) is core because real-time scheduling and priority inversion come up in network-equipment, platform and embedded-adjacent loops, and because it sharpens your device-platform stories. Topics 02 and 03 support edge-AI roles and Staff-level hardware/software discussions. Topics 04–08 build embedded firmware from zero and are worth doing only if you target firmware roles.
 
@@ -23,8 +23,8 @@ This is a small, targeted track. Topic 01 (RTOS design constraints) is core beca
 | 01 | [`01_rtos_design_constraints.md`](01_rtos_design_constraints.md) | RTOS design constraints | Predictability over speed, priority inversion and its protocols, worst-case execution time, schedulability (rate-monotonic, EDF), static memory, interrupt latency, RTOS vs Linux with PREEMPT_RT | Exists, rewrite due | 23 |
 | 02 | [`02_edge_ai_acceleration.md`](02_edge_ai_acceleration.md) | Edge AI acceleration | Quantisation, graph optimisations, ONNX Runtime execution providers, TensorRT build vs runtime, zero-copy input pipelines, measuring honestly | Exists, rewrite due | Stretch |
 | 03 | [`03_hw_sw_codesign.md`](03_hw_sw_codesign.md) | Hardware/software co-design | Criteria for moving work into silicon, programmable offload as a hedge, Wi-Fi functions as a worked example, interfaces, power | Exists, rewrite due | Stretch |
-| 04 | `04_mcu_vs_mpu_and_bare_metal.md` | MCUs, MPUs and bare metal | Cortex-M vs Cortex-A, memory maps, the vector table, startup code and linker scripts, a bare-metal blink | Stretch | — |
-| 05 | `05_peripherals_gpio_uart_spi_i2c.md` | Peripherals on bare metal | GPIO, UART, SPI and I2C at the register level, interrupts and DMA on a microcontroller | Stretch | — |
+| 04 | `04_mcu_vs_mpu_and_bare_metal.md` | MCUs, MPUs and bare metal | Cortex-M vs Cortex-A, memory maps, the vector table, startup code and linker scripts, the memory protection unit (MPU), bit-banding and set/clear registers, debugging with JTAG or SWD and reading a hard-fault dump, a bare-metal blink | Stretch | — |
+| 05 | `05_peripherals_gpio_uart_spi_i2c.md` | Peripherals on bare metal | GPIO, UART, SPI and I2C at the register level, timers and PWM, ADC sampling, CAN, the watchdog, interrupts and DMA on a microcontroller, and registers in a slow clock domain (CO 04 section 9.7) | Stretch | — |
 | 06 | `06_freertos_in_practice.md` | FreeRTOS in practice | Tasks, queues, semaphores and mutexes, tick vs tickless, stack sizing, tracing | Stretch | — |
 | 07 | `07_bootloaders_and_firmware_update.md` | Bootloaders and firmware update | Boot ROM to bootloader to application, A/B partitions, secure boot, rollback protection | Stretch | — |
 | 08 | `08_low_power_design.md` | Low-power design | Sleep states, clock gating, measuring current, duty cycling | Stretch | — |

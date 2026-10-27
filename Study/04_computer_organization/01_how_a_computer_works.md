@@ -331,7 +331,7 @@ Three ideas you will need all through this track and the OS and driver tracks. H
 
 **Context switch.** To run a different program, the kernel saves the running program's registers and PC in a kernel data structure, loads the other program's saved registers (and, for a different process, switches to its address space), and returns to user mode at the saved PC. The direct cost is on the order of a microsecond, and more if the caches and the TLB (tutorial 15) have to refill afterwards. That is why designs that avoid needless system calls and needless switches run faster. The OS track covers scheduling.
 
-System calls and interrupts are both "the PC changed in a way the program did not ask for", under the hardware's and the OS's control. Tutorial 26 covers them in detail.
+System calls and interrupts are both "the PC changed in a way the program did not ask for", under the hardware's and the OS's control. [Tutorial 26](26_interrupts_exceptions_and_dma.md) covers them in detail.
 
 ---
 
@@ -431,7 +431,7 @@ This is why:
 | **System on chip (SoC)** | CPU cores plus a memory controller, flash, Ethernet switch, radios, DMA engines and an interrupt controller, all on one chip | Many of the "devices" are inside the chip |
 | **GPU or accelerator** | Hundreds to thousands of simple cores, very high memory bandwidth | Built for many identical operations at once |
 
-A Wi-Fi access point is the third kind: a packet arrives at the radio, a DMA engine copies it into DRAM, an interrupt wakes a CPU core, and software on that core processes it. Tutorials 25 and 26 explain the bus, DMA and interrupt steps.
+A Wi-Fi access point is the third kind: a packet arrives at the radio, a DMA engine copies it into DRAM, an interrupt wakes a CPU core, and software on that core processes it. [Tutorial 25](25_buses_pcie_and_io_mapping.md) and [tutorial 26](26_interrupts_exceptions_and_dma.md) explain the bus, DMA and interrupt steps.
 
 ---
 
@@ -439,7 +439,7 @@ A Wi-Fi access point is the third kind: a packet arrives at the radio, a DMA eng
 
 1. **"The CPU runs C."** It runs machine code. C is translated first, and the translation can look quite different from the source (section 5).
 2. **"More GHz means faster."** The iron law says speed also depends on the instruction count and CPI.
-3. **"More cores means faster."** Only for work that can be split up (Amdahl's law, tutorial 28).
+3. **"More cores means faster."** Only for work that can be split up (Amdahl's law, [tutorial 28](28_performance_and_power.md)).
 4. **"Reading memory is cheap."** A DRAM access is hundreds of cycles. Access pattern often matters more than instruction count.
 5. **"A variable lives in memory."** At `-O0` it does (on the stack). At `-O1` and above the compiler keeps it in a register when it can (Problem C shows both).
 6. **"Same ISA means same speed."** The microarchitecture decides speed.

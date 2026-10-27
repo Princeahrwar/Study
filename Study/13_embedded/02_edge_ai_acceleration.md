@@ -1,6 +1,6 @@
 # EMB 02 — Edge AI acceleration
 
-> Prerequisite: `04_computer_organization/13_cache_basics.md`, `04_computer_organization/14_cache_optimisation_and_the_real_hierarchy.md`, `04_computer_organization/older_notes/11_simd_and_vectorization.md`.
+> Prerequisite: `04_computer_organization/13_cache_basics.md`, `04_computer_organization/14_cache_optimisation_and_the_real_hierarchy.md`, `04_computer_organization/21_simd_and_vector_processing.md`.
 
 ## The constraint that defines edge inference
 

@@ -65,7 +65,7 @@ classification:   C C C C C | P h P h P | P X X | X X X
 
 When one core writes a line, every other core's copy is invalidated, and the next read there misses. If two cores write *different words of the same line*, the line bounces between them on every write: **false sharing**. It is the commonest hidden cost of multithreaded code, and tutorial 19 measures it.
 
-A warning for your own measurements. On this VM two threads, each incrementing its own counter 100 million times, took 0.24 s when the counters were 8 bytes apart (one line) and 0.23 s when they were 64 bytes apart. With real separate cores the first case is many times slower. So the two virtual CPUs seem to be two hyperthreads of **one physical core**, which share an L1 cache and cannot bounce lines; the guest has no way to tell. If a sharing experiment shows no effect in the cloud, check this first.
+A warning for your own measurements. On this VM two threads, each incrementing its own plain counter 100 million times, took 0.24 s when the counters were 8 bytes apart (one line) and 0.23 s when they were 64 bytes apart: no penalty at all. That does **not** show that the two virtual CPUs share a core. Tutorial 19 repeats the test with atomic increments, fences and other stores in the loop, and then the same-line case is 5 to 8 times slower, so the CPUs are separate cores; a loop of back-to-back plain stores to one line can hide false sharing on this CPU, because the core holds the line while it drains the stores. Two lessons: test with a loop that resembles the real one (atomics, fences or other stores between the updates), and in a virtual machine check the topology rather than assume it, because vCPUs can be separate cores or hyperthreads of one core, and the guest cannot always tell. A core-to-core hand-off test (tutorial 19, section 4.2) answers the question.
 
 ---
 
@@ -87,7 +87,7 @@ Non-inclusive:  no rule: a line may or may not be in both levels
 
 Example: 8 cores with a 1 MB L2 each and a 16 MB shared L3. Inclusive: the 8 MB of L2 data are all duplicated in the L3, so **16 MB** of unique data fit. Exclusive: 8 × 1 + 16 = **24 MB**, 50% more. This is why server chips moved away from inclusive L3 as the private L2 grew.
 
-As reported, older Intel client chips had an inclusive L3; Intel server chips since Skylake-SP use a non-inclusive L3 that behaves mostly as a victim cache of the L2; AMD Zen's L3 is a victim cache of the L2 of its core complex. An inclusive L3 also lets a program on one core evict lines from another core's L1 by evicting them in L3, which cross-core cache attacks use (tutorial 30).
+As reported, older Intel client chips had an inclusive L3; Intel server chips since Skylake-SP use a non-inclusive L3 that behaves mostly as a victim cache of the L2; AMD Zen's L3 is a victim cache of the L2 of its core complex. An inclusive L3 also lets a program on one core evict lines from another core's L1 by evicting them in L3, which cross-core cache attacks use ([tutorial 30](30_hardware_security.md), section 2.4).
 
 ### 2.2 The victim cache
 
@@ -263,6 +263,7 @@ What it shows: (1) blocking is worth about **3 times** over the naive loop, in b
 ### 6.4 Related transformations
 
 - **Loop fusion:** merge two loops over the same array into one, so the second operation finds the data still in cache. Opposite of **fission**, which splits a loop whose body has too many streams for the prefetchers or too many live registers.
+- **Cache-oblivious algorithms** split the problem in halves, recursively, until the pieces are tiny, instead of choosing one tile size. Whatever the sizes of L1, L2 and L3, some level of the recursion fits in each, so the reuse of tiling appears at every level at once, without a parameter to tune (recursive matrix transpose and multiply, and the van Emde Boas layout of a search tree, are the standard examples; *standard*). The price is recursion overhead near the leaves, so real code stops at a small base case.
 - **Compilers** do some interchange and fusion at `-O3`, only when they can prove the transformation is safe (no aliasing, no dependence). Tiling is rarely automatic. Check the output, and do it by hand for hot loops.
 
 ---
@@ -287,7 +288,7 @@ double x[N], y[N], z[N], vx[N], vy[N], vz[N], m[N], id[N];   // struct of arrays
 
 The array of structs reads **one 64-byte line per record whatever the field**: 13 GB/s of lines for 1.6 GB/s of useful data. The struct of arrays reads only the lines of the fields the loop uses: 1/8 of a line per record for one field. When all 8 fields are used, the bytes are the same and the two layouts tie.
 
-**Rule:** the layout should follow the access pattern. Many records, few fields per loop: struct of arrays. Each loop uses most fields of one record (a lookup that reads the whole entry): array of structs. SIMD loops like a hybrid, **AoSoA**: blocks of 8 or 16 records stored field by field (tutorial 21).
+**Rule:** the layout should follow the access pattern. Many records, few fields per loop: struct of arrays. Each loop uses most fields of one record (a lookup that reads the whole entry): array of structs. SIMD loops like a hybrid, **AoSoA**: blocks of 8 or 16 records stored field by field ([tutorial 21](21_simd_and_vector_processing.md); section 5.4).
 
 ### 7.2 Hot/cold splitting and line-sized records
 
@@ -375,9 +376,9 @@ Below the L2 the ordinary stores win by 3 to 4 times, because the buffer stays i
 - **x86:** `clflush` and `clflushopt` write the line back if it is dirty and **invalidate** it; `clwb` writes it back and **keeps** it.
 - **Arm:** `DC CIVAC` (clean and invalidate) and `DC CVAC` (clean) by address.
 
-Uses: (1) **DMA with non-coherent devices**, common on Arm systems: clean the buffer before the device reads memory, invalidate before the CPU reads what the device wrote (on x86 the hardware keeps DMA coherent); (2) **persistent memory**: write back so that data reach the persistent medium; (3) **timing side channels** (Flush+Reload, tutorial 30).
+Uses: (1) **DMA with non-coherent devices**, common on Arm systems: clean the buffer before the device reads memory, invalidate before the CPU reads what the device wrote (on x86 the hardware keeps DMA coherent); (2) **persistent memory**: write back so that data reach the persistent medium; (3) **timing side channels** (Flush+Reload, [tutorial 30](30_hardware_security.md), section 2).
 
-*Measured:* a load of a cached line took 29 ns, and the same load right after `clflush` took 203 ns. Both include about 25 ns of timer overhead, so the real difference is about **175 ns**: easy to see, which is exactly what Flush+Reload exploits.
+*Measured:* a load of a cached line took 29 ns, and the same load right after `clflush` took 203 ns. Both include about 25 ns of timer overhead, so the real difference is about **175 ns**: easy to see, which is exactly what Flush+Reload exploits. [Tutorial 30](30_hardware_security.md) (section 2.2) measures the gap again with `lfence; rdtscp; lfence` around the load and finds 79 to 95 ns; the size depends on the host and the timer, the conclusion does not.
 
 ---
 
@@ -469,7 +470,7 @@ The ratio is 16, the number of integers per line. The cost: the run is 20 to 50 
 9. **Using `volatile` as if it were a memory type.** It stops the compiler only. A device register needs an uncached mapping, or the CPU may cache, merge or reorder the access (section 8.2).
 10. **Using non-temporal stores for small or soon-reused buffers.** Below the L2 they are 3 to 4 times slower; and forgetting `_mm_sfence()` lets another thread read stale data.
 11. **Quoting a miss rate without context.** 50% misses with high MLP can beat 5% in a dependent chain. Pair a rate with a top-down bucket.
-12. **Believing a sharing or cache measurement taken in a VM without checking the topology.** Two vCPUs may be hyperthreads of one core (section 1.3), and the cache sizes the VM reports may be wrong (tutorial 13).
+12. **Believing a sharing or cache measurement taken in a VM without checking the topology.** A store-only sharing test can show nothing, two vCPUs may be separate cores or hyperthreads of one core (section 1.3), and the cache sizes the VM reports may be wrong (tutorial 13).
 
 ---
 
@@ -676,6 +677,6 @@ Ranking: ikj and kij best; ijk and jik 4.5 times more lines; jki and kji 8 times
 - **Non-temporal stores:** skip the read-for-ownership; win beyond about 64 MB (2 to 3 times in DRAM), lose below L2 (3 to 4 times); need `sfence`. **Flush:** `clflush`, `clflushopt`, `clwb`; Arm `DC CIVAC`; flushed load 203 ns against 29 ns.
 - **Partitioning:** CAT way masks (contiguous), MBA, CMT/MBM; Arm MPAM; Linux `resctrl`. Cure for noisy neighbours.
 - **Tools:** `perf stat`/`record`/`mem`/`c2c` and top-down; without counters, `valgrind --tool=cachegrind` (rows 6%, columns 95% read misses). A rate alone proves nothing.
-- **Cloud cautions:** cache sizes and CPU labels may be wrong; two vCPUs may share one core (no false sharing seen).
+- **Cloud cautions:** cache sizes and CPU labels may be wrong; a plain-store false-sharing test can show nothing (use atomics, tutorial 19); the vCPU topology can differ between sessions.
 
 **Next:** tutorial 15, Virtual Memory and the TLB (paging and segmentation, page tables and PTE bits, the TLB and TLB reach, page faults, huge pages, page-walk caches, protection keys). Say "next" when you are ready.

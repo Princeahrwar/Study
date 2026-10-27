@@ -259,7 +259,7 @@ error with `devm_` allocations outstanding leaks nothing.
 ```c
 /* Always use the accessors — never a raw volatile pointer dereference.
  * These include the barriers the architecture needs, which matters enormously
- * on ARM (see 04_computer_organization/older_notes/12_arm_vs_x86). */
+ * on ARM (see 04_computer_organization/31_arm_vs_x86_and_putting_it_together, section 6). */
 u32 status = readl(dev->regs + RK_REG_STATUS);
 writel(RK_CMD_START, dev->regs + RK_REG_CMD);
 

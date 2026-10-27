@@ -99,7 +99,7 @@ interview question:
 
 **`shared_ptr` is not the default.** Its refcount is atomic, so copying one in a
 hot path is a coherence event on a shared cache line — exactly the false-sharing
-problem of `04_computer_organization/older_notes/07_cache_coherence_mesi.md`. In a data plane, a `shared_ptr` copied per packet across threads is a
+problem of `04_computer_organization/19_cache_coherence.md`. In a data plane, a `shared_ptr` copied per packet across threads is a
 measurable bottleneck. The default is `unique_ptr`, and `shared_ptr` is what you
 reach for when lifetime is genuinely shared and dynamic.
 

@@ -23,7 +23,7 @@ The **instruction set architecture (ISA)** is the contract between software and 
 - the **registers**, their sizes and special roles;
 - how memory is addressed: **addressing modes**, byte order, alignment rules, the memory-ordering model (tutorial 20);
 - the data types the instructions work on (integers, floats, vectors);
-- **privilege levels, exceptions and interrupts**: what happens on a fault or a system call (tutorial 26).
+- **privilege levels, exceptions and interrupts**: what happens on a fault or a system call ([tutorial 26](26_interrupts_exceptions_and_dma.md)).
 
 How the instructions are *carried out*, whether the core is pipelined, how many it runs at once, how big the caches are, is the **microarchitecture** (tutorial 01 section on ISA versus implementation). Many different microarchitectures implement one ISA: an Intel Atom and a server Xeon both run the same x86-64 programs.
 
@@ -290,7 +290,7 @@ getg:   mov eax, [rip + g]                  adrp x8, g                       aui
 
 Shift left and right, and the logical operators, are the tutorial 02 operations done in hardware (tutorial 03). Atomics and fences get their own tutorial (20); SIMD another (21).
 
-**Privileged instructions.** Some instructions work only in kernel mode (halting the core with `hlt`, writing the page-table base or interrupt-control registers); user code that tries one gets an exception. The privilege levels are part of the ISA: x86 has rings 0 to 3 (only 0 and 3 are used in practice), AArch64 has exception levels EL0 (user), EL1 (kernel), EL2 (hypervisor) and EL3 (secure monitor), and RISC-V has machine, supervisor and user modes. Tutorial 26 covers how the CPU enters and leaves the kernel.
+**Privileged instructions.** Some instructions work only in kernel mode (halting the core with `hlt`, writing the page-table base or interrupt-control registers); user code that tries one gets an exception. The privilege levels are part of the ISA: x86 has rings 0 to 3 (only 0 and 3 are used in practice), AArch64 has exception levels EL0 (user), EL1 (kernel), EL2 (hypervisor) and EL3 (secure monitor), and RISC-V has machine, supervisor and user modes. [Tutorial 26](26_interrupts_exceptions_and_dma.md) covers how the CPU enters and leaves the kernel.
 
 ### Control flow: three design styles
 
@@ -372,7 +372,7 @@ sum:                          sum:                        sum:
 
 (The x86 object code also contains a 6-byte `nop` that the assembler inserted to align the loop start; it is padding, not part of the function's logic, so it is left out above. Counting it gives 13 instructions and 31 bytes.)
 
-Notice: the variable-length x86 is much *denser* than the fixed-length AArch64 and RISC-V base (25 bytes against 48 and 40), and RISC-V with 16-bit compressed forms ties with it (24). And the "reduced" ISAs did **not** need more instructions here: RISC-V needed the fewest, because compare-and-branch fuses the test into the branch and the loop uses no flags. Each ISA picks different trade-offs; none wins on every metric. (One loop, one compiler; don't generalise.)
+Notice: the variable-length x86 is much *denser* than the fixed-length AArch64 and RISC-V base (25 bytes against 48 and 40), and RISC-V with 16-bit compressed forms ties with it (24). And the "reduced" ISAs did **not** need more instructions here: RISC-V needed the fewest, because compare-and-branch fuses the test into the branch and the loop uses no flags. Each ISA picks different trade-offs; none wins on every metric. (One loop, one compiler; don't generalise. [Tutorial 31](31_arm_vs_x86_and_putting_it_together.md) section 2 compiles a 53,692-line program for both ISAs and finds the opposite: AArch64 is 10 to 15 % smaller and needs 14 to 15 % fewer instructions.)
 
 **VLIW** (very long instruction word) is the other path: the compiler packs several independent operations into one wide instruction. It lives on in DSPs but failed on general-purpose CPUs (Intel's Itanium); it comes up again with out-of-order execution in tutorial 11.
 
@@ -579,6 +579,6 @@ How to see fixed length from the bytes: in the AArch64 and RISC-V disassembly ev
 - **Addressing modes:** immediate, register, direct, register indirect, memory indirect, displacement, indexed (base + index x scale), PC-relative, auto-increment. EA = base + index x scale + displacement. x86 and AArch64 fold the scaling; RISC-V only has register + displacement.
 - **`lea`** computes an address and does not touch memory (fast `x*5`, `x*9`).
 - **Branches:** flags (x86, ARM) or compare-and-branch (RISC-V). Calls: x86 pushes the return address, ARM and RISC-V use a link register (`x30`, `ra`).
-- **RISC vs CISC:** time = instructions x CPI x cycle time. Today x86 is RISC-like inside (micro-ops); speed comes from microarchitecture, not slogans. In the measured loop: x86 25 bytes, AArch64 48, RISC-V 40 (24 with compressed).
+- **RISC vs CISC:** time = instructions x CPI x cycle time. Today x86 is RISC-like inside (micro-ops); speed comes from microarchitecture, not slogans. In the measured loop: x86 25 bytes, AArch64 48, RISC-V 40 (24 with compressed); on a whole program the order reverses (tutorial 31, section 2).
 
 **Next:** tutorial 07, Assembly in Practice: x86-64 and AArch64 (registers and flags, calling conventions, stack frames, reading compiler output at -O0, -O1 and -O2, inline assembly, and the assembler, linker and loader). Say "next" when you are ready.

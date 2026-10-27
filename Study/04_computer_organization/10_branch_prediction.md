@@ -307,7 +307,7 @@ The branch is taken for half of the elements. Run it on the array in random orde
 | `s += (d[i] >= 128) ? d[i] : 0;` (branchless) | about 0.6 ns | about 0.6 ns |
 
 - **Sorted:** the first half of the array is all "not taken", the second half all "taken". The predictor is almost always right, and the branch version is the fastest.
-- **Random:** half of the branches mispredict, so about one element in two pays the penalty. The 4.1 ns difference per element means about 8 ns per misprediction, which is about 17 cycles at 2.1 GHz. This is the penalty of section 1, measured.
+- **Random:** half of the branches mispredict, so about one element in two pays the penalty. The 4.1 ns difference per element means about 8 ns per misprediction, which is about 17 cycles at 2.1 GHz (about 24 if the core was boosted to the 3 GHz that a similar Xeon ran at; [tutorial 28](28_performance_and_power.md) section 2.2 shows how to find the real clock). This is the penalty of section 1, measured.
 - **Branchless:** the same time for either order. It is a little slower than the best case of the branch version (extra work every time) and much faster than the worst case.
 
 The same code, the same data, and opposite conclusions depending on predictability. That is why "always write branchless code" is wrong, and why "sorting made my filter faster" is a classic.
@@ -349,7 +349,7 @@ Output looks like this (made-up numbers with the right shape, for the random-ord
 
 The miss rate is 25%, not 50%, because half of the branches are the loop's own back-edge, which is always predicted. MPKI = 500,000 / 6,000,000 x 1000, about 83. On the sorted array the same counter would read a tiny fraction of a percent.
 
-The top-down method (tutorials 12 and 28) reports "bad speculation" as a share of all pipeline slots, which tells you whether mispredictions are worth your time at all.
+The top-down method ([tutorial 12](12_inside_a_modern_core.md) and [tutorial 28](28_performance_and_power.md)) reports "bad speculation" as a share of all pipeline slots, which tells you whether mispredictions are worth your time at all.
 
 **Where it works.** `perf` is Linux only. Virtual machines and many cloud instances do not expose hardware counters (`perf stat` prints `<not supported>`). On a Mac, use Instruments' CPU counters, or just time the code.
 
@@ -389,7 +389,7 @@ Wrong-path instructions never change registers or memory, but they **do** change
 | **Spectre v2** (branch target injection) | trains the BTB or indirect predictor so that the victim's indirect branch speculatively jumps to code the attacker chose |
 | **Spectre-RSB** | pollutes or exploits the return address stack |
 
-Mitigations cost performance: retpoline (replace indirect jumps with a call/return sequence that parks speculation in a harmless loop), predictor-flushing and isolation controls (IBPB, IBRS, STIBP), `lfence`, and index masking in software. If a kernel upgrade makes a workload slower, a mitigation change is a likely cause. On Linux, `/sys/devices/system/cpu/vulnerabilities/` lists what is active on your machine. Tutorial 30 covers these attacks and fixes in detail.
+Mitigations cost performance: retpoline (replace indirect jumps with a call/return sequence that parks speculation in a harmless loop), predictor-flushing and isolation controls (IBPB, IBRS, STIBP), `lfence`, and index masking in software. If a kernel upgrade makes a workload slower, a mitigation change is a likely cause. On Linux, `/sys/devices/system/cpu/vulnerabilities/` lists what is active on your machine. [Tutorial 30](30_hardware_security.md) covers these attacks and fixes in detail, with the costs measured.
 
 ---
 
