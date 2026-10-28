@@ -19,7 +19,7 @@ Binary search is the algorithm every interviewer expects you to write correctly 
 | # | Tutorial | What it covers | Status |
 |---|---|---|---|
 | 01 | [`01_binary_search_templates.md`](01_binary_search_templates.md) | One half-open template ("first index where a predicate is true") with its loop invariant, termination and exit argument; `lower_bound` and `upper_bound` and everything built from them (contains, count, first and last position, insertion point, floor, ceiling); searching over values (integer square root); the closed-interval template and the stall of `lo = mid`; the overflowing middle, unsigned sizes; what the search returns when the predicate is not monotone; probe counts; a branch-free version measured with two compilers; where it shows up (`git bisect`, kernel `bsearch`); every function tested against the standard library on all small sorted arrays | Written |
-| 02 | Binary search on the answer | Monotone predicates over a range of numbers: minimum eating speed, ship capacity, split array largest sum, smallest divisor, magnetic force; how to choose the bounds and prove monotonicity; real-number search | To write |
+| 02 | [`02_binary_search_on_the_answer.md`](02_binary_search_on_the_answer.md) | The recipe (goal, test, monotonicity, range, `firstTrue`) and its cost; Koko eating bananas, ship capacity (with why the greedy test is right) and split array largest sum as one problem; maximising by searching the first "too large" value and subtracting one (magnetic force); a range whose end means "none" (bouquets, with the overflow in `m * k`); a count as the test (k-th smallest in a sorted matrix); real numbers with a fixed number of halvings and why the epsilon loop can run forever; doubling when there is no upper bound; non-monotone tests (`==`, thread counts); where it shows up (batch-size search, trace-replay sizing); every function tested against brute force or an independent dynamic program | Written |
 | 03 | Rotated, peak and 2D search | Rotated arrays with and without duplicates, peak finding, sorted matrices, median and k-th of two sorted arrays by partition, ternary search, exponential search | To write |
 | 04 | Sorting algorithms inside | Merge sort, quicksort with Lomuto and Hoare partitions, heapsort, counting, bucket and radix sort, the n log n lower bound for comparison sorts, stability, introsort inside `std::sort`, external merge sort | To write |
 | 05 | Sorting patterns and comparators | Strict weak ordering (and the crash when you break it), quickselect and median of medians, top-K by heap versus selection versus bucket, counting inversions with merge sort, interval sorting | To write |
@@ -33,7 +33,7 @@ Solve these after the tutorial named in the first column. Each tutorial also lis
 | Tutorial | Problems (LeetCode number) |
 |---|---|
 | 01 | Search Insert Position (35), Find First and Last Position (34), First Bad Version (278), Find K Closest Elements (658), Successful Pairs of Spells and Potions (2300); in your own editor: `firstTrue` with a differential test, a branch-free lower bound. More practice: 704, 69, 367, 744, 475, 436 |
-| 02 | Koko Eating Bananas (875), Capacity To Ship Packages Within D Days (1011), Split Array Largest Sum (410), Minimum Number of Days to Make m Bouquets (1482), Find the Smallest Divisor Given a Threshold (1283), Magnetic Force Between Two Balls (1552) (planned) |
+| 02 | Koko Eating Bananas (875), Capacity To Ship Packages Within D Days (1011), Split Array Largest Sum (410), Minimum Number of Days to Make m Bouquets (1482), Find the Smallest Divisor Given a Threshold (1283), Magnetic Force Between Two Balls (1552), Kth Smallest Element in a Sorted Matrix (378). More practice: 1870, 1760, 2064, 2187, 719, 668; CSES Factory Machines and Array Division |
 | 03 | Search in Rotated Sorted Array (33), Find Minimum in Rotated Sorted Array (153), Find Peak Element (162), Search a 2D Matrix (74), Search a 2D Matrix II (240), Single Element in a Sorted Array (540), Time Based Key-Value Store (981), Median of Two Sorted Arrays (4, hard) (planned) |
 | 04 | Sort an Array (912), Sort List (148), Maximum Gap (164), Count of Smaller Numbers After Self (315), Reverse Pairs (493) (planned) |
 | 05 | Kth Largest Element in an Array (215), Largest Number (179), Top K Frequent Elements (347), Custom Sort String (791), Merge Intervals (56), Meeting Rooms II (253) (planned) |
@@ -59,7 +59,7 @@ Log every attempt in [`../practice_log.md`](../practice_log.md).
 | # | Tutorial | Status |
 |---|---|---|
 | 01 | Binary search templates | Written |
-| 02 | Binary search on the answer | To write |
+| 02 | Binary search on the answer | Written |
 | 03 | Rotated, peak and 2D search | To write |
 | 04 | Sorting algorithms inside | To write |
 | 05 | Sorting patterns and comparators | To write |
