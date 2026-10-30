@@ -40,7 +40,7 @@ The order below is the study order. Each area builds on the ones before it: hash
 | 01 | [`01_arrays_and_strings/`](01_arrays_and_strings/00_plan.md) | 7 tutorials (all written) | ~32 | 1–2 | Written |
 | 02 | [`02_hashing/`](02_hashing/00_plan.md) | 4 tutorials (all written) | ~15 | 3 | Written |
 | 03 | [`03_binary_search_and_sorting/`](03_binary_search_and_sorting/00_plan.md) | 5 tutorials (all written) | ~20 | 4 | Written |
-| 04 | [`04_linked_lists/`](04_linked_lists/00_plan.md) | 6 core topics (01–02 done) | ~15 | 1–5 | In progress |
+| 04 | [`04_linked_lists/`](04_linked_lists/00_plan.md) | 6 core topics (01 to 03 done) | ~15 | 1–5 | In progress |
 | 05 | `05_stacks_and_queues/` | 4 tutorials | ~16 | 5 | To write |
 | 06 | `06_recursion_and_backtracking/` | 4 tutorials | ~17 | 6 | To write |
 | 07 | [`07_trees/`](07_trees/00_plan.md) | 34 topics: 26 core, 8 stretch (01 done) | ~45 | 1, 6–20 | In progress |
@@ -95,7 +95,7 @@ Each area's own `00_plan.md` expands these into subtopics, a problem list and a 
 
 ### 04 — Linked lists (weeks 1–5)
 
-Already planned in detail in [`04_linked_lists/00_plan.md`](04_linked_lists/00_plan.md): 01 foundations and 02 core patterns are written; core topics 03 doubly and circular lists, 04 merging and sorting, 05 classic problems including LRU and LFU, 06 systems lists (`list_head`, skip lists). Topics 07–08 are folded into the C++ track and the mock schedule.
+Already planned in detail in [`04_linked_lists/00_plan.md`](04_linked_lists/00_plan.md): 01 foundations, 02 core patterns and 03 doubly and circular lists are written; core topics 04 merging and sorting, 05 classic problems including LRU and LFU, 06 systems lists (`list_head`, skip lists). Topics 07–08 are folded into the C++ track and the mock schedule.
 
 ### 05 — Stacks and queues (week 5)
 
@@ -349,7 +349,7 @@ The tutorials are self-contained; these are for a second explanation or more pro
 | 01 Arrays and strings | 01 to 07 written | Solve the problem lists |
 | 02 Hashing | 01 to 04 written (area complete) | Solve its problems |
 | 03 Binary search and sorting | 01 to 05 written (area complete) | Solve its problems |
-| 04 Linked lists | 01, 02 written | 03 doubly and circular lists |
+| 04 Linked lists | 01 to 03 written | 04 merging and sorting |
 | 07 Trees | 01 written | 02 iterative traversals and Morris traversal |
 | All other areas | Not started | Start in the week shown in section 3 |
 

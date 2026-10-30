@@ -102,8 +102,8 @@ No fixed deadline — depth over speed, per your usual approach.
 |---|---|---|---|
 | 01 | Foundations of singly linked lists | [`01_foundations_singly_linked_list.md`](./01_foundations_singly_linked_list.md) | Done |
 | 02 | Core patterns: dummy node, two pointers, Floyd's cycle detection, reversal, recursion | [`02_core_patterns_two_pointers_reversal.md`](./02_core_patterns_two_pointers_reversal.md) + [`02_two_pointers_reversal_demo.cpp`](./02_two_pointers_reversal_demo.cpp) | Done |
-| 03 | Doubly and circular linked lists | — | Next |
-| 04 | Merging and sorting | — | — |
+| 03 | Doubly and circular linked lists (sentinel ring, `std::list` and `list_head` preview, tail-held circular list, Josephus) | [`03_doubly_and_circular_lists.md`](./03_doubly_and_circular_lists.md) + [`03_doubly_and_circular_lists_demo.cpp`](./03_doubly_and_circular_lists_demo.cpp) | Done |
+| 04 | Merging and sorting | — | Next |
 | 05 | Classic interview problems (incl. LRU and LFU caches) | — | — |
 | 06 | Systems-level and advanced topics | — | — |
 | 07 | Modern C++ and engineering considerations | Folded into the C++ track (CPP 04, CPP 05) | — |
@@ -113,4 +113,4 @@ No fixed deadline — depth over speed, per your usual approach.
 
 ## Next step
 
-Topics 01 and 02 are done. Say "next" in the linked list chat for Topic 03: doubly and circular linked lists. The week each topic is scheduled for is in [`../../00_MASTER_PLAN.md`](../../00_MASTER_PLAN.md), section 5.
+Topics 01 to 03 are done. Say "next" in the linked list chat for Topic 04: merging and sorting. The week each topic is scheduled for is in [`../../00_MASTER_PLAN.md`](../../00_MASTER_PLAN.md), section 5.
