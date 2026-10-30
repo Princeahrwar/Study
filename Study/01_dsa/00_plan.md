@@ -39,7 +39,7 @@ The order below is the study order. Each area builds on the ones before it: hash
 | --- | --- | --- | --- | --- | --- |
 | 01 | [`01_arrays_and_strings/`](01_arrays_and_strings/00_plan.md) | 7 tutorials (all written) | ~32 | 1–2 | Written |
 | 02 | [`02_hashing/`](02_hashing/00_plan.md) | 4 tutorials (all written) | ~15 | 3 | Written |
-| 03 | [`03_binary_search_and_sorting/`](03_binary_search_and_sorting/00_plan.md) | 5 tutorials (01 to 04 written) | ~20 | 4 | In progress |
+| 03 | [`03_binary_search_and_sorting/`](03_binary_search_and_sorting/00_plan.md) | 5 tutorials (all written) | ~20 | 4 | Written |
 | 04 | [`04_linked_lists/`](04_linked_lists/00_plan.md) | 6 core topics (01–02 done) | ~15 | 1–5 | In progress |
 | 05 | `05_stacks_and_queues/` | 4 tutorials | ~16 | 5 | To write |
 | 06 | `06_recursion_and_backtracking/` | 4 tutorials | ~17 | 6 | To write |
@@ -91,7 +91,7 @@ Each area's own `00_plan.md` expands these into subtopics, a problem list and a 
 | 02 | Binary search on the answer | Monotonic predicates: minimum speed, ship capacity, split array largest sum, a count as the test, searching real numbers |
 | 03 | Rotated, peak and 2D search | Rotated arrays with and without duplicates, peak finding, sorted matrices, median and k-th of two sorted arrays by partition, ternary search, exponential search |
 | 04 | Sorting algorithms inside | Merge sort, quicksort with Lomuto and Hoare partitions, heapsort, counting, bucket and radix sort, the n log n lower bound for comparison sorts, stability, introsort inside `std::sort`, external merge sort |
-| 05 | Sorting patterns and comparators | Strict weak ordering (and the crash when you break it), quickselect and median of medians, top-K by heap versus selection versus bucket, counting inversions with merge sort |
+| 05 | Sorting patterns and comparators | Strict weak ordering (and the crash when you break it), quickselect and median of medians, top-K by heap versus selection versus bucket, interval sorting (merge intervals, meeting rooms), custom orderings (largest number, custom sort string) |
 
 ### 04 — Linked lists (weeks 1–5)
 
@@ -348,7 +348,7 @@ The tutorials are self-contained; these are for a second explanation or more pro
 |---|---|---|
 | 01 Arrays and strings | 01 to 07 written | Solve the problem lists |
 | 02 Hashing | 01 to 04 written (area complete) | Solve its problems |
-| 03 Binary search and sorting | 01 to 04 written | 05 sorting patterns and comparators |
+| 03 Binary search and sorting | 01 to 05 written (area complete) | Solve its problems |
 | 04 Linked lists | 01, 02 written | 03 doubly and circular lists |
 | 07 Trees | 01 written | 02 iterative traversals and Morris traversal |
 | All other areas | Not started | Start in the week shown in section 3 |
