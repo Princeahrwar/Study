@@ -20,7 +20,7 @@ A stack and a queue are the two simplest containers, and they hide a surprising 
 | # | Tutorial | What it covers | Status |
 |---|---|---|---|
 | 01 | [`01_stack_and_queue_fundamentals.md`](01_stack_and_queue_fundamentals.md) + [`01_stack_and_queue_fundamentals_demo.cpp`](01_stack_and_queue_fundamentals_demo.cpp) | The two contracts (LIFO and FIFO) and why `pop` returns nothing in the C++ library; a stack on an array and on a fixed buffer with no heap; the queue trap (`erase` at the front) measured; the ring buffer with a size, then with free-running unsigned indices and a power-of-two mask (the Linux `kfifo` design, checked against source); a growing ring; the deque; a single-producer single-consumer ring with acquire and release (the shape of `io_uring` and of the `rkdma` project); the queue built from two stacks and why it costs O(1) amortised; the stack built from one queue; the min-stack in three forms; the min-queue; every class tested against the standard library | Written |
-| 02 | `02_monotonic_stack.md` | Next greater element, daily temperatures, largest rectangle in a histogram, trapping rain water, stock span, sum of subarray minimums; why one pass with a stack is O(n); the same problems with the stack of indexes versus the stack of values | To write |
+| 02 | [`02_monotonic_stack.md`](02_monotonic_stack.md) | The waiting room that stays sorted and why a pass costs at most 2n comparisons (counted: 39,980 against 199,990,000 for the direct scan on the worst inputs); next greater and smaller, previous greater and smaller from one template, with the tie rules and the fact that the two sides of one pass have opposite strictness; daily temperatures, the circular array (two laps), the online stock span with (price, span) pairs, indexes versus values; the largest rectangle in a histogram (sentinel, `>=`, overflow past `int`); trapping rain water by layers; contribution counting for the sum of subarray minimums (one side strict) with the ties shown on `[2, 2]`; remove K digits as a greedy stack; recognition table; no companion file, every listing is in the tutorial and tested against brute force | Written |
 | 03 | `03_monotonic_deque.md` | Sliding window maximum and minimum, why each element enters and leaves once, shortest subarray with sum at least K, window problems with a limit, DP with a window maximum (jump game VI) | To write |
 | 04 | `04_expression_evaluation_and_parsing.md` | Balanced brackets, reverse Polish notation, the calculator problems (one, two and with parentheses), decode string, simplify path, removing invalid parentheses; infix to postfix by the shunting-yard method; how a recursive-descent parser relates to the stack | To write |
 
@@ -28,7 +28,7 @@ A stack and a queue are the two simplest containers, and they hide a surprising 
 
 ## Problem list (about 30 with practice)
 
-Solve these after the tutorial named in the first column. Each tutorial also lists its problems at the end, with where to solve them and how to approach them. Difficulty labels are given only where the tutorial that lists the problem verified them; the numbers and titles of problems in tutorials 02 to 04 are checked again when those tutorials are written.
+Solve these after the tutorial named in the first column. Each tutorial also lists its problems at the end, with where to solve them and how to approach them. Difficulty labels are given only where the tutorial that lists the problem verified them; the numbers and titles of problems in tutorials 03 and 04 are checked again when those tutorials are written (those of tutorial 02 were checked when it was written).
 
 | Tutorial | Problems (LeetCode number) |
 |---|---|
@@ -57,8 +57,8 @@ Log every attempt in [`../practice_log.md`](../practice_log.md).
 | # | Tutorial | Status |
 |---|---|---|
 | 01 | Stack and queue fundamentals | Written |
-| 02 | Monotonic stack | To write |
+| 02 | Monotonic stack | Written |
 | 03 | Monotonic deque | To write |
 | 04 | Expression evaluation and parsing | To write |
 
-Say "next" for tutorial 02. Track view: [`../00_plan.md`](../00_plan.md).
+Say "next" for tutorial 03. Track view: [`../00_plan.md`](../00_plan.md).
