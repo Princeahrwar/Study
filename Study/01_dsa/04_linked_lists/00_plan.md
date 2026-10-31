@@ -108,7 +108,7 @@ No fixed deadline — depth over speed, per your usual approach.
 | 04 | Merging and sorting (merge two sorted lists, merge k lists, merge sort on a list top-down and bottom-up, insertion sort, where two lists meet) | [`04_merging_and_sorting_lists.md`](./04_merging_and_sorting_lists.md) + [`04_merging_and_sorting_lists_demo.cpp`](./04_merging_and_sorting_lists_demo.cpp) | Done |
 | 05 | Classic interview problems (palindrome list, add two numbers, copy list with random pointer, flatten multilevel list, rotate list, LRU and LFU caches) | [`05_classic_interview_problems.md`](./05_classic_interview_problems.md) + [`05_classic_interview_problems_demo.cpp`](./05_classic_interview_problems_demo.cpp) | Done |
 | 06 | Systems-level lists, part 1: the Linux `list_head` and `hlist`, free lists in allocators, why lists are slow in practice (with a benchmark), XOR lists, unrolled lists | [`06_systems_level_lists.md`](./06_systems_level_lists.md) + [`06_systems_level_lists_demo.cpp`](./06_systems_level_lists_demo.cpp) | Done |
-| 07 | Systems-level lists, part 2: skip lists (Redis sorted sets), lock-free lists (CAS, the ABA problem, hazard pointers), RCU lists | — | Next |
+| 07 | Systems-level lists, part 2: skip lists (Redis sorted sets), lock-free lists (CAS, the ABA problem, hazard pointers, a lock-free set), RCU lists | [`07_skip_lists_lock_free_and_rcu.md`](./07_skip_lists_lock_free_and_rcu.md) (the code is inside the tutorial; no demo file) | Done |
 | 08 | Modern C++ and engineering considerations (Phase 7) | Folded into the C++ track (CPP 04, CPP 05) | — |
 | 09 | Practice and mock strategy (Phase 8) | Folded into DSA practice and the mock schedule | — |
 
@@ -116,4 +116,4 @@ No fixed deadline — depth over speed, per your usual approach.
 
 ## Next step
 
-Topics 01 to 06 are done. Say "next" in the linked list chat for Topic 07: skip lists, lock-free lists (CAS, the ABA problem, hazard pointers) and the kernel's RCU lists. The week each topic is scheduled for is in [`../../00_MASTER_PLAN.md`](../../00_MASTER_PLAN.md), section 5.
+Topics 01 to 07 are done, so the linked-lists area is complete. Solve the problem lists at the end of each tutorial; the week each topic is scheduled for is in [`../../00_MASTER_PLAN.md`](../../00_MASTER_PLAN.md), section 5. The next DSA area is 05, stacks and queues.
