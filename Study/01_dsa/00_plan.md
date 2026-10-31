@@ -41,7 +41,7 @@ The order below is the study order. Each area builds on the ones before it: hash
 | 02 | [`02_hashing/`](02_hashing/00_plan.md) | 4 tutorials (all written) | ~15 | 3 | Written |
 | 03 | [`03_binary_search_and_sorting/`](03_binary_search_and_sorting/00_plan.md) | 5 tutorials (all written) | ~20 | 4 | Written |
 | 04 | [`04_linked_lists/`](04_linked_lists/00_plan.md) | 7 core topics (all written) | ~15 | 1–5 | Written |
-| 05 | [`05_stacks_and_queues/`](05_stacks_and_queues/00_plan.md) | 4 tutorials (01 to 03 done) | ~16 | 5 | In progress |
+| 05 | [`05_stacks_and_queues/`](05_stacks_and_queues/00_plan.md) | 4 tutorials (all written) | ~16 | 5 | Written |
 | 06 | `06_recursion_and_backtracking/` | 4 tutorials | ~17 | 6 | To write |
 | 07 | [`07_trees/`](07_trees/00_plan.md) | 34 topics: 26 core, 8 stretch (01 done) | ~45 | 1, 6–20 | In progress |
 | 08 | `08_graphs/` | 9 tutorials: 8 core, 1 stretch | ~38 | 11–12 | To write |
@@ -99,14 +99,14 @@ Already planned in detail in [`04_linked_lists/00_plan.md`](04_linked_lists/00_p
 
 ### 05 — Stacks and queues (week 5)
 
-Planned in detail in [`05_stacks_and_queues/00_plan.md`](05_stacks_and_queues/00_plan.md); tutorials 01 to 03 are written.
+Planned in detail in [`05_stacks_and_queues/00_plan.md`](05_stacks_and_queues/00_plan.md); all four tutorials are written, so the area is complete.
 
 | # | Tutorial | Key ideas |
 |---|---|---|
 | 01 | Stack and queue fundamentals | Array and ring-buffer implementations, queue from two stacks (amortised), min-stack |
 | 02 | Monotonic stack | Next greater element and its tie rules, daily temperatures, stock span, largest rectangle in a histogram, trapping rain water, sum of subarray minimums, remove K digits |
 | 03 | Monotonic deque | Sliding window maximum and minimum (deque, ring, blocks), a min-queue from a deque, shortest subarray with sum at least K, longest subarray with a limit, DP with a window maximum |
-| 04 | Expression evaluation and parsing | Balanced brackets, reverse Polish notation, basic calculator, decode string |
+| 04 | Expression evaluation and parsing | Balanced brackets and their variants (minimum removal, longest valid run, removing invalid parentheses), reverse Polish notation, the calculators, shunting-yard with precedence and unary minus, recursive descent and its depth limit, decode string, simplify path, stack simulations |
 
 ### 06 — Recursion and backtracking (week 6)
 
@@ -352,7 +352,7 @@ The tutorials are self-contained; these are for a second explanation or more pro
 | 02 Hashing | 01 to 04 written (area complete) | Solve its problems |
 | 03 Binary search and sorting | 01 to 05 written (area complete) | Solve its problems |
 | 04 Linked lists | 01 to 07 written (area complete) | Solve its problems |
-| 05 Stacks and queues | 01 to 03 written | 04 expression evaluation and parsing |
+| 05 Stacks and queues | 01 to 04 written (area complete) | Solve its problems |
 | 07 Trees | 01 written | 02 iterative traversals and Morris traversal |
 | All other areas | Not started | Start in the week shown in section 3 |
 
