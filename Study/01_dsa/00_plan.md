@@ -41,7 +41,7 @@ The order below is the study order. Each area builds on the ones before it: hash
 | 02 | [`02_hashing/`](02_hashing/00_plan.md) | 4 tutorials (all written) | ~15 | 3 | Written |
 | 03 | [`03_binary_search_and_sorting/`](03_binary_search_and_sorting/00_plan.md) | 5 tutorials (all written) | ~20 | 4 | Written |
 | 04 | [`04_linked_lists/`](04_linked_lists/00_plan.md) | 7 core topics (all written) | ~15 | 1–5 | Written |
-| 05 | `05_stacks_and_queues/` | 4 tutorials | ~16 | 5 | To write |
+| 05 | [`05_stacks_and_queues/`](05_stacks_and_queues/00_plan.md) | 4 tutorials (01 done) | ~16 | 5 | In progress |
 | 06 | `06_recursion_and_backtracking/` | 4 tutorials | ~17 | 6 | To write |
 | 07 | [`07_trees/`](07_trees/00_plan.md) | 34 topics: 26 core, 8 stretch (01 done) | ~45 | 1, 6–20 | In progress |
 | 08 | `08_graphs/` | 9 tutorials: 8 core, 1 stretch | ~38 | 11–12 | To write |
@@ -98,6 +98,8 @@ Each area's own `00_plan.md` expands these into subtopics, a problem list and a 
 Already planned in detail in [`04_linked_lists/00_plan.md`](04_linked_lists/00_plan.md): 01 foundations, 02 core patterns, 03 doubly and circular lists, 04 merging and sorting and 05 classic problems including LRU and LFU and 06 and 07 systems-level lists (`list_head`, free lists, why lists are slow, XOR and unrolled lists; skip lists, lock-free lists, RCU lists) are all written, so the area is complete. The old Phases 7 and 8 are folded into the C++ track and the mock schedule.
 
 ### 05 — Stacks and queues (week 5)
+
+Planned in detail in [`05_stacks_and_queues/00_plan.md`](05_stacks_and_queues/00_plan.md); tutorial 01 is written.
 
 | # | Tutorial | Key ideas |
 |---|---|---|
@@ -350,6 +352,7 @@ The tutorials are self-contained; these are for a second explanation or more pro
 | 02 Hashing | 01 to 04 written (area complete) | Solve its problems |
 | 03 Binary search and sorting | 01 to 05 written (area complete) | Solve its problems |
 | 04 Linked lists | 01 to 07 written (area complete) | Solve its problems |
+| 05 Stacks and queues | 01 written | 02 monotonic stack |
 | 07 Trees | 01 written | 02 iterative traversals and Morris traversal |
 | All other areas | Not started | Start in the week shown in section 3 |
 
