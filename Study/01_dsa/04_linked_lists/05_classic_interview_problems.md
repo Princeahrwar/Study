@@ -856,4 +856,4 @@ The sum is 1010. The last step exists only because of `|| carry`.
 - Hashing 03, section 6, for the `std::list` and `splice` version of the LRU cache and the notes on locking.
 - Measurements (nanoseconds, bytes): this VM with 2 cores, GCC 13.3, `-O2`, glibc 2.39, 64-bit.
 
-**Next:** Linked lists 06, systems-level and advanced topics (the Linux `list_head`, free lists, why lists are slow in practice with a benchmark, skip lists, lock-free lists). Say "next" when you are ready.
+**Next:** Linked lists 06, systems-level lists (the Linux `list_head`, free lists, why lists are slow in practice with a benchmark, XOR and unrolled lists). Skip lists and lock-free lists follow in 07. Say "next" when you are ready.

@@ -64,7 +64,7 @@ Each track has a `00_plan.md` with its topics, status, week, labs, interview que
 
 | # | Track | Code | Topics | Weeks | Hours |
 |---|---|---|---|---|---|
-| 01 | [DSA](01_dsa/00_plan.md) | DSA | 15 areas, 103 tutorials (88 core, 22 written), ~310 problems | 1–23 | ~230 core |
+| 01 | [DSA](01_dsa/00_plan.md) | DSA | 15 areas, 104 tutorials (89 core, 23 written), ~310 problems | 1–23 | ~230 core |
 | 02 | [C language](02_c_language/00_plan.md) | C | 8 | 1–8 | ~18 |
 | 03 | [C++](03_cpp/00_plan.md) | CPP | Primer (14, written) + 8 interview topics | 9–16 | ~20 |
 | 04 | [Computer organization](04_computer_organization/00_plan.md) | CO | 31 (all written) | 1–6 | ~70 core, ~83 all |
@@ -137,7 +137,7 @@ Each week is about 25 hours: roughly 8 h DSA, 8 h systems, 6 h design, and 3 h f
 | 3 | 26 Oct | Hashing; LL 04 | CO 05, CO 06; LX 01 | LLD 05, 06 | C 03; set up the Linux VM |
 | 4 | 2 Nov | Binary search & sorting; LL 05 | CO 07, CO 08; LX 02 | LLD 07 | C 04 |
 | 5 | 9 Nov | Stacks & queues; LL 06 | CO 09, CO 10; OS 01 | LLD 08 | C 05; start the story bank |
-| 6 | 16 Nov | Recursion & backtracking; Trees 02 | CO 11, CO 12; OS 02, OS 03 | LLD 09 | C 06; **Checkpoint 1** |
+| 6 | 16 Nov | Recursion & backtracking; Trees 02; LL 07 | CO 11, CO 12; OS 02, OS 03 | LLD 09 | C 06; **Checkpoint 1** |
 
 ### Phase B — Core interview material (weeks 7–14)
 

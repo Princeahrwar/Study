@@ -1,6 +1,6 @@
 # Project 01 — `rkv`: a Redis-compatible in-memory data server in C
 
-> **Weeks:** 12–15 · **Effort:** ~22 hours · **Language:** C11 on Linux · **Prerequisites:** NET 04 (sockets) for M1, NET 05 (`epoll`) for M2, DSA 02 (hashing), DSA linked lists 06 (skip lists), OS 12 (`fsync`)
+> **Weeks:** 12–15 · **Effort:** ~22 hours · **Language:** C11 on Linux · **Prerequisites:** NET 04 (sockets) for M1, NET 05 (`epoll`) for M2, DSA 02 (hashing), DSA linked lists 07 (skip lists), OS 12 (`fsync`)
 
 ## 1. The pitch
 
@@ -29,7 +29,7 @@ It is the most useful kind of project: a real protocol, real clients, a world-cl
 | `epoll` event loop with per-client buffers | Readiness I/O, level- vs edge-triggered, backpressure | NET 05, OS 15 |
 | Hash table with incremental rehashing and keyed hashing | Amortised vs worst-case latency, hash-flooding defence | DSA 02, C 03 |
 | `SCAN` that stays correct while the table resizes | Reverse-binary cursor iteration, a beautiful trick | DSA 02, DSA 11 (bits) |
-| Skip list with spans for sorted sets | Probabilistic balancing, rank queries in O(log n) | DSA linked lists 06, trees 30 |
+| Skip list with spans for sorted sets | Probabilistic balancing, rank queries in O(log n) | DSA linked lists 07, trees 30 |
 | Lazy and active expiry | Sampling algorithms, time budgets in a single-threaded server | DSA 11 (randomisation) |
 | Append-only file with three `fsync` policies | The page cache, what durability really costs, crash testing | OS 12, OS 15 |
 | Benchmarking against Redis | Throughput vs latency, percentiles, `perf` and flame graphs | LX 05, CO 28 |

@@ -11,7 +11,7 @@
 1. Each topic gets its own numbered tutorial file (`01_<topic>.md`, `02_<topic>.md`, ...), written with production-grade C++ code, complexity analysis, pitfalls, and Mermaid diagrams — not a chat-only summary.
 2. You study the file, ask doubts here, and I'll clarify or patch the file.
 3. When you say "next" / "move on", I write the next topic's file.
-4. Files live in `Desktop/My Projects/Study/01_dsa/04_linked_lists/` on your Mac, and at the same path in the Study-Plan project. Topic N covers Phase N.
+4. Files live in `Desktop/My Projects/Study/01_dsa/04_linked_lists/` on your Mac, and at the same path in the Study-Plan project. Topics 01 to 05 cover Phases 1 to 5; Phase 6 is large enough to be split over topics 06 and 07.
 
 No fixed deadline — depth over speed, per your usual approach.
 
@@ -54,6 +54,8 @@ No fixed deadline — depth over speed, per your usual approach.
 - LFU Cache (stretch problem, same family)
 
 ### Phase 6 — Systems-Level & Advanced Topics (Staff-focused)
+*Covered by two tutorials. Topic 06: intrusive lists and `hlist`, free lists, why lists are slow in practice, XOR and unrolled lists. Topic 07: skip lists, lock-free lists, RCU lists.*
+
 - Linked lists in real systems: the **Linux kernel's intrusive `list_head`** design — `container_of`, `list_add`, `list_for_each_entry_safe`
 - Memory allocators & free lists — how `malloc`/custom allocators chain free blocks
 - Why linked lists are often *slow in practice*: pointer chasing and cache misses vs contiguous structures (with a benchmarking exercise: `std::list` vs `std::vector`)
@@ -105,12 +107,13 @@ No fixed deadline — depth over speed, per your usual approach.
 | 03 | Doubly and circular linked lists (sentinel ring, `std::list` and `list_head` preview, tail-held circular list, Josephus) | [`03_doubly_and_circular_lists.md`](./03_doubly_and_circular_lists.md) + [`03_doubly_and_circular_lists_demo.cpp`](./03_doubly_and_circular_lists_demo.cpp) | Done |
 | 04 | Merging and sorting (merge two sorted lists, merge k lists, merge sort on a list top-down and bottom-up, insertion sort, where two lists meet) | [`04_merging_and_sorting_lists.md`](./04_merging_and_sorting_lists.md) + [`04_merging_and_sorting_lists_demo.cpp`](./04_merging_and_sorting_lists_demo.cpp) | Done |
 | 05 | Classic interview problems (palindrome list, add two numbers, copy list with random pointer, flatten multilevel list, rotate list, LRU and LFU caches) | [`05_classic_interview_problems.md`](./05_classic_interview_problems.md) + [`05_classic_interview_problems_demo.cpp`](./05_classic_interview_problems_demo.cpp) | Done |
-| 06 | Systems-level and advanced topics | — | Next |
-| 07 | Modern C++ and engineering considerations | Folded into the C++ track (CPP 04, CPP 05) | — |
-| 08 | Practice and mock strategy | Folded into DSA practice and the mock schedule | — |
+| 06 | Systems-level lists, part 1: the Linux `list_head` and `hlist`, free lists in allocators, why lists are slow in practice (with a benchmark), XOR lists, unrolled lists | [`06_systems_level_lists.md`](./06_systems_level_lists.md) + [`06_systems_level_lists_demo.cpp`](./06_systems_level_lists_demo.cpp) | Done |
+| 07 | Systems-level lists, part 2: skip lists (Redis sorted sets), lock-free lists (CAS, the ABA problem, hazard pointers), RCU lists | — | Next |
+| 08 | Modern C++ and engineering considerations (Phase 7) | Folded into the C++ track (CPP 04, CPP 05) | — |
+| 09 | Practice and mock strategy (Phase 8) | Folded into DSA practice and the mock schedule | — |
 
 ---
 
 ## Next step
 
-Topics 01 to 05 are done. Say "next" in the linked list chat for Topic 06: systems-level and advanced topics (the Linux `list_head`, free lists in allocators, why lists are slow in practice with a benchmark, skip lists, lock-free lists). The week each topic is scheduled for is in [`../../00_MASTER_PLAN.md`](../../00_MASTER_PLAN.md), section 5.
+Topics 01 to 06 are done. Say "next" in the linked list chat for Topic 07: skip lists, lock-free lists (CAS, the ABA problem, hazard pointers) and the kernel's RCU lists. The week each topic is scheduled for is in [`../../00_MASTER_PLAN.md`](../../00_MASTER_PLAN.md), section 5.
