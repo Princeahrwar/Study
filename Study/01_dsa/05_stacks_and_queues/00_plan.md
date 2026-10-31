@@ -21,14 +21,14 @@ A stack and a queue are the two simplest containers, and they hide a surprising 
 |---|---|---|---|
 | 01 | [`01_stack_and_queue_fundamentals.md`](01_stack_and_queue_fundamentals.md) + [`01_stack_and_queue_fundamentals_demo.cpp`](01_stack_and_queue_fundamentals_demo.cpp) | The two contracts (LIFO and FIFO) and why `pop` returns nothing in the C++ library; a stack on an array and on a fixed buffer with no heap; the queue trap (`erase` at the front) measured; the ring buffer with a size, then with free-running unsigned indices and a power-of-two mask (the Linux `kfifo` design, checked against source); a growing ring; the deque; a single-producer single-consumer ring with acquire and release (the shape of `io_uring` and of the `rkdma` project); the queue built from two stacks and why it costs O(1) amortised; the stack built from one queue; the min-stack in three forms; the min-queue; every class tested against the standard library | Written |
 | 02 | [`02_monotonic_stack.md`](02_monotonic_stack.md) | The waiting room that stays sorted and why a pass costs at most 2n comparisons (counted: 39,980 against 199,990,000 for the direct scan on the worst inputs); next greater and smaller, previous greater and smaller from one template, with the tie rules and the fact that the two sides of one pass have opposite strictness; daily temperatures, the circular array (two laps), the online stock span with (price, span) pairs, indexes versus values; the largest rectangle in a histogram (sentinel, `>=`, overflow past `int`); trapping rain water by layers; contribution counting for the sum of subarray minimums (one side strict) with the ties shown on `[2, 2]`; remove K digits as a greedy stack; recognition table; no companion file, every listing is in the tutorial and tested against brute force | Written |
-| 03 | `03_monotonic_deque.md` | Sliding window maximum and minimum, why each element enters and leaves once, shortest subarray with sum at least K, window problems with a limit, DP with a window maximum (jump game VI) | To write |
+| 03 | [`03_monotonic_deque.md`](03_monotonic_deque.md) | Why a window needs a deque and not a stack; the sliding window maximum and minimum from one template (at most 2n comparisons, at most `k` indexes); the same on a fixed ring with a mask; the block method with prefix and suffix maxima; comparison counts and timings against the direct scan, a `multiset` and a lazy heap (which keeps up to n expired entries); a min-queue from a deque with tickets, compared with the two-stack queue; shortest subarray with sum at least K with negative numbers (why the window fails, prefix sums, the two deque rules, `long long`); the longest subarray with a limit on max minus min (two deques); DP with a window maximum (jump game VI); no companion file, every listing is in the tutorial and tested against brute force | Written |
 | 04 | `04_expression_evaluation_and_parsing.md` | Balanced brackets, reverse Polish notation, the calculator problems (one, two and with parentheses), decode string, simplify path, removing invalid parentheses; infix to postfix by the shunting-yard method; how a recursive-descent parser relates to the stack | To write |
 
 ---
 
 ## Problem list (about 30 with practice)
 
-Solve these after the tutorial named in the first column. Each tutorial also lists its problems at the end, with where to solve them and how to approach them. Difficulty labels are given only where the tutorial that lists the problem verified them; the numbers and titles of problems in tutorials 03 and 04 are checked again when those tutorials are written (those of tutorial 02 were checked when it was written).
+Solve these after the tutorial named in the first column. Each tutorial also lists its problems at the end, with where to solve them and how to approach them. Difficulty labels are given only where the tutorial that lists the problem verified them; the numbers and titles of problems in tutorial 04 are checked again when it is written (those of tutorials 02 and 03 were checked when they were written).
 
 | Tutorial | Problems (LeetCode number) |
 |---|---|
@@ -58,7 +58,7 @@ Log every attempt in [`../practice_log.md`](../practice_log.md).
 |---|---|---|
 | 01 | Stack and queue fundamentals | Written |
 | 02 | Monotonic stack | Written |
-| 03 | Monotonic deque | To write |
+| 03 | Monotonic deque | Written |
 | 04 | Expression evaluation and parsing | To write |
 
-Say "next" for tutorial 03. Track view: [`../00_plan.md`](../00_plan.md).
+Say "next" for tutorial 04. Track view: [`../00_plan.md`](../00_plan.md).
