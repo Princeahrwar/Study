@@ -61,9 +61,10 @@ The week each core topic is scheduled for is in [`../../00_MASTER_PLAN.md`](../.
 ### Phase 2 — Binary Tree Problem Patterns
 
 **04. Bottom-up recursion: returning information up the tree**
-- Top-down (pass state down) vs bottom-up (return a summary up), and how to pick
-- Same tree, symmetric, invert, subtree of another tree
-- Balanced check in O(n) (not O(n log n)), diameter, maximum path sum: returning one value while tracking another
+- Top-down (pass state down) vs bottom-up (return a summary up), how to pick, and validating a BST both ways
+- Same tree, symmetric, invert (recursive and with a stack), and the direct subtree-of-another-tree test with its measured cost
+- Balanced check in O(n) (not O(n log n)) with the visit counts, diameter in one pass, maximum path sum: returning one value while tracking another
+- A non-recursive bottom-up fold for trees a million levels deep, and what it costs
 
 **05. Level, view and width problems**
 - Zigzag, right/left side view, top/bottom view, vertical order traversal
@@ -271,11 +272,12 @@ The week each core topic is scheduled for is in [`../../00_MASTER_PLAN.md`](../.
 | 01 | Binary tree fundamentals | `01_binary_tree_fundamentals.md` + `01_binary_tree_fundamentals_demo.cpp` | Done |
 | 02 | Iterative traversals and Morris traversal | `02_iterative_traversals_and_morris.md` | Done |
 | 03 | Construction and serialization | `03_construction_and_serialization.md` | Done |
-| 04 | Bottom-up recursion | — | Next |
-| 05–34 | See the curriculum above | — | — |
+| 04 | Bottom-up recursion | `04_bottom_up_recursion.md` | Done |
+| 05 | Level, view and width problems | — | Next |
+| 06–34 | See the curriculum above | — | — |
 
 ---
 
 ## Next step
 
-Topics 01 to 03 are written: `01_binary_tree_fundamentals.md`, `02_iterative_traversals_and_morris.md` and `03_construction_and_serialization.md`. Study them, ask doubts, and say "next" for Topic 04.
+Topics 01 to 04 are written: `01_binary_tree_fundamentals.md`, `02_iterative_traversals_and_morris.md`, `03_construction_and_serialization.md` and `04_bottom_up_recursion.md`. Study them, ask doubts, and say "next" for Topic 05.
