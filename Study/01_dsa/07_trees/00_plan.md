@@ -51,10 +51,12 @@ The week each core topic is scheduled for is in [`../../00_MASTER_PLAN.md`](../.
 - Measured comparison of the five methods
 
 **03. Construction and serialization**
-- Which traversal pairs identify a tree uniquely, and why preorder + postorder does not
-- Build from preorder + inorder and postorder + inorder in O(n) with a hash map
-- Serialize/deserialize: preorder with null markers, level order, compact binary encodings
-- Checking subtree equality by serialization (and its collision pitfalls)
+- Which traversal pairs identify a tree uniquely, and why preorder + postorder does not (counted for every shape up to 9 nodes)
+- Build from preorder + inorder and postorder + inorder in O(n) with a hash map, and without a map or recursion with a stack
+- Preorder + postorder for full trees
+- Serialize/deserialize without recursion: preorder with null markers, level order, compact binary (bit-per-slot shape plus zigzag varints)
+- Validating a serialization by counting open slots, without building the tree
+- Subtree equality: the three string pitfalls, and exact canonical subtree ids (Subtree of Another Tree, Find Duplicate Subtrees)
 
 ### Phase 2 — Binary Tree Problem Patterns
 
@@ -268,11 +270,12 @@ The week each core topic is scheduled for is in [`../../00_MASTER_PLAN.md`](../.
 |---|---|---|---|
 | 01 | Binary tree fundamentals | `01_binary_tree_fundamentals.md` + `01_binary_tree_fundamentals_demo.cpp` | Done |
 | 02 | Iterative traversals and Morris traversal | `02_iterative_traversals_and_morris.md` | Done |
-| 03 | Construction and serialization | — | Next |
-| 04–34 | See the curriculum above | — | — |
+| 03 | Construction and serialization | `03_construction_and_serialization.md` | Done |
+| 04 | Bottom-up recursion | — | Next |
+| 05–34 | See the curriculum above | — | — |
 
 ---
 
 ## Next step
 
-Topics 01 and 02 are written: `01_binary_tree_fundamentals.md` and `02_iterative_traversals_and_morris.md`. Study them, ask doubts, and say "next" for Topic 03.
+Topics 01 to 03 are written: `01_binary_tree_fundamentals.md`, `02_iterative_traversals_and_morris.md` and `03_construction_and_serialization.md`. Study them, ask doubts, and say "next" for Topic 04.
