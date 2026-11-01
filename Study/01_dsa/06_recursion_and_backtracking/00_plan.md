@@ -21,7 +21,7 @@ Recursion is the way most of the later areas are written: trees, graphs and dyna
 |---|---|---|---|
 | 01 | [`01_recursion_fundamentals.md`](01_recursion_fundamentals.md) | The three questions that write a recursive function and the induction that checks it; frames and the call stack traced; the measured stack depth limit at `-O0` and `-O2` (and why a debug build overflows where a release build does not); recursion trees, the exact call count of naive Fibonacci (`2 * F(n + 1) - 1`) against memoisation (`2n - 1`), depth against work; base-case and progress bugs; recursion on a list and on a grid; tail calls and what the compiler really did; an explicit stack with work frames (Hanoi, flood fill); bounding the depth of quicksort; kernel stacks and the MISRA rule against recursion; no companion file, every listing is in the tutorial and tested | Written |
 | 02 | [`02_subsets_permutations_and_combinations.md`](02_subsets_permutations_and_combinations.md) | The choose, explore, unchoose template and the decision tree; subsets three ways (include or exclude, start index, bitmask) with exact call counts; permutations with a used array and with swaps (about `e * n!` calls); skipping duplicates in Subsets II, Permutations II and Combination Sum II and why each rule has its exact form; combinations with pruning by counting; combination sum; letter combinations, generate parentheses (Catalan) and palindrome partitioning; counting the search space and a measured walk of all permutations before running anything; no companion file, every listing is tested | Written |
-| 03 | `03_constraint_backtracking.md` | N-queens, Sudoku, word search, pruning rules, bitmasks as the state of a search, partition problems | To write |
+| 03 | [`03_constraint_backtracking.md`](03_constraint_backtracking.md) | Checking rules at placement instead of at the leaf (8-queens: 2,057 calls against 109,601); N-queens with flag arrays and with bitmasks (same tree, about 7 times faster); Valid Sudoku and a Sudoku solver with row, column and box masks, and the fewest-candidates cell order measured on three puzzles (69 million calls down to 45 thousand); word search with in-place marking and a trie with a remaining-words counter; restore IP addresses with length pruning; equal-sum groups with largest-first order and equal-bucket skipping; no companion file, every listing is tested | Written |
 | 04 | `04_divide_and_conquer_and_recurrences.md` | The recursion-tree method and the master theorem, merge-sort-style counting (inversions, reverse pairs), maximum subarray by divide and conquer, closest pair of points, fast exponentiation and Karatsuba, where divide and conquer parallelises | To write |
 
 ---
@@ -57,7 +57,7 @@ Log every attempt in [`../practice_log.md`](../practice_log.md).
 |---|---|---|
 | 01 | Recursion fundamentals | Written |
 | 02 | Subsets, permutations and combinations | Written |
-| 03 | Constraint backtracking | To write |
+| 03 | Constraint backtracking | Written |
 | 04 | Divide and conquer and recurrences | To write |
 
-Say "next" for tutorial 03. Track view: [`../00_plan.md`](../00_plan.md).
+Say "next" for tutorial 04. Track view: [`../00_plan.md`](../00_plan.md).

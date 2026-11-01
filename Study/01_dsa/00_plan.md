@@ -42,7 +42,7 @@ The order below is the study order. Each area builds on the ones before it: hash
 | 03 | [`03_binary_search_and_sorting/`](03_binary_search_and_sorting/00_plan.md) | 5 tutorials (all written) | ~20 | 4 | Written |
 | 04 | [`04_linked_lists/`](04_linked_lists/00_plan.md) | 7 core topics (all written) | ~15 | 1–5 | Written |
 | 05 | [`05_stacks_and_queues/`](05_stacks_and_queues/00_plan.md) | 4 tutorials (all written) | ~16 | 5 | Written |
-| 06 | [`06_recursion_and_backtracking/`](06_recursion_and_backtracking/00_plan.md) | 4 tutorials (02 done) | ~17 | 6 | In progress |
+| 06 | [`06_recursion_and_backtracking/`](06_recursion_and_backtracking/00_plan.md) | 4 tutorials (03 done) | ~17 | 6 | In progress |
 | 07 | [`07_trees/`](07_trees/00_plan.md) | 34 topics: 26 core, 8 stretch (01 done) | ~45 | 1, 6–20 | In progress |
 | 08 | `08_graphs/` | 9 tutorials: 8 core, 1 stretch | ~38 | 11–12 | To write |
 | 09 | `09_greedy_and_intervals/` | 3 tutorials | ~15 | 13 | To write |
@@ -110,13 +110,13 @@ Planned in detail in [`05_stacks_and_queues/00_plan.md`](05_stacks_and_queues/00
 
 ### 06 — Recursion and backtracking (week 6)
 
-Planned in detail in [`06_recursion_and_backtracking/00_plan.md`](06_recursion_and_backtracking/00_plan.md); tutorials 01 and 02 are written.
+Planned in detail in [`06_recursion_and_backtracking/00_plan.md`](06_recursion_and_backtracking/00_plan.md); tutorials 01 to 03 are written.
 
 | # | Tutorial | Key ideas |
 |---|---|---|
 | 01 | Recursion fundamentals | The call stack and its measured depth limit, recursion trees and exact call counts, base cases and progress, recursion on lists and grids, tail calls, an explicit stack with work frames, bounding the depth of quicksort |
 | 02 | Subsets, permutations, combinations | The choose, explore, unchoose template, exact call counts of subsets and permutations, the duplicate-skipping rules and why they have their form, combination sum, parentheses and palindrome partitions, counting the search space before running it |
-| 03 | Constraint backtracking | N-queens, Sudoku, word search, pruning, bitmasks as state |
+| 03 | Constraint backtracking | Checking rules at placement, N-queens with arrays and bitmasks, Sudoku with masks and the fewest-candidates order, word search and tries, IP addresses, equal-sum groups with equal-bucket skipping |
 | 04 | Divide and conquer and recurrences | The recursion-tree method and the master theorem, merge-sort-style counting (inversions, reverse pairs), maximum subarray by divide and conquer, closest pair of points, fast exponentiation and Karatsuba, where divide and conquer parallelises |
 
 ### 07 — Trees (weeks 1 and 6–20)
@@ -355,7 +355,7 @@ The tutorials are self-contained; these are for a second explanation or more pro
 | 03 Binary search and sorting | 01 to 05 written (area complete) | Solve its problems |
 | 04 Linked lists | 01 to 07 written (area complete) | Solve its problems |
 | 05 Stacks and queues | 01 to 04 written (area complete) | Solve its problems |
-| 06 Recursion and backtracking | 01 to 02 written | 03 constraint backtracking |
+| 06 Recursion and backtracking | 01 to 03 written | 04 divide and conquer and recurrences |
 | 07 Trees | 01 written | 02 iterative traversals and Morris traversal |
 | All other areas | Not started | Start in the week shown in section 3 |
 
