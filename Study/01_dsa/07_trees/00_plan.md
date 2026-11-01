@@ -10,7 +10,7 @@
 ## How this will run
 
 1. Each topic gets its own numbered tutorial file (`01_<topic>.md`, `02_<topic>.md`, ...): production-grade C++, complexity analysis, pitfalls, Mermaid diagrams, and a practice list.
-2. Every topic with real code also gets a companion `.cpp` file. It is compiled with `-Wall -Wextra -fsanitize=address,undefined` and carries its own checks. Every code block in the tutorial is checked against that tested file, so what you read is what was run.
+2. A topic that introduces a new structure gets a companion `.cpp` file; the others keep their code inside the tutorial. Either way the code is compiled with `-Wall -Wextra -fsanitize=address,undefined` and tested, and every code block in the tutorial is checked against the tested source, so what you read is what was run.
 3. You study the file and ask doubts here. I clarify or patch the file.
 4. When you say "next", I write the next topic.
 5. Files live in `Desktop/My Projects/Study/01_dsa/07_trees/` on your Mac, and at the same path in the Study-Plan project.
@@ -42,10 +42,13 @@ The week each core topic is scheduled for is in [`../../00_MASTER_PLAN.md`](../.
 - General (N-ary) trees: traversals, height, freeing without recursion, and converting to and from left-child right-sibling form
 
 **02. Iterative traversals and Morris traversal**
-- Explicit-stack preorder, inorder and postorder (two-stack and one-stack postorder)
-- All three traversals in a single pass with a state stack
-- Morris traversal: O(1) extra space by temporarily threading the n + 1 null links; why it must restore the tree
-- Recursion depth in practice: when the call stack is a real constraint (8 MB thread stacks, few-KB RTOS task stacks)
+- Explicit-stack preorder, inorder and postorder (reverse-preorder and one-stack postorder with a `last` pointer)
+- All three traversals in a single pass with a state stack, and the push-in-reverse flag idiom
+- A lazy inorder iterator (the BST iterator) and the kth smallest with early exit
+- Morris traversal in all three orders: O(1) extra space by temporarily threading the n + 1 null links; why it must finish and restore the tree
+- Parent-link successor (how the kernel's `rb_next` can work with no stack)
+- Recursion depth in practice, measured: 8 MiB, 1 MiB and 64 KiB stacks, and what a frame costs
+- Measured comparison of the five methods
 
 **03. Construction and serialization**
 - Which traversal pairs identify a tree uniquely, and why preorder + postorder does not
@@ -264,11 +267,12 @@ The week each core topic is scheduled for is in [`../../00_MASTER_PLAN.md`](../.
 | # | Topic | File | Status |
 |---|---|---|---|
 | 01 | Binary tree fundamentals | `01_binary_tree_fundamentals.md` + `01_binary_tree_fundamentals_demo.cpp` | Done |
-| 02 | Iterative traversals and Morris traversal | — | Next |
-| 03–34 | See the curriculum above | — | — |
+| 02 | Iterative traversals and Morris traversal | `02_iterative_traversals_and_morris.md` | Done |
+| 03 | Construction and serialization | — | Next |
+| 04–34 | See the curriculum above | — | — |
 
 ---
 
 ## Next step
 
-Topic 01 is written: `01_binary_tree_fundamentals.md`. Study it, ask doubts, and say "next" for Topic 02.
+Topics 01 and 02 are written: `01_binary_tree_fundamentals.md` and `02_iterative_traversals_and_morris.md`. Study them, ask doubts, and say "next" for Topic 03.
