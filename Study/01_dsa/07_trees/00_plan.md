@@ -75,10 +75,10 @@ The week each core topic is scheduled for is in [`../../00_MASTER_PLAN.md`](../.
 - Maximum width with position indexing, and the integer overflow trap in it (signed overflow is undefined; unsigned or rebased positions are not)
 
 **06. Paths, ancestors and LCA in a binary tree**
-- Root-to-leaf paths, path sum I/II, path sum III with prefix sums on a tree
-- Lowest common ancestor in a binary tree; distance between two nodes
+- Root-to-leaf paths, path sum I/II with one shared path vector, path sum III with prefix sums on a tree (the undo step, and the measured O(n h) vs O(n) cost)
+- Lowest common ancestor in a binary tree: the bottom-up recursion, the version that survives a missing node, and the two-walker version with parent links; distance between two nodes
 - Nodes at distance K and time-to-burn-the-tree (convert to a graph with parent links, then BFS)
-- Flatten a tree to a linked list in place; count nodes of a complete tree in O(log² n)
+- Flatten a tree to a linked list in place with O(1) space; count nodes of a complete tree in O(log² n), with measured call counts
 
 ### Phase 3 — Binary Search Trees
 
@@ -277,11 +277,12 @@ The week each core topic is scheduled for is in [`../../00_MASTER_PLAN.md`](../.
 | 03 | Construction and serialization | `03_construction_and_serialization.md` | Done |
 | 04 | Bottom-up recursion | `04_bottom_up_recursion.md` | Done |
 | 05 | Level, view and width problems | `05_level_view_and_width_problems.md` | Done |
-| 06 | Paths, ancestors and LCA in a binary tree | — | Next |
-| 07–34 | See the curriculum above | — | — |
+| 06 | Paths, ancestors and LCA in a binary tree | `06_paths_ancestors_and_lca.md` | Done |
+| 07 | BST core operations | — | Next |
+| 08–34 | See the curriculum above | — | — |
 
 ---
 
 ## Next step
 
-Topics 01 to 05 are written: `01_binary_tree_fundamentals.md`, `02_iterative_traversals_and_morris.md`, `03_construction_and_serialization.md`, `04_bottom_up_recursion.md` and `05_level_view_and_width_problems.md`. Study them, ask doubts, and say "next" for Topic 06.
+Topics 01 to 06 are written: `01_binary_tree_fundamentals.md`, `02_iterative_traversals_and_morris.md`, `03_construction_and_serialization.md`, `04_bottom_up_recursion.md` `05_level_view_and_width_problems.md` and `06_paths_ancestors_and_lca.md`. Study them, ask doubts, and say "next" for Topic 07.

@@ -43,7 +43,7 @@ The order below is the study order. Each area builds on the ones before it: hash
 | 04 | [`04_linked_lists/`](04_linked_lists/00_plan.md) | 7 core topics (all written) | ~15 | 1–5 | Written |
 | 05 | [`05_stacks_and_queues/`](05_stacks_and_queues/00_plan.md) | 4 tutorials (all written) | ~16 | 5 | Written |
 | 06 | [`06_recursion_and_backtracking/`](06_recursion_and_backtracking/00_plan.md) | 4 tutorials (all written) | ~17 | 6 | Written |
-| 07 | [`07_trees/`](07_trees/00_plan.md) | 34 topics: 26 core, 8 stretch (01 to 05 done) | ~45 | 1, 6–20 | In progress |
+| 07 | [`07_trees/`](07_trees/00_plan.md) | 34 topics: 26 core, 8 stretch (01 to 06 done) | ~45 | 1, 6–20 | In progress |
 | 08 | `08_graphs/` | 9 tutorials: 8 core, 1 stretch | ~38 | 11–12 | To write |
 | 09 | `09_greedy_and_intervals/` | 3 tutorials | ~15 | 13 | To write |
 | 10 | `10_dynamic_programming/` | 8 tutorials: 7 core, 1 stretch | ~42 | 13–15 | To write |
@@ -356,7 +356,7 @@ The tutorials are self-contained; these are for a second explanation or more pro
 | 04 Linked lists | 01 to 07 written (area complete) | Solve its problems |
 | 05 Stacks and queues | 01 to 04 written (area complete) | Solve its problems |
 | 06 Recursion and backtracking | 01 to 04 written (area complete) | Solve its problems |
-| 07 Trees | 01 to 05 written | 06 paths, ancestors and LCA |
+| 07 Trees | 01 to 06 written | 07 BST core operations |
 | All other areas | Not started | Start in the week shown in section 3 |
 
 Updated every time a tutorial is written or studied. The cross-track view is in [`../00_MASTER_PLAN.md`](../00_MASTER_PLAN.md).
