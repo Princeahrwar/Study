@@ -67,9 +67,12 @@ The week each core topic is scheduled for is in [`../../00_MASTER_PLAN.md`](../.
 - A non-recursive bottom-up fold for trees a million levels deep, and what it costs
 
 **05. Level, view and width problems**
-- Zigzag, right/left side view, top/bottom view, vertical order traversal
-- Boundary traversal; populating next-right pointers in O(1) space
-- Maximum width with position indexing, and the integer overflow trap in it
+- Level order as a loop over levels, and the same result by depth-indexed recursion (when each is the right tool, with measured costs)
+- Zigzag without reversing the queue, right/left side views in both forms
+- Populating next-right pointers in O(1) space for any tree
+- Columns: vertical order, top view and bottom view, and the tie rules that separate them
+- Boundary traversal and its traps
+- Maximum width with position indexing, and the integer overflow trap in it (signed overflow is undefined; unsigned or rebased positions are not)
 
 **06. Paths, ancestors and LCA in a binary tree**
 - Root-to-leaf paths, path sum I/II, path sum III with prefix sums on a tree
@@ -273,11 +276,12 @@ The week each core topic is scheduled for is in [`../../00_MASTER_PLAN.md`](../.
 | 02 | Iterative traversals and Morris traversal | `02_iterative_traversals_and_morris.md` | Done |
 | 03 | Construction and serialization | `03_construction_and_serialization.md` | Done |
 | 04 | Bottom-up recursion | `04_bottom_up_recursion.md` | Done |
-| 05 | Level, view and width problems | — | Next |
-| 06–34 | See the curriculum above | — | — |
+| 05 | Level, view and width problems | `05_level_view_and_width_problems.md` | Done |
+| 06 | Paths, ancestors and LCA in a binary tree | — | Next |
+| 07–34 | See the curriculum above | — | — |
 
 ---
 
 ## Next step
 
-Topics 01 to 04 are written: `01_binary_tree_fundamentals.md`, `02_iterative_traversals_and_morris.md`, `03_construction_and_serialization.md` and `04_bottom_up_recursion.md`. Study them, ask doubts, and say "next" for Topic 05.
+Topics 01 to 05 are written: `01_binary_tree_fundamentals.md`, `02_iterative_traversals_and_morris.md`, `03_construction_and_serialization.md`, `04_bottom_up_recursion.md` and `05_level_view_and_width_problems.md`. Study them, ask doubts, and say "next" for Topic 06.
