@@ -285,4 +285,4 @@ The week each core topic is scheduled for is in [`../../00_MASTER_PLAN.md`](../.
 
 ## Next step
 
-Topics 01 to 06 are written: `01_binary_tree_fundamentals.md`, `02_iterative_traversals_and_morris.md`, `03_construction_and_serialization.md`, `04_bottom_up_recursion.md` `05_level_view_and_width_problems.md` and `06_paths_ancestors_and_lca.md`. Study them, ask doubts, and say "next" for Topic 07.
+Topics 01 to 06 are written: `01_binary_tree_fundamentals.md`, `02_iterative_traversals_and_morris.md`, `03_construction_and_serialization.md`, `04_bottom_up_recursion.md`, `05_level_view_and_width_problems.md` and `06_paths_ancestors_and_lca.md`. Study them, ask doubts, and say "next" for Topic 07.
