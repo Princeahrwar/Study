@@ -286,11 +286,12 @@ The week each core topic is scheduled for is in [`../../00_MASTER_PLAN.md`](../.
 | 08 | BST problem patterns | `08_bst_problem_patterns.md` | Done |
 | 09 | Inside `std::set` and `std::map` | `09_inside_std_set_and_map.md` | Done |
 | 10 | Rotations and AVL trees | `10_rotations_and_avl_trees.md` | Done |
-| 11 | Red-black trees I: invariants, 2-3-4 correspondence, insertion | — | Next |
-| 12–34 | See the curriculum above | — | — |
+| 11 | Red-black trees I: invariants, 2-3-4 correspondence, insertion | `11_red_black_trees_invariants_and_insertion.md` | Done |
+| 12 | Red-black trees II: deletion and a complete implementation | — | Next |
+| 13–34 | See the curriculum above | — | — |
 
 ---
 
 ## Next step
 
-Topics 01 to 10 are written: `01_binary_tree_fundamentals.md`, `02_iterative_traversals_and_morris.md`, `03_construction_and_serialization.md`, `04_bottom_up_recursion.md`, `05_level_view_and_width_problems.md` and `06_paths_ancestors_and_lca.md`, `07_bst_core_operations.md` `08_bst_problem_patterns.md` and `09_inside_std_set_and_map.md` and `10_rotations_and_avl_trees.md`. Study them, ask doubts, and say "next" for Topic 11.
+Topics 01 to 11 are written: `01_binary_tree_fundamentals.md`, `02_iterative_traversals_and_morris.md`, `03_construction_and_serialization.md`, `04_bottom_up_recursion.md`, `05_level_view_and_width_problems.md` and `06_paths_ancestors_and_lca.md`, `07_bst_core_operations.md` `08_bst_problem_patterns.md` and `09_inside_std_set_and_map.md` `10_rotations_and_avl_trees.md` and `11_red_black_trees_invariants_and_insertion.md`. Study them, ask doubts, and say "next" for Topic 12.

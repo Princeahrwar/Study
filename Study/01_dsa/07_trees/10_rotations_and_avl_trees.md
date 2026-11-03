@@ -376,7 +376,7 @@ The measured memory and time against `std::set` on the same machine:
 | build time (insert all) | 817.0 ms | 818.4 ms |
 | lookup, mean per key | 821.0 ns | 1108.0 ns |
 
-The build times tie (other runs of the same program differed by up to 10% in either direction). The AVL lookup took 26% less time in the saved run and 26% to 33% less in the other runs I made, but the mean depths above are nearly equal, so the tree shape is not the reason. The most likely cause is the node: 32 bytes of heap per element against 48 means the tree is two thirds the size and more of it stays in cache. I did not isolate that. Remember also that the comparison is unfair in the other direction: the library container carries the full standard interface (iterators, allocators, comparators, node handles), and this class has a recursive insert for one key type.
+The build times tie (other runs of the same program differed by up to 10% in either direction). The AVL lookup took 26% less time in the saved run and 26% to 33% less in the other runs I made, but the mean depths above are nearly equal, so the tree shape is not the reason. A natural guess is the node size: 32 bytes of heap per element against 48 means a tree two thirds the size. Topic 11 weakens that guess: a red-black tree with exactly the shape of `std::set` and the same 48 heap bytes per element also looked up faster than `std::set` in my runs (by 9% to 27%). I did not find the cause. Remember also that the comparison is unfair in the other direction: the library container carries the full standard interface (iterators, allocators, comparators, node handles), and this class has a recursive insert for one key type.
 
 ---
 
