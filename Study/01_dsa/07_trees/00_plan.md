@@ -104,9 +104,9 @@ The week each core topic is scheduled for is in [`../../00_MASTER_PLAN.md`](../.
 ### Phase 4 — Self-Balancing Search Trees
 
 **10. Rotations and AVL trees**
-- Left and right rotations as the one primitive every balanced tree shares
-- AVL balance factor, the four imbalance cases, insert and delete
-- The height bound (about 1.44 log₂ n) from minimum-node AVL trees and Fibonacci numbers
+- Left and right rotations as the one primitive every balanced tree shares: what moves, which heights change, why the order cannot change
+- AVL balance factor, the four imbalance cases (LL, RR, LR, RL), full insert and erase with repair on the way up; one repair per insert, up to `O(log n)` per erase
+- The height bound (about 1.44 log₂ n) from minimum-node AVL trees and Fibonacci numbers; measured heights, depths, repair counts and size against `std::set`
 
 **11. Red-black trees I: invariants, 2-3-4 correspondence, insertion**
 - The five properties and why they bound height by 2 log₂(n + 1)
@@ -285,11 +285,12 @@ The week each core topic is scheduled for is in [`../../00_MASTER_PLAN.md`](../.
 | 07 | BST core operations | `07_bst_core_operations.md` + `07_bst_core_operations_demo.cpp` | Done |
 | 08 | BST problem patterns | `08_bst_problem_patterns.md` | Done |
 | 09 | Inside `std::set` and `std::map` | `09_inside_std_set_and_map.md` | Done |
-| 10 | Rotations and AVL trees | — | Next |
-| 11–34 | See the curriculum above | — | — |
+| 10 | Rotations and AVL trees | `10_rotations_and_avl_trees.md` | Done |
+| 11 | Red-black trees I: invariants, 2-3-4 correspondence, insertion | — | Next |
+| 12–34 | See the curriculum above | — | — |
 
 ---
 
 ## Next step
 
-Topics 01 to 09 are written: `01_binary_tree_fundamentals.md`, `02_iterative_traversals_and_morris.md`, `03_construction_and_serialization.md`, `04_bottom_up_recursion.md`, `05_level_view_and_width_problems.md` and `06_paths_ancestors_and_lca.md`, `07_bst_core_operations.md` `08_bst_problem_patterns.md` and `09_inside_std_set_and_map.md`. Study them, ask doubts, and say "next" for Topic 10.
+Topics 01 to 10 are written: `01_binary_tree_fundamentals.md`, `02_iterative_traversals_and_morris.md`, `03_construction_and_serialization.md`, `04_bottom_up_recursion.md`, `05_level_view_and_width_problems.md` and `06_paths_ancestors_and_lca.md`, `07_bst_core_operations.md` `08_bst_problem_patterns.md` and `09_inside_std_set_and_map.md` and `10_rotations_and_avl_trees.md`. Study them, ask doubts, and say "next" for Topic 11.
