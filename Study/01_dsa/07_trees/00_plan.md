@@ -96,8 +96,9 @@ The week each core topic is scheduled for is in [`../../00_MASTER_PLAN.md`](../.
 - Build a BST from preorder in O(n) and test a preorder; sorted array or list to a height-balanced BST; LCA and range sum by pruning
 
 **09. Inside `std::set` and `std::map`**
-- What the standard library actually builds (a red-black tree in libstdc++, libc++ and MSVC), what that costs per node, and its iterator guarantees
-- `lower_bound`/`upper_bound`/`equal_range`, `multiset` pitfalls, strict weak ordering and broken comparators
+- What the standard library actually builds (a red-black tree in libstdc++, libc++ and MSVC), what a node costs in bytes, and why scans are cache-bound
+- Inspecting a real `std::set`: red-black invariants and measured heights, iterator and reference guarantees, erase while iterating
+- `lower_bound`/`upper_bound`/`equal_range`, `multiset` pitfalls, strict weak ordering, broken comparators and transparent comparators
 - C++17 node handles (`extract`, `merge`); GNU `pb_ds` order-statistics tree
 
 ### Phase 4 — Self-Balancing Search Trees
@@ -283,11 +284,12 @@ The week each core topic is scheduled for is in [`../../00_MASTER_PLAN.md`](../.
 | 06 | Paths, ancestors and LCA in a binary tree | `06_paths_ancestors_and_lca.md` | Done |
 | 07 | BST core operations | `07_bst_core_operations.md` + `07_bst_core_operations_demo.cpp` | Done |
 | 08 | BST problem patterns | `08_bst_problem_patterns.md` | Done |
-| 09 | Inside `std::set` and `std::map` | — | Next |
-| 10–34 | See the curriculum above | — | — |
+| 09 | Inside `std::set` and `std::map` | `09_inside_std_set_and_map.md` | Done |
+| 10 | Rotations and AVL trees | — | Next |
+| 11–34 | See the curriculum above | — | — |
 
 ---
 
 ## Next step
 
-Topics 01 to 08 are written: `01_binary_tree_fundamentals.md`, `02_iterative_traversals_and_morris.md`, `03_construction_and_serialization.md`, `04_bottom_up_recursion.md`, `05_level_view_and_width_problems.md` and `06_paths_ancestors_and_lca.md`, `07_bst_core_operations.md` and `08_bst_problem_patterns.md`. Study them, ask doubts, and say "next" for Topic 09.
+Topics 01 to 09 are written: `01_binary_tree_fundamentals.md`, `02_iterative_traversals_and_morris.md`, `03_construction_and_serialization.md`, `04_bottom_up_recursion.md`, `05_level_view_and_width_problems.md` and `06_paths_ancestors_and_lca.md`, `07_bst_core_operations.md` `08_bst_problem_patterns.md` and `09_inside_std_set_and_map.md`. Study them, ask doubts, and say "next" for Topic 10.
