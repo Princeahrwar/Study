@@ -60,4 +60,4 @@ Log every attempt in [`../practice_log.md`](../practice_log.md).
 | 03 | Constraint backtracking | Written |
 | 04 | Divide and conquer and recurrences | Written |
 
-All four tutorials are written, so the recursion and backtracking area is complete. Solve the problems at the end of each one. The DSA track continues in [`../07_trees/00_plan.md`](../07_trees/00_plan.md), where Trees 01 to 14 are written. Track view: [`../00_plan.md`](../00_plan.md).
+All four tutorials are written, so the recursion and backtracking area is complete. Solve the problems at the end of each one. The DSA track continues in [`../07_trees/00_plan.md`](../07_trees/00_plan.md), where Trees 01 to 15 are written. Track view: [`../00_plan.md`](../00_plan.md).
