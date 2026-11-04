@@ -289,11 +289,12 @@ The week each core topic is scheduled for is in [`../../00_MASTER_PLAN.md`](../.
 | 11 | Red-black trees I: invariants, 2-3-4 correspondence, insertion | `11_red_black_trees_invariants_and_insertion.md` | Done |
 | 12 | Red-black trees II: deletion and a complete implementation | `12_red_black_trees_deletion_and_full_class.md` | Done |
 | 13 | The Linux kernel rbtree | `13_linux_kernel_rbtree.md` | Done |
-| 14 | Randomized and amortized trees | — | Next |
-| 15–34 | See the curriculum above | — | — |
+| 14 | Randomized and amortized trees | `14_randomized_and_amortized_trees.md` | Done |
+| 15 | Binary heaps | — | Next |
+| 16–34 | See the curriculum above | — | — |
 
 ---
 
 ## Next step
 
-Topics 01 to 13 are written: `01_binary_tree_fundamentals.md`, `02_iterative_traversals_and_morris.md`, `03_construction_and_serialization.md`, `04_bottom_up_recursion.md`, `05_level_view_and_width_problems.md` and `06_paths_ancestors_and_lca.md`, `07_bst_core_operations.md` `08_bst_problem_patterns.md` and `09_inside_std_set_and_map.md` `10_rotations_and_avl_trees.md`, `11_red_black_trees_invariants_and_insertion.md`, `12_red_black_trees_deletion_and_full_class.md` and `13_linux_kernel_rbtree.md`. Study them, ask doubts, and say "next" for Topic 14.
+Topics 01 to 14 are written: `01_binary_tree_fundamentals.md`, `02_iterative_traversals_and_morris.md`, `03_construction_and_serialization.md`, `04_bottom_up_recursion.md`, `05_level_view_and_width_problems.md` and `06_paths_ancestors_and_lca.md`, `07_bst_core_operations.md` `08_bst_problem_patterns.md` and `09_inside_std_set_and_map.md` `10_rotations_and_avl_trees.md`, `11_red_black_trees_invariants_and_insertion.md`, `12_red_black_trees_deletion_and_full_class.md`, `13_linux_kernel_rbtree.md` and `14_randomized_and_amortized_trees.md`. Study them, ask doubts, and say "next" for Topic 15.
