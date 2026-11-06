@@ -25,7 +25,7 @@ A graph is the general case that trees, grids, state machines, dependency lists 
 | 04 | [`04_bfs_on_states_and_grids.md`](04_bfs_on_states_and_grids.md) | Multi-source BFS, the lock, sliding puzzle and word ladder as implicit state graphs, bitmask and budget states, bidirectional BFS (when it helps and when it does not), 0-1 BFS, A* with measured trade-offs | Written |
 | 05 | [`05_shortest_paths_dijkstra.md`](05_shortest_paths_dijkstra.md) | Dijkstra with a heap and lazy deletion, why negative edges break it, path reconstruction and counting paths, heap vs set vs array scan (measured), minimax and probability costs, state-augmented Dijkstra | Written |
 | 06 | [`06_shortest_paths_negative_edges_and_all_pairs.md`](06_shortest_paths_negative_edges_and_all_pairs.md) | Bellman-Ford and negative cycles, the queue variant (measured), shortest and longest paths in a DAG, Floyd-Warshall with paths, bit-row transitive closure, Johnson's algorithm, at most k arcs | Written |
-| 07 | `07_minimum_spanning_trees.md` | Kruskal with union-find, Prim with a heap, the cut property, connecting points at minimum cost | To write |
+| 07 | [`07_minimum_spanning_trees.md`](07_minimum_spanning_trees.md) | The cut property, Kruskal with union-find, Prim with a heap (measured against Kruskal), array Prim for points, critical and pseudo-critical edges, the minimax path | Written |
 | 08 | `08_advanced_graphs.md` | Strongly connected components (Tarjan, Kosaraju), bridges and articulation points, Euler paths, 2-SAT as an idea | To write |
 | 09 | `09_network_flow_and_bipartite_matching.md` | Ford-Fulkerson and Edmonds-Karp, Dinic, max-flow min-cut, matching and Hall's theorem, assignment problems (stretch) | To write |
 
@@ -72,8 +72,8 @@ Log every attempt in [`../practice_log.md`](../practice_log.md).
 | 04 | BFS on states and grids | Written |
 | 05 | Shortest paths I: Dijkstra | Written |
 | 06 | Shortest paths II: negative edges and all pairs | Written |
-| 07 | Minimum spanning trees | Next |
-| 08 | Advanced graphs | To write |
+| 07 | Minimum spanning trees | Written |
+| 08 | Advanced graphs | Next |
 | 09 | Network flow and bipartite matching | To write |
 
 Back to the DSA track view: [`../00_plan.md`](../00_plan.md).
