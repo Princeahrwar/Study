@@ -23,7 +23,7 @@ A graph is the general case that trees, grids, state machines, dependency lists 
 | 02 | [`02_connectivity_and_cycles.md`](02_connectivity_and_cycles.md) | Connected components by search and by union-find, cycles in undirected graphs (skip the arrival edge, not the parent) and directed graphs (three colours), bipartite check with an odd-cycle proof, grid regions and flood fill; measured giant-component threshold, ring recursion crash, grid percolation | Written |
 | 03 | [`03_topological_sort.md`](03_topological_sort.md) | Kahn's algorithm (with levels, smallest-first heap and a uniqueness test) and reverse-postorder DFS, counting orders by subset DP, course schedule, alien dictionary, build systems and minimal rebuild; measured on a million-vertex DAG | Written |
 | 04 | [`04_bfs_on_states_and_grids.md`](04_bfs_on_states_and_grids.md) | Multi-source BFS, the lock, sliding puzzle and word ladder as implicit state graphs, bitmask and budget states, bidirectional BFS (when it helps and when it does not), 0-1 BFS, A* with measured trade-offs | Written |
-| 05 | `05_shortest_paths_dijkstra.md` | Dijkstra with a heap, why negative edges break it, path reconstruction and counting paths, state-augmented Dijkstra, grid Dijkstra | To write |
+| 05 | [`05_shortest_paths_dijkstra.md`](05_shortest_paths_dijkstra.md) | Dijkstra with a heap and lazy deletion, why negative edges break it, path reconstruction and counting paths, heap vs set vs array scan (measured), minimax and probability costs, state-augmented Dijkstra | Written |
 | 06 | `06_shortest_paths_negative_edges_and_all_pairs.md` | Bellman-Ford and negative cycles, shortest paths in a DAG, Floyd-Warshall, transitive closure, Johnson's algorithm | To write |
 | 07 | `07_minimum_spanning_trees.md` | Kruskal with union-find, Prim with a heap, the cut property, connecting points at minimum cost | To write |
 | 08 | `08_advanced_graphs.md` | Strongly connected components (Tarjan, Kosaraju), bridges and articulation points, Euler paths, 2-SAT as an idea | To write |
@@ -70,8 +70,8 @@ Log every attempt in [`../practice_log.md`](../practice_log.md).
 | 02 | Connectivity and cycles | Written |
 | 03 | Topological sort | Written |
 | 04 | BFS on states and grids | Written |
-| 05 | Shortest paths I: Dijkstra | Next |
-| 06 | Shortest paths II: negative edges and all pairs | To write |
+| 05 | Shortest paths I: Dijkstra | Written |
+| 06 | Shortest paths II: negative edges and all pairs | Next |
 | 07 | Minimum spanning trees | To write |
 | 08 | Advanced graphs | To write |
 | 09 | Network flow and bipartite matching | To write |
