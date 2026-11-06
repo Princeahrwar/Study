@@ -64,7 +64,7 @@ Each track has a `00_plan.md` with its topics, status, week, labs, interview que
 
 | # | Track | Code | Topics | Weeks | Hours |
 |---|---|---|---|---|---|
-| 01 | [DSA](01_dsa/00_plan.md) | DSA | 15 areas, 104 tutorials (89 core, 67 written), ~310 problems | 1–23 | ~230 core |
+| 01 | [DSA](01_dsa/00_plan.md) | DSA | 15 areas, 104 tutorials (89 core, 68 written), ~310 problems | 1–23 | ~230 core |
 | 02 | [C language](02_c_language/00_plan.md) | C | 8 | 1–8 | ~18 |
 | 03 | [C++](03_cpp/00_plan.md) | CPP | Primer (14, written) + 8 interview topics | 9–16 | ~20 |
 | 04 | [Computer organization](04_computer_organization/00_plan.md) | CO | 31 (all written) | 1–6 | ~70 core, ~83 all |

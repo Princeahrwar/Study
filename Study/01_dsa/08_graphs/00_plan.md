@@ -21,7 +21,7 @@ A graph is the general case that trees, grids, state machines, dependency lists 
 |---|---|---|---|
 | 01 | [`01_representations_and_traversal.md`](01_representations_and_traversal.md) | Edge list, adjacency list, adjacency matrix and compressed rows (CSR), with measured memory and build cost; BFS with distances, parents and path reconstruction; depth-first search without recursion, with discovery and finish times and the four edge kinds; the "mark on push or on pop" trap with a counterexample and a measured stack size; grids as implicit graphs; the recursion depth limit on a path graph | Written |
 | 02 | [`02_connectivity_and_cycles.md`](02_connectivity_and_cycles.md) | Connected components by search and by union-find, cycles in undirected graphs (skip the arrival edge, not the parent) and directed graphs (three colours), bipartite check with an odd-cycle proof, grid regions and flood fill; measured giant-component threshold, ring recursion crash, grid percolation | Written |
-| 03 | `03_topological_sort.md` | Kahn's algorithm and DFS order, course schedule, alien dictionary, build systems | To write |
+| 03 | [`03_topological_sort.md`](03_topological_sort.md) | Kahn's algorithm (with levels, smallest-first heap and a uniqueness test) and reverse-postorder DFS, counting orders by subset DP, course schedule, alien dictionary, build systems and minimal rebuild; measured on a million-vertex DAG | Written |
 | 04 | `04_bfs_on_states_and_grids.md` | Multi-source BFS, word ladder, sliding puzzle and lock problems as state graphs, bitmask states, bidirectional BFS, 0-1 BFS, A* as guided search | To write |
 | 05 | `05_shortest_paths_dijkstra.md` | Dijkstra with a heap, why negative edges break it, path reconstruction and counting paths, state-augmented Dijkstra, grid Dijkstra | To write |
 | 06 | `06_shortest_paths_negative_edges_and_all_pairs.md` | Bellman-Ford and negative cycles, shortest paths in a DAG, Floyd-Warshall, transitive closure, Johnson's algorithm | To write |
@@ -68,8 +68,8 @@ Log every attempt in [`../practice_log.md`](../practice_log.md).
 |---|---|---|
 | 01 | Representations and traversal | Written |
 | 02 | Connectivity and cycles | Written |
-| 03 | Topological sort | Next |
-| 04 | BFS on states and grids | To write |
+| 03 | Topological sort | Written |
+| 04 | BFS on states and grids | Next |
 | 05 | Shortest paths I: Dijkstra | To write |
 | 06 | Shortest paths II: negative edges and all pairs | To write |
 | 07 | Minimum spanning trees | To write |
