@@ -302,11 +302,12 @@ The week each core topic is scheduled for is in [`../../00_MASTER_PLAN.md`](../.
 | 24 | General trees, Euler tour and subtree queries | `24_general_trees_euler_tour_and_subtree_queries.md` | Done |
 | 25 | LCA at scale | `25_lca_at_scale.md` | Done |
 | 26 | Tree DP and rerooting | `26_tree_dp_and_rerooting.md` | Done |
-| 27 | Heavy-light and centroid decomposition | — | Next |
-| 28–34 | See the curriculum above | — | — |
+| 27 | Heavy-light and centroid decomposition | `27_heavy_light_and_centroid_decomposition.md` | Done |
+| 28 | Disjoint set union (union-find) | — | Next |
+| 29–34 | See the curriculum above | — | — |
 
 ---
 
 ## Next step
 
-Topics 01 to 26 are written: `01_binary_tree_fundamentals.md`, `02_iterative_traversals_and_morris.md`, `03_construction_and_serialization.md`, `04_bottom_up_recursion.md`, `05_level_view_and_width_problems.md` and `06_paths_ancestors_and_lca.md`, `07_bst_core_operations.md` `08_bst_problem_patterns.md` and `09_inside_std_set_and_map.md` `10_rotations_and_avl_trees.md`, `11_red_black_trees_invariants_and_insertion.md`, `12_red_black_trees_deletion_and_full_class.md`, `13_linux_kernel_rbtree.md`, `14_randomized_and_amortized_trees.md`, `15_binary_heaps.md`, `16_heap_patterns_and_advanced_heaps.md`, `17_tries.md`, `18_binary_tries_radix_trees_and_lpm.md`, `19_prefix_sums_sparse_tables_and_rmq.md`, `20_fenwick_tree.md`, `21_segment_tree_point_update_range_query.md` `22_segment_tree_lazy_propagation.md` and `23_segment_tree_persistent_dynamic_beats.md` `24_general_trees_euler_tour_and_subtree_queries.md` `25_lca_at_scale.md` and `26_tree_dp_and_rerooting.md`. Study them, ask doubts, and say "next" for Topic 27.
+Topics 01 to 27 are written: `01_binary_tree_fundamentals.md`, `02_iterative_traversals_and_morris.md`, `03_construction_and_serialization.md`, `04_bottom_up_recursion.md`, `05_level_view_and_width_problems.md` and `06_paths_ancestors_and_lca.md`, `07_bst_core_operations.md` `08_bst_problem_patterns.md` and `09_inside_std_set_and_map.md` `10_rotations_and_avl_trees.md`, `11_red_black_trees_invariants_and_insertion.md`, `12_red_black_trees_deletion_and_full_class.md`, `13_linux_kernel_rbtree.md`, `14_randomized_and_amortized_trees.md`, `15_binary_heaps.md`, `16_heap_patterns_and_advanced_heaps.md`, `17_tries.md`, `18_binary_tries_radix_trees_and_lpm.md`, `19_prefix_sums_sparse_tables_and_rmq.md`, `20_fenwick_tree.md`, `21_segment_tree_point_update_range_query.md` `22_segment_tree_lazy_propagation.md` and `23_segment_tree_persistent_dynamic_beats.md` `24_general_trees_euler_tour_and_subtree_queries.md` `25_lca_at_scale.md`, `26_tree_dp_and_rerooting.md` and `27_heavy_light_and_centroid_decomposition.md`. Study them, ask doubts, and say "next" for Topic 28.
