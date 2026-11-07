@@ -20,7 +20,7 @@ A greedy algorithm takes the best-looking choice at every step and never looks b
 | # | Tutorial | What it covers | Status |
 |---|---|---|---|
 | 01 | [`01_greedy_algorithms_and_proofs.md`](01_greedy_algorithms_and_proofs.md) | The two ingredients of a correct greedy (a safe greedy choice and optimal substructure); the exchange argument and "greedy stays ahead"; activity selection with the four natural rules, only one correct, and how often each wrong rule loses (48.9%, 5.7% and 0.045% of random instances); fractional knapsack and why 0/1 differs; Huffman coding with its optimality proof, Kraft's equality, canonical codes and the entropy bound; the jump games and the gas station as one-pass scans; coin change and canonical coin systems (most random systems are not); how to hunt for a counterexample by machine | Written |
-| 02 | `02_intervals_and_sweep_line.md` | Merge, insert, interval intersections, meeting rooms I and II, minimum removals, minimum arrows, event sweeps and difference arrays, boundary conventions (closed versus half-open) | To write |
+| 02 | [`02_intervals_and_sweep_line.md`](02_intervals_and_sweep_line.md) | Closed versus half-open intervals decided first (and the merge rule that is the same in both); merge, insert in O(n) and two-pointer intersection with proofs; meeting rooms I and II by heap, by two sorted arrays and by event sweep; minimum removals and minimum arrows as activity selection; the event sweep with its tie order, the difference array that replaces the sort (8 to 10 times faster than the heap at 1,000,000 intervals here), coordinate compression, union length and free gaps; an online calendar on an ordered map checking two neighbours | Written |
 | 03 | `03_greedy_scheduling_with_heaps.md` | Task scheduler, reorganise string, IPO, scheduling rules (shortest job first, earliest deadline, Johnson's two-machine rule), the heap as a greedy engine | To write |
 
 ---
@@ -54,7 +54,7 @@ Log every attempt in [`../practice_log.md`](../practice_log.md).
 | # | Tutorial | Status |
 |---|---|---|
 | 01 | Greedy algorithms and their proofs | Written |
-| 02 | Intervals and sweep line | To write |
+| 02 | Intervals and sweep line | Written |
 | 03 | Greedy scheduling with heaps | To write |
 
-Next: tutorial 02. Track view: [`../00_plan.md`](../00_plan.md).
+Next: tutorial 03. Track view: [`../00_plan.md`](../00_plan.md).
