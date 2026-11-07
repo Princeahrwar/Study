@@ -46,7 +46,7 @@ The order below is the study order. Each area builds on the ones before it: hash
 | 07 | [`07_trees/`](07_trees/00_plan.md) | 34 topics: 26 core, 8 stretch (all written) | ~45 | 1, 6–20 | Written |
 | 08 | [`08_graphs/`](08_graphs/00_plan.md) | 9 tutorials: 8 core, 1 stretch (all written) | ~38 | 11–12 | Written |
 | 09 | [`09_greedy_and_intervals/`](09_greedy_and_intervals/00_plan.md) | 3 tutorials (all written) | ~15 | 13 | Written |
-| 10 | `10_dynamic_programming/` | 8 tutorials: 7 core, 1 stretch (01 and 02 written) | ~42 | 13–15 | In progress |
+| 10 | `10_dynamic_programming/` | 8 tutorials: 7 core, 1 stretch (01 to 03 written) | ~42 | 13–15 | In progress |
 | 11 | `11_bits_and_math/` | 4 tutorials | ~16 | 15 | To write |
 | 12 | `12_string_algorithms/` | 6 tutorials: 4 core, 2 stretch | ~12 | 16 | To write |
 | 13 | `13_design_style_coding/` | 4 tutorials | ~12 | 20 | To write |
@@ -149,7 +149,7 @@ Planned in detail in [`09_greedy_and_intervals/00_plan.md`](09_greedy_and_interv
 
 ### 10 — Dynamic programming (weeks 13–15)
 
-Planned in detail in [`10_dynamic_programming/00_plan.md`](10_dynamic_programming/00_plan.md); tutorials 01 and 02 are written.
+Planned in detail in [`10_dynamic_programming/00_plan.md`](10_dynamic_programming/00_plan.md); tutorials 01 to 03 are written.
 
 | # | Tutorial | Key ideas |
 |---|---|---|
@@ -363,7 +363,7 @@ The tutorials are self-contained; these are for a second explanation or more pro
 | 07 Trees | 01 to 34 written (area complete) | Solve its problems |
 | 08 Graphs | 01 to 09 written (area complete) | Solve its problems |
 | 09 Greedy and intervals | 01 to 03 written (area complete) | Solve its problems |
-| 10 Dynamic programming | 01 and 02 written | 03 Grid and two-sequence DP |
+| 10 Dynamic programming | 01 to 03 written | 04 The knapsack family |
 | Other areas | Not started | Start in the week shown in section 3 |
 
 Updated every time a tutorial is written or studied. The cross-track view is in [`../00_MASTER_PLAN.md`](../00_MASTER_PLAN.md).
