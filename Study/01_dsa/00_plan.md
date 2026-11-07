@@ -45,7 +45,7 @@ The order below is the study order. Each area builds on the ones before it: hash
 | 06 | [`06_recursion_and_backtracking/`](06_recursion_and_backtracking/00_plan.md) | 4 tutorials (all written) | ~17 | 6 | Written |
 | 07 | [`07_trees/`](07_trees/00_plan.md) | 34 topics: 26 core, 8 stretch (all written) | ~45 | 1, 6–20 | Written |
 | 08 | [`08_graphs/`](08_graphs/00_plan.md) | 9 tutorials: 8 core, 1 stretch (all written) | ~38 | 11–12 | Written |
-| 09 | `09_greedy_and_intervals/` | 3 tutorials | ~15 | 13 | To write |
+| 09 | [`09_greedy_and_intervals/`](09_greedy_and_intervals/00_plan.md) | 3 tutorials (01 written) | ~15 | 13 | In progress |
 | 10 | `10_dynamic_programming/` | 8 tutorials: 7 core, 1 stretch | ~42 | 13–15 | To write |
 | 11 | `11_bits_and_math/` | 4 tutorials | ~16 | 15 | To write |
 | 12 | `12_string_algorithms/` | 6 tutorials: 4 core, 2 stretch | ~12 | 16 | To write |
@@ -138,6 +138,8 @@ The largest area, planned in detail in [`07_trees/00_plan.md`](07_trees/00_plan.
 | 09 | Network flow and bipartite matching | Ford-Fulkerson and Edmonds-Karp, Dinic, max-flow min-cut, matching and Hall's theorem, assignment problems | Stretch |
 
 ### 09 — Greedy and intervals (week 13)
+
+Planned in detail in [`09_greedy_and_intervals/00_plan.md`](09_greedy_and_intervals/00_plan.md); tutorial 01 is written.
 
 | # | Tutorial | Key ideas |
 |---|---|---|
@@ -358,6 +360,7 @@ The tutorials are self-contained; these are for a second explanation or more pro
 | 06 Recursion and backtracking | 01 to 04 written (area complete) | Solve its problems |
 | 07 Trees | 01 to 34 written (area complete) | Solve its problems |
 | 08 Graphs | 01 to 09 written (area complete) | Solve its problems |
+| 09 Greedy and intervals | 01 written | 02 Intervals and sweep line |
 | Other areas | Not started | Start in the week shown in section 3 |
 
 Updated every time a tutorial is written or studied. The cross-track view is in [`../00_MASTER_PLAN.md`](../00_MASTER_PLAN.md).
