@@ -23,7 +23,7 @@ Dynamic programming (DP) solves a problem by writing its answer in terms of the 
 | 01 | [`01_dp_fundamentals.md`](01_dp_fundamentals.md) | Overlapping subproblems and optimal substructure; Fibonacci from exponential recursion to memoisation, tabulation and O(1) space, with measured call counts; the five-step recipe (state, transition, base, order, answer); stairs and house robber in all three forms plus reconstruction of the choice; grid paths with obstacles and a rolling row; designing the state (circular robber, LIS ending at i, coin change); sparse state spaces and memoisation with a hash map (Collatz, where the map turned out slower than recomputing); recursion depth and stack frames; how to test a DP | Written |
 | 02 | [`02_one_dimensional_dp.md`](02_one_dimensional_dp.md) | Coin change (fewest coins, number of ways), word break, decode ways, perfect squares, maximum subarray and maximum product, LIS in O(n^2) and in O(n log n) with patience sorting, counting LIS | Written |
 | 03 | [`03_grid_and_two_sequence_dp.md`](03_grid_and_two_sequence_dp.md) | Unique paths, minimum path sum, maximal square, LCS, edit distance, distinct subsequences, interleaving strings, wildcard and regular-expression matching; recovering the alignment | Written |
-| 04 | `04_the_knapsack_family.md` | 0/1 and unbounded knapsack, why the loop direction matters, subset sum, partition, target sum, bounded knapsack by binary splitting, bitset speed-up | To write |
+| 04 | [`04_the_knapsack_family.md`](04_the_knapsack_family.md) | 0/1 and unbounded knapsack, why the loop direction matters, subset sum, partition, target sum, bounded knapsack by binary splitting, bitset speed-up | Written |
 | 05 | `05_interval_and_game_dp.md` | Interval DP (matrix chain, burst balloons, palindrome partitioning, strange printer), stone games and "predict the winner" as minimax DP, Nim and the idea behind Sprague-Grundy | To write |
 | 06 | `06_bitmask_and_state_machine_dp.md` | Bitmask DP (the travelling-salesman tour, assignment problems, partition into equal-sum subsets), stock problems as state machines, profile DP on a grid | To write |
 | 07 | `07_dp_on_trees_and_dags.md` | House robber III, tree cameras, diameter, rerooting, longest path in a DAG and DP over a topological order; links to the trees area | To write |
@@ -68,10 +68,10 @@ Log every attempt in [`../practice_log.md`](../practice_log.md).
 | 01 | DP fundamentals | Written |
 | 02 | One-dimensional DP | Written |
 | 03 | Grid and two-sequence DP | Written |
-| 04 | The knapsack family | To write |
+| 04 | The knapsack family | Written |
 | 05 | Interval and game DP | To write |
 | 06 | Bitmask and state-machine DP | To write |
 | 07 | DP on trees and DAGs | To write |
 | 08 | Counting, digit DP and optimisations | To write |
 
-Next: tutorial 04. Track view: [`../00_plan.md`](../00_plan.md).
+Next: tutorial 05. Track view: [`../00_plan.md`](../00_plan.md).
