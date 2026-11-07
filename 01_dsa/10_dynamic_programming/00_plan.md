@@ -25,7 +25,7 @@ Dynamic programming (DP) solves a problem by writing its answer in terms of the 
 | 03 | [`03_grid_and_two_sequence_dp.md`](03_grid_and_two_sequence_dp.md) | Unique paths, minimum path sum, maximal square, LCS, edit distance, distinct subsequences, interleaving strings, wildcard and regular-expression matching; recovering the alignment | Written |
 | 04 | [`04_the_knapsack_family.md`](04_the_knapsack_family.md) | 0/1 and unbounded knapsack, why the loop direction matters, subset sum, partition, target sum, bounded knapsack by binary splitting, bitset speed-up | Written |
 | 05 | [`05_interval_and_game_dp.md`](05_interval_and_game_dp.md) | Interval DP (matrix chain, burst balloons, palindrome partitioning, strange printer), stone games and "predict the winner" as minimax DP, Nim and the idea behind Sprague-Grundy | Written |
-| 06 | `06_bitmask_and_state_machine_dp.md` | Bitmask DP (the travelling-salesman tour, assignment problems, partition into equal-sum subsets), stock problems as state machines, profile DP on a grid | To write |
+| 06 | [`06_bitmask_and_state_machine_dp.md`](06_bitmask_and_state_machine_dp.md) | Bitmask DP (the travelling-salesman tour, assignment problems, partition into equal-sum subsets), stock problems as state machines, profile DP on a grid | Written |
 | 07 | `07_dp_on_trees_and_dags.md` | House robber III, tree cameras, diameter, rerooting, longest path in a DAG and DP over a topological order; links to the trees area | To write |
 | 08 | `08_counting_digit_dp_and_optimisations.md` | Counting with a modulus, digit DP, expected-value DP, divide-and-conquer optimisation, Knuth optimisation, the convex hull trick (stretch) | To write |
 
@@ -70,8 +70,8 @@ Log every attempt in [`../practice_log.md`](../practice_log.md).
 | 03 | Grid and two-sequence DP | Written |
 | 04 | The knapsack family | Written |
 | 05 | Interval and game DP | Written |
-| 06 | Bitmask and state-machine DP | To write |
+| 06 | Bitmask and state-machine DP | Written |
 | 07 | DP on trees and DAGs | To write |
 | 08 | Counting, digit DP and optimisations | To write |
 
-Next: tutorial 06. Track view: [`../00_plan.md`](../00_plan.md).
+Next: tutorial 07. Track view: [`../00_plan.md`](../00_plan.md).
