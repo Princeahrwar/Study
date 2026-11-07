@@ -21,7 +21,7 @@ A greedy algorithm takes the best-looking choice at every step and never looks b
 |---|---|---|---|
 | 01 | [`01_greedy_algorithms_and_proofs.md`](01_greedy_algorithms_and_proofs.md) | The two ingredients of a correct greedy (a safe greedy choice and optimal substructure); the exchange argument and "greedy stays ahead"; activity selection with the four natural rules, only one correct, and how often each wrong rule loses (48.9%, 5.7% and 0.045% of random instances); fractional knapsack and why 0/1 differs; Huffman coding with its optimality proof, Kraft's equality, canonical codes and the entropy bound; the jump games and the gas station as one-pass scans; coin change and canonical coin systems (most random systems are not); how to hunt for a counterexample by machine | Written |
 | 02 | [`02_intervals_and_sweep_line.md`](02_intervals_and_sweep_line.md) | Closed versus half-open intervals decided first (and the merge rule that is the same in both); merge, insert in O(n) and two-pointer intersection with proofs; meeting rooms I and II by heap, by two sorted arrays and by event sweep; minimum removals and minimum arrows as activity selection; the event sweep with its tie order, the difference array that replaces the sort (8 to 10 times faster than the heap at 1,000,000 intervals here), coordinate compression, union length and free gaps; an online calendar on an ordered map checking two neighbours | Written |
-| 03 | `03_greedy_scheduling_with_heaps.md` | Task scheduler, reorganise string, IPO, scheduling rules (shortest job first, earliest deadline, Johnson's two-machine rule), the heap as a greedy engine | To write |
+| 03 | [`03_greedy_scheduling_with_heaps.md`](03_greedy_scheduling_with_heaps.md) | The heap as a greedy engine in three patterns (most frequent, unlock then best, take everything then undo the worst); Task Scheduler with its closed form and Reorganize String with the exact impossibility bound; IPO and Minimum Refueling Stops (buying fuel in hindsight); Course Schedule III by Moore-Hodgson with its exchange argument; shortest processing time, Smith's rule, earliest due date and Johnson's two-machine rule, each proved by swapping and tested against every ordering; how often the wrong rule loses | Written |
 
 ---
 
@@ -55,6 +55,6 @@ Log every attempt in [`../practice_log.md`](../practice_log.md).
 |---|---|---|
 | 01 | Greedy algorithms and their proofs | Written |
 | 02 | Intervals and sweep line | Written |
-| 03 | Greedy scheduling with heaps | To write |
+| 03 | Greedy scheduling with heaps | Written |
 
-Next: tutorial 03. Track view: [`../00_plan.md`](../00_plan.md).
+All three tutorials of this area are written. Next area: [`../10_dynamic_programming/`](../00_plan.md) (Dynamic programming). Track view: [`../00_plan.md`](../00_plan.md).
