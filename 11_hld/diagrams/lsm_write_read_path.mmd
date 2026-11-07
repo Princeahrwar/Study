@@ -1,0 +1,17 @@
+%% 11_hld/01_fundamentals/09_storage_engines - LSM tree: why writes are cheap and reads are not
+flowchart TD
+  W["write(key, value)"] --> WAL["WAL append<br/>sequential + fsync = durability"]
+  W --> MT["Memtable<br/>sorted, in memory"]
+  MT -- "full" --> L0["SSTable at L0<br/>immutable, sorted run"]
+  L0 -- "compaction" --> L1["L1<br/>~10x larger, non-overlapping"]
+  L1 -- "compaction" --> L2["L2 ... Ln"]
+
+  R["read(key)"] --> MT2["Memtable?"]
+  MT2 -- "miss" --> BF0["L0 bloom filter"]
+  BF0 -- "maybe" --> S0["scan L0 SSTables"]
+  BF0 -- "definitely not" --> BF1["L1 bloom filter"]
+  S0 -- "miss" --> BF1
+  BF1 -- "maybe" --> S1["binary search L1"]
+  BF1 -- "definitely not" --> DEEP["...deeper levels"]
+
+  COMP["Background compaction"] -. "competes for I/O and CPU<br/>= the p99 latency spikes" .-> R
