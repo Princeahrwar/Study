@@ -41,7 +41,7 @@ When Prince says **"continue next"**, write the next unwritten tutorial in the p
 
 ## Progress snapshot (2026-11-09)
 
-- **DSA (area 01):** 92 of 104 tutorials written. Areas 01 to 11 are complete (arrays and strings, hashing, binary search and sorting, linked lists, stacks and queues, recursion and backtracking, trees, graphs, greedy and intervals, dynamic programming, bits and math). Area 12 (string algorithms) has 01 KMP and the Z-function, 02 rolling hash and Rabin-Karp and 03 palindromes and Manacher written. Still to write: area 12 04 to 06 (3); area 13 design-style coding (4); area 14 theory and advanced techniques (4); area 15 pattern map and drills (1).
+- **DSA (area 01):** 93 of 104 tutorials written. Areas 01 to 11 are complete (arrays and strings, hashing, binary search and sorting, linked lists, stacks and queues, recursion and backtracking, trees, graphs, greedy and intervals, dynamic programming, bits and math). Area 12 (string algorithms) has 01 KMP and the Z-function, 02 rolling hash and Rabin-Karp, 03 palindromes and Manacher and 04 multi-pattern matching with Aho-Corasick written. Still to write: area 12 05 to 06 (2); area 13 design-style coding (4); area 14 theory and advanced techniques (4); area 15 pattern map and drills (1).
 - **C language (area 02):** 8 tutorials planned; 01 types, conversions and undefined behaviour is written. Next is 02 pointers and arrays.
 - **Other areas** (C++, computer organization, OS, Linux, networking, kernel, drivers, LLD, HLD, GPU, embedded, projects, interviews) have plans and some earlier material; see each `00_plan.md`.
 - **Order:** finish the remaining DSA tutorials first (Prince asked for that), then continue the C track.
