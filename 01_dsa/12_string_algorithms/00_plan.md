@@ -22,7 +22,7 @@ Searching and analysing text: pattern matching in linear time, hashing substring
 |---|---|---|---|---|
 | 01 | [`01_kmp_and_the_z_function.md`](01_kmp_and_the_z_function.md) | Why the naive search is `O(n m)`, borders and the prefix function (and why it is linear), KMP search, the Z-function and Z search, smallest period and repeated blocks, all borders, the shortest palindrome by prepending, prefix occurrence counts, rotation, the KMP automaton, and measured comparisons with `std::string::find`, `strstr` and the naive loop | Core | Written |
 | 02 | [`02_rolling_hash_and_rabin_karp.md`](02_rolling_hash_and_rabin_karp.md) | Polynomial substring hashes in `O(1)`, arithmetic modulo `2^61 - 1`, Rabin-Karp with and without verification (Las Vegas and Monte Carlo), the collision bound `(L-1)/M` and the birthday effect, why `mod 2^64` and a fixed base are broken (Thue-Morse), longest duplicate and common substring by binary search, `O(1)` palindrome queries, measured costs | Core | Written |
-| 03 | `03_palindromes_and_manacher.md` | Expand around centre; Manacher in O(n) | Core | To write |
+| 03 | [`03_palindromes_and_manacher.md`](03_palindromes_and_manacher.md) | Centres and radii, why expansion is quadratic, Manacher's algorithm (two-array and padded forms), `O(1)` palindrome queries, longest and count, fewest cuts, shortest palindrome by prepending, the palindromic tree (eertree) for distinct palindromes and occurrence counts, measured costs | Core | Written |
 | 04 | `04_multi_pattern_matching_tries_and_aho_corasick.md` | Failure links on a trie, matching thousands of patterns in one pass (builds on Trees 18) | Core | To write |
 | 05 | `05_automata_and_regular_expressions.md` | DFAs and NFAs, Thompson's construction, regex matching without backtracking, why backtracking engines can blow up | Stretch | To write |
 | 06 | `06_suffix_arrays_and_automata.md` | Suffix array with LCP, distinct substrings, the idea of a suffix automaton | Stretch | To write |
@@ -35,7 +35,8 @@ Searching and analysing text: pattern matching in linear time, hashing substring
 |---|---|
 | 01 | Find the Index of the First Occurrence in a String (28), Repeated Substring Pattern (459), Shortest Palindrome (214), Longest Happy Prefix (1392), Rotate String (796), Repeated String Match (686), Maximum Repeating Substring (1668), Sum of Scores of Built Strings (2223), Find All Good Strings (1397, hard) |
 | 02 | Find the Index of the First Occurrence in a String (28), Repeated DNA Sequences (187), Longest Duplicate Substring (1044), Maximum Length of Repeated Subarray (718), Longest Common Subpath (1923), Distinct Echo Substrings (1316), Longest Chunked Palindrome Decomposition (1147), Find Substring With Given Hash Value (2156), Longest Happy Prefix (1392) |
-| 03 to 06 | Added when each tutorial is written |
+| 03 | Longest Palindromic Substring (5), Palindromic Substrings (647), Palindrome Partitioning (131), Palindrome Partitioning II (132), Palindrome Partitioning IV (1745), Shortest Palindrome (214), Maximum Number of Non-overlapping Palindrome Substrings (2472), Palindrome Pairs (336), Maximum Product of the Length of Two Palindromic Substrings (1960) |
+| 04 to 06 | Added when each tutorial is written |
 
 Log every attempt in [`../practice_log.md`](../practice_log.md).
 
@@ -47,7 +48,7 @@ Log every attempt in [`../practice_log.md`](../practice_log.md).
 |---|---|---|
 | 01 | KMP and the Z-function | Written |
 | 02 | Rolling hash and Rabin-Karp | Written |
-| 03 | Palindromes and Manacher | To write |
+| 03 | Palindromes and Manacher | Written |
 | 04 | Multi-pattern matching: tries and Aho-Corasick | To write |
 | 05 | Automata and regular expressions | To write |
 | 06 | Suffix arrays and suffix automata | To write |
