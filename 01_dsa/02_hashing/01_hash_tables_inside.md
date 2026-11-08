@@ -807,4 +807,12 @@ Expect the time to grow about 4 times for every doubling of N, because inserting
 - **Flooding:** attacker keys in one bucket turn n operations into O(n²); a fixed hash can be inverted; use a secret key (SipHash) or trees in buckets.
 - **`std::unordered_map` (libstdc++):** node per entry, identity hash for integers, prime bucket counts, max load 1.0, references survive rehash, iterators do not, `m[key]` inserts.
 
+---
+
+## Sources
+
+- Counts, outputs and timings in this tutorial were produced by running the code shown in it on the machine described in the text. Times are that machine's, not yours.
+- The algorithms and data structures are standard; for further reading see the "Extra practice and resources" section of the [area plan](00_plan.md), which lists the textbook chapters and free references for this area. The explanations and code are my own.
+- LeetCode numbers and titles are from memory; check a number before you rely on it.
+
 **Next:** Hashing tutorial 02, hashing patterns (seen-sets, counting and top K, two-sum style lookups, canonical keys, longest consecutive sequence; the prefix-sum map is in Arrays 04). Say "next" when you are ready.

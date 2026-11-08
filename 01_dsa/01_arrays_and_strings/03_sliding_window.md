@@ -490,4 +490,12 @@ std::string minWindow(const std::string& s, const std::string& t) {
 - Negative numbers break the shrinking rule: use prefix sums (tutorial 04).
 - Ask before coding: fixed or variable? longest, shortest or count? what is the summary?
 
+---
+
+## Sources
+
+- Counts, outputs and timings in this tutorial come from the companion `03_sliding_window_demo.cpp` (it prints the number of checks it passed) on the machine described in the text. Times are that machine's, not yours.
+- The algorithms and data structures are standard; for further reading see the "Extra practice and resources" section of the [area plan](00_plan.md), which lists the textbook chapters and free references for this area. The explanations and code are my own.
+- LeetCode numbers and titles are from memory; check a number before you rely on it.
+
 **Next:** tutorial 04, Prefix Sums and Difference Arrays. Say "next" when you are ready.

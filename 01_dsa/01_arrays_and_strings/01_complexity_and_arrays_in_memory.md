@@ -752,4 +752,12 @@ Brute force is O(n²) time, O(1) space. The map version is O(n) time on average,
 - Four moves: one pass with running state, read and write indices, swap with last, reverse in place.
 - In an interview: brute force, then the improvement, then the trade-off. Always say time **and** space.
 
+---
+
+## Sources
+
+- Counts, outputs and timings in this tutorial were produced by running the code shown in it on the machine described in the text. Times are that machine's, not yours.
+- The algorithms and data structures are standard; for further reading see the "Extra practice and resources" section of the [area plan](00_plan.md), which lists the textbook chapters and free references for this area. The explanations and code are my own.
+- LeetCode numbers and titles are from memory; check a number before you rely on it.
+
 **Next:** tutorial 02, Two Pointers. Say "next" when you are ready.

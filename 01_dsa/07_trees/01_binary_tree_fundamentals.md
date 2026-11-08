@@ -1069,28 +1069,67 @@ And when you give the complexity, give both numbers: "O(n) time, O(h) space, whi
 
 ---
 
-## 15. Practice for this topic
+## 15. Questions you will be asked
+
+1. Define depth, height and level, and say whether your function counts nodes or edges. Which convention does LeetCode 104 use?
+2. How many null links does a binary tree with `n` nodes have? (`n + 1`; section 4.4.)
+3. Give the three depth-first orders. Which one visits a node after both children, and what is it used for? (Postorder: delete, evaluate, compute height.)
+4. How would you do a level-order traversal, and why must you snapshot the queue size at the start of each level?
+5. What are the time and space of a recursive traversal on a balanced tree? On a skewed tree?
+6. How would you destroy a tree with a million nodes in a chain without overflowing the stack?
+7. Why does a tree class that owns raw pointers need the Rule of 5?
+8. How does a first-child, next-sibling layout store an N-ary tree as a binary tree?
+
+## 16. Problems
+
+### 16.1 On paper
+
+**A.** For the tree with root 1, children 2 and 3, and 2 having a left child 4, write the preorder, inorder, postorder and level-order sequences.
+
+**B.** The same tree: height in nodes and in edges; number of leaves; number of null links.
+
+**C.** A tree has `n` nodes. Say the number of null links, and the minimum and maximum height.
+
+### 16.2 On LeetCode
 
 Do these after implementing `BinaryTree` and the traversals yourself once, from memory. Recursive solutions are fine for now; Topic 02 revisits the first three iteratively.
 
-1. LeetCode 144: Binary Tree Preorder Traversal
-2. LeetCode 94: Binary Tree Inorder Traversal
-3. LeetCode 145: Binary Tree Postorder Traversal
-4. LeetCode 102: Binary Tree Level Order Traversal (the width snapshot)
-5. LeetCode 107: Binary Tree Level Order Traversal II
-6. LeetCode 637: Average of Levels in Binary Tree
-7. LeetCode 515: Find Largest Value in Each Tree Row
-8. LeetCode 104: Maximum Depth of Binary Tree (note which convention it uses)
-9. LeetCode 111: Minimum Depth of Binary Tree (write the DFS and the early-exit BFS)
-10. LeetCode 1302: Deepest Leaves Sum
-11. LeetCode 589 and 590: N-ary Tree Preorder and Postorder Traversal (Section 11.2)
-12. LeetCode 559: Maximum Depth of N-ary Tree (careful: it counts nodes, so it is `naryHeight` + 1)
-13. LeetCode 429: N-ary Tree Level Order Traversal
-14. LeetCode 150: Evaluate Reverse Polish Notation (postfix from Section 10, evaluated with a stack instead of a tree)
+| Problem | Number | How to approach |
+|---|---|---|
+| Binary Tree Preorder, Inorder, Postorder Traversal | 144, 94, 145 | Recursion with a result vector; only the position of the "visit" line changes |
+| Binary Tree Level Order Traversal | 102 | Queue; take `size = q.size()` at the start of each level and pop exactly that many |
+| Binary Tree Level Order Traversal II | 107 | Same, then reverse the list of levels |
+| Average of Levels in Binary Tree | 637 | Per level sum in `long long`, then divide as `double` |
+| Find Largest Value in Each Tree Row | 515 | Per level maximum |
+| Maximum Depth of Binary Tree | 104 | `1 + max(depth(left), depth(right))`; counts nodes |
+| Minimum Depth of Binary Tree | 111 | A node with one child is not a leaf, so take the minimum only over existing children; or BFS and stop at the first leaf |
+| Deepest Leaves Sum | 1302 | BFS and keep the sum of the last level |
+| N-ary Tree Preorder / Postorder Traversal | 589, 590 | Loop over `children` between the visit and the recursion |
+| Maximum Depth of N-ary Tree | 559 | Counts nodes, so it is `naryHeight + 1` |
+| N-ary Tree Level Order Traversal | 429 | Same queue as 102 |
+| Evaluate Reverse Polish Notation | 150 | Stack; pop right operand first, then left; division truncates toward zero |
+
+### Answers
+
+**A.** Preorder `1 2 4 3`, inorder `4 2 1 3`, postorder `4 2 3 1`, level order `1 2 3 4`.
+
+**B.** Height 3 in nodes (2 in edges); leaves 4 and 3, so 2; null links `n + 1 = 5`.
+
+**C.** `n + 1` null links. Minimum height `floor(log2(n)) + 1` nodes, maximum `n` (a chain).
+
+## Cheat sheet
+
+- **Tree:** nodes, one root, every other node has one parent. Binary: at most two children, `n` nodes have `n + 1` null links.
+- **Height:** say nodes or edges; leaf is 1 node (0 edges). LeetCode 104 counts nodes.
+- **DFS orders:** preorder (node, left, right) copies a tree; inorder (left, node, right) is sorted for a BST; postorder (left, right, node) deletes and computes heights.
+- **BFS:** queue; snapshot the size to separate levels.
+- **Cost:** O(n) time; space O(h), which is O(log n) balanced and O(n) skewed.
+- **Ownership:** Rule of 5; destroy and clone iteratively for deep trees.
+- **Combine-children pattern:** a recursive metric returns a value from the two child results (section 9).
 
 ---
 
-## 16. Run the companion
+## 17. Run the companion
 
 ```text
 g++ -std=c++17 -Wall -Wextra -fsanitize=address,undefined 01_binary_tree_fundamentals_demo.cpp -o demo && ./demo
@@ -1101,6 +1140,14 @@ It prints the sideways trees from Section 10.1, the two `sizeof` values from Sec
 With sanitizers on, the million-node tests take about 15 seconds. Without them (`-O2`), the whole run takes under a second.
 
 ---
+
+---
+
+## Sources
+
+- Counts, outputs and timings in this tutorial come from the companion `01_binary_tree_fundamentals_demo.cpp` (it prints the number of checks it passed) on the machine described in the text. Times are that machine's, not yours.
+- The algorithms and data structures are standard; for further reading see the "Extra practice and resources" section of the [area plan](00_plan.md), which lists the textbook chapters and free references for this area. The explanations and code are my own.
+- LeetCode numbers and titles are from memory; check a number before you rely on it.
 
 ## What's next
 

@@ -577,4 +577,12 @@ The answers are no, no, yes, yes, yes, yes (15 and 18 are above 12). The probes 
 - LeetCode problem statements for 4, 81, 153, 154, 162, 540 and 852 (constraints, examples, difficulty), read from the [doocs.org mirror](https://leetcode.doocs.org/en/lc/154) of the statements; 33 from [a statement mirror](https://ycj.codeberg.page/problems/0033-search-in-rotated-sorted-array); 74 from [dyclassroom](https://dyclassroom.com/leetcode-problems/74-search-a-2d-matrix) and 240 from [designgurus](https://www.designgurus.io/answers/detail/240-search-a-2d-matrix-ii-2search4) (statements and constraints only; their difficulty was not stated, so it is not given here); 981 from [a statement copy](https://cnblogs.com/Dylan-Java-NYC/p/11921783.html). More practice: 1095 and 275 from the [doocs.org mirror](https://leetcode.doocs.org/en/lc/1095/) ([275](https://leetcode.doocs.org/en/lc/275/)), 1901 from [algo.monster](https://algo.monster/liteproblems/1901).
 - TimSort and galloping mode: [Wikipedia's Timsort article](https://wiki.krisyotam.com/content/wikipedia_en_all_nopic_2026-03/Timsort) (read through a mirror).
 
+---
+
+## Sources
+
+- Counts, outputs and timings in this tutorial come from the companion `03_rotated_peak_and_2d_search_demo.cpp` (it prints the number of checks it passed) on the machine described in the text. Times are that machine's, not yours.
+- The algorithms and data structures are standard; for further reading see the "Extra practice and resources" section of the [area plan](00_plan.md), which lists the textbook chapters and free references for this area. The explanations and code are my own.
+- LeetCode numbers and titles are from memory; check a number before you rely on it.
+
 **Next:** tutorial 04, sorting algorithms inside (merge sort, quicksort and its partitions, heapsort, counting, bucket and radix sort, the n log n lower bound, stability, introsort). Say "next" when you are ready.

@@ -641,33 +641,67 @@ Expected output: `49/49 checks passed`. The sanitizer flags matter: they would c
 
 ---
 
-## 10. Practice problems (in this order)
+## 10. Questions you will be asked
 
-**Dummy node**
-- LC 203, Remove Linked List Elements
-- LC 83, Remove Duplicates from Sorted List
-- LC 82, Remove Duplicates from Sorted List II *(the dummy is essential: the head can be a duplicate)*
-- LC 86, Partition List *(two dummies, one per partition)*
+1. Why does a dummy node remove the special case for the head? Show the bug it prevents in "remove all nodes with value `v`".
+2. Find the middle of a list in one pass. Which middle do you get for an even length, and how do you change that?
+3. Remove the `n`-th node from the end in one pass. What gap do you keep, and where do both pointers start?
+4. Detect a cycle in O(1) space. Prove that the fast pointer must meet the slow one.
+5. Why speed 2? What happens with speed 3?
+6. Given a cycle, how do you find its entry node? Derive why resetting one pointer to the head works.
+7. Reverse a list iteratively and recursively. What are the costs of each?
+8. Why is a recursive reversal risky on a list of 10^6 nodes?
+9. Reorder a list `L0 -> Ln -> L1 -> Ln-1 ...` in O(1) space: which three techniques combine?
 
-**Two pointers**
-- LC 876, Middle of the Linked List *(done in Topic 1)*
-- LC 19, Remove Nth Node From End of List
+## 11. Problems (in this order)
 
-**Floyd**
-- LC 141, Linked List Cycle
-- LC 142, Linked List Cycle II
-- LC 287, Find the Duplicate Number *(Floyd on an array)*
-- LC 202, Happy Number *(Floyd on a function)*
+Where to solve: LeetCode. How to approach each is in the hint column.
 
-**Reversal**
-- LC 206, Reverse Linked List *(do both iterative and recursive)*
-- LC 24, Swap Nodes in Pairs *(the `k = 2` case; a gentle warm-up for LC 25)*
-- LC 92, Reverse Linked List II
-- LC 25, Reverse Nodes in k-Group
+| Group | Problem | Number | How to approach |
+|---|---|---|---|
+| Dummy node | Remove Linked List Elements | 203 | Dummy before head; unlink without advancing `prev` |
+| Dummy node | Remove Duplicates from Sorted List | 83 | One pointer; skip while `cur->next->val == cur->val` |
+| Dummy node | Remove Duplicates from Sorted List II | 82 | Dummy and `prev`; when a run repeats, skip the whole run, not all but one |
+| Dummy node | Partition List | 86 | Two dummies (small, large), append to each, join them, set the last large node's `next` to null |
+| Two pointers | Middle of the Linked List | 876 | Fast and slow; second middle for even length |
+| Two pointers | Remove Nth Node From End of List | 19 | Both start at the dummy; advance `fast` `n + 1` steps, then move both; `slow` is the node before the target |
+| Floyd | Linked List Cycle | 141 | Fast and slow meet iff there is a cycle |
+| Floyd | Linked List Cycle II | 142 | After they meet, restart one pointer at the head and move both one step at a time; they meet at the entry |
+| Floyd | Find the Duplicate Number | 287 | Treat `i -> nums[i]` as a list; the duplicate is the cycle entry; do not modify the array |
+| Floyd | Happy Number | 202 | Next value is the sum of squares of digits; Floyd on the function |
+| Reversal | Reverse Linked List | 206 | Three pointers `prev`, `curr`, `next`; also write the recursive form |
+| Reversal | Swap Nodes in Pairs | 24 | Dummy; swap two nodes at a time by relinking, not by swapping values |
+| Reversal | Reverse Linked List II | 92 | Walk to the node before `left`, then head-insert the next `right - left` nodes |
+| Reversal | Reverse Nodes in k-Group | 25 | Check `k` nodes exist; reverse the group; reconnect; a short tail stays as it is |
+| Synthesis | Reorder List | 143 | Find the middle, reverse the second half, merge alternately |
+| Synthesis | Palindrome Linked List | 234 | Middle, reverse the second half, compare; restore the list if you must not change it |
 
-**Synthesis**
-- LC 143, Reorder List *(the capstone above; write it without looking)*
-- LC 234, Palindrome Linked List *(middle + reverse + compare; it returns in Phase 5, so doing it now is a head start)*
+### Answers to the questions (short)
+
+- **Dummy node:** the head has no predecessor, so removing it is a different code path from removing any other node. A dummy gives it one, so a single loop works and you return `dummy.next`.
+- **Middle:** with `slow` one step and `fast` two, `slow` ends at the second middle for an even length; stop `fast` one step earlier (`fast->next && fast->next->next`) to get the first.
+- **Nth from the end:** the gap is `n + 1` between `fast` and `slow`, both starting at the dummy, so `slow` stops on the predecessor of the node to remove.
+- **Why they meet:** inside the cycle the gap changes by 1 each step, so it must pass through every value modulo the cycle length, including 0. Speed 3 also works for detection, but the gap can skip over a multiple of the cycle length in some cases and the analysis for the entry point is no longer the clean one in section 3.
+- **Cycle entry:** at the meeting point the fast pointer has travelled twice the slow one's distance; solving gives that the distance from the head to the entry equals the distance from the meeting point to the entry (modulo the cycle length), so two pointers moving at speed 1, one from each place, meet at the entry (section 3.4).
+- **Recursion risk:** reversal recurses once per node; at 10^6 nodes the call stack overflows (section 5.3).
+- **Reorder list:** find the middle (two pointers), reverse the second half, merge (pointer relinking).
+
+## Cheat sheet
+
+- **Dummy node** before the head whenever the head can change; return `dummy.next`.
+- **Fast and slow** for the middle (ratio 2) and for cycles; **fixed gap** for the nth from the end.
+- **Floyd:** meet inside the cycle; restart one pointer at the head; both at speed 1 meet at the entry. Cycle length: loop once more.
+- **Reverse:** save `next`, flip `curr->next = prev`, advance. Iterative is O(1) space; recursive is O(n) stack.
+- **Reverse a range or a group:** walk to the predecessor, reverse the exact number of nodes, reconnect both ends.
+- **Reorder / palindrome:** middle, reverse the second half, then merge or compare.
+- **Check:** `fast && fast->next` in that order; compare node addresses for cycles, not values; free a cyclic list only after breaking it.
+
+---
+
+## Sources
+
+- Floyd's cycle detection, the dummy node and in-place reversal are standard; see Knuth, *The Art of Computer Programming* volume 2 (exercise on cycle detection) and CLRS. The explanations and code here are my own, and the companion code is tested as described in section 9.
+- LeetCode numbers and titles are from memory; check a number before you rely on it.
 
 ---
 

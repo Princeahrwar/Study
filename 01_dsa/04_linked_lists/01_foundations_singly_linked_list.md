@@ -1,12 +1,12 @@
 # Topic 1: Foundations of Singly Linked Lists (C++)
 
-*Part of the [Linked List Study Plan](./00_plan.md) — Phase 1*
+*Part of the [Linked List Study Plan](./00_plan.md), Phase 1*
 
 ---
 
 ## 1. What Is a Linked List, Really?
 
-A linked list is a **chain of independently heap-allocated nodes**, where each node stores a value and a pointer to the next node. There is no requirement that the nodes sit anywhere near each other in memory — the *only* thing holding the sequence together is the chain of pointers.
+A linked list is a **chain of independently heap-allocated nodes**, where each node stores a value and a pointer to the next node. There is no requirement that the nodes sit anywhere near each other in memory, the *only* thing holding the sequence together is the chain of pointers.
 
 ```mermaid
 graph LR
@@ -16,7 +16,7 @@ graph LR
     N3 --> N4["data: 30\nnext: nullptr"]
 ```
 
-Compare that to a `std::vector<int>` holding the same values — one contiguous block:
+Compare that to a `std::vector<int>` holding the same values, one contiguous block:
 
 ```mermaid
 graph LR
@@ -25,7 +25,7 @@ graph LR
     end
 ```
 
-That structural difference — **scattered + pointer-linked** vs **contiguous** — is the root cause of every tradeoff you'll see below. It's not a detail, it's *the* concept for this whole topic.
+That structural difference, **scattered + pointer-linked** vs **contiguous**, is the root cause of every tradeoff you'll see below. It's not a detail, it's *the* concept for this whole topic.
 
 ---
 
@@ -34,11 +34,11 @@ That structural difference — **scattered + pointer-linked** vs **contiguous** 
 | Aspect | Array / `std::vector` | Singly Linked List |
 |---|---|---|
 | Memory layout | Contiguous | Scattered, heap-allocated nodes |
-| Random access `a[i]` | O(1) | O(n) — must walk from head |
-| Insert/delete at **front** | O(n) — must shift everything | O(1) |
+| Random access `a[i]` | O(1) | O(n), must walk from head |
+| Insert/delete at **front** | O(n), must shift everything | O(1) |
 | Insert/delete at **back** | O(1) amortized | O(1) with a `tail` pointer, O(n) to pop without one |
 | Insert/delete in the **middle** | O(n) to shift | O(n) to *find* the spot, O(1) to link once you're there |
-| Cache locality | Excellent (sequential prefetch) | Poor — every `->next` can be a cache miss (this comes back hard in Phase 6) |
+| Cache locality | Excellent (sequential prefetch) | Poor, every `->next` can be a cache miss (this comes back hard in Phase 6) |
 | Extra memory per element | None | One pointer per node (8 bytes on 64-bit, per link) |
 | Iterator/reference stability | Insertion can invalidate all existing iterators/pointers (reallocation) | Pointers to *other* nodes stay valid after you insert/delete elsewhere |
 
@@ -64,23 +64,23 @@ struct Node {
 };
 ```
 
-Why `struct`, not `class`? By convention, a node is a plain aggregate of data with no invariants to protect — everything is public. Reach for `class` when the type has behavior and invariants to enforce (that's exactly what the list wrapper below is). Why two constructors? So `pushBack(std::move(bigObject))` moves instead of copies — this matters once `T` is expensive to copy (a `std::string`, a big struct), and it costs nothing when `T` is cheap (an `int`).
+Why `struct`, not `class`? By convention, a node is a plain aggregate of data with no invariants to protect, everything is public. Reach for `class` when the type has behavior and invariants to enforce (that's exactly what the list wrapper below is). Why two constructors? So `pushBack(std::move(bigObject))` moves instead of copies, this matters once `T` is expensive to copy (a `std::string`, a big struct), and it costs nothing when `T` is cheap (an `int`).
 
 ---
 
-## 4. The List Class — Design Decisions
+## 4. The List Class, Design Decisions
 
 Three decisions shape everything that follows:
 
-1. **Keep a `tail` pointer.** Without one, `pushBack` is O(n) because you have to walk the whole list to find the last node. This is the single most common beginner mistake — writing a linked list that's "correct" but silently O(n) on an operation everyone assumes is cheap.
+1. **Keep a `tail` pointer.** Without one, `pushBack` is O(n) because you have to walk the whole list to find the last node. This is the single most common beginner mistake, writing a linked list that's "correct" but silently O(n) on an operation everyone assumes is cheap.
 2. **Keep a `count`.** `size()` becoming O(n) (by walking and counting) is avoidable for one `size_t` of bookkeeping.
-3. **Define the Rule of 5.** If you don't write a copy constructor, C++ generates one that does a **shallow copy** — it copies the `head` pointer's *value*, not the chain. Two `SinglyLinkedList` objects then both believe they own the same nodes. The first one destroyed frees them; the second one's destructor then double-frees — undefined behavior, and a classic C++ interview gotcha in its own right.
+3. **Define the Rule of 5.** If you don't write a copy constructor, C++ generates one that does a **shallow copy**, it copies the `head` pointer's *value*, not the chain. Two `SinglyLinkedList` objects then both believe they own the same nodes. The first one destroyed frees them; the second one's destructor then double-frees, undefined behavior, and a classic C++ interview gotcha in its own right.
 
 ---
 
 ## 5. Core Operations
 
-### 5.1 `pushFront` — O(1)
+### 5.1 `pushFront`, O(1)
 
 ```mermaid
 graph LR
@@ -99,14 +99,14 @@ graph LR
 void pushFront(const T& value) {
     Node<T>* node = new Node<T>(value, head);
     head = node;
-    if (tail == nullptr) tail = head;   // list was empty — head and tail are now the same node
+    if (tail == nullptr) tail = head;   // list was empty, head and tail are now the same node
     ++count;
 }
 ```
 
-The new node's `next` is set to the *old* `head` in the constructor, before `head` itself is reassigned — order matters here, but the constructor argument makes it safe by construction.
+The new node's `next` is set to the *old* `head` in the constructor, before `head` itself is reassigned, order matters here, but the constructor argument makes it safe by construction.
 
-### 5.2 `pushBack` — O(1) (because we kept `tail`)
+### 5.2 `pushBack`, O(1) (because we kept `tail`)
 
 ```cpp
 void pushBack(const T& value) {
@@ -121,7 +121,7 @@ void pushBack(const T& value) {
 }
 ```
 
-### 5.3 `insertAt(pos, value)` — O(pos)
+### 5.3 `insertAt(pos, value)`, O(pos)
 
 Insert so the new node becomes the element at index `pos` (0-indexed). `insertAt(0, v)` is `pushFront`; `insertAt(size(), v)` is `pushBack`.
 
@@ -139,22 +139,22 @@ void insertAt(size_t pos, const T& value) {
 }
 ```
 
-### 5.4 `popFront` — O(1)
+### 5.4 `popFront`, O(1)
 
 ```cpp
 void popFront() {
     if (head == nullptr) throw std::out_of_range("popFront: list is empty");
     Node<T>* doomed = head;
     head = head->next;
-    if (head == nullptr) tail = nullptr;   // list just became empty — don't leave tail dangling
+    if (head == nullptr) tail = nullptr;   // list just became empty, don't leave tail dangling
     delete doomed;
     --count;
 }
 ```
 
-### 5.5 `popBack` — O(n), and this is the honest tradeoff of a *singly* linked list
+### 5.5 `popBack`, O(n), and this is the honest tradeoff of a *singly* linked list
 
-To remove the tail you need the node *before* it, and a singly linked list gives you no way to go backward — so you must walk from `head`. (This single operation is the main reason Phase 3 introduces the doubly linked list, where `popBack` is O(1).)
+To remove the tail you need the node *before* it, and a singly linked list gives you no way to go backward, so you must walk from `head`. (This single operation is the main reason Phase 3 introduces the doubly linked list, where `popBack` is O(1).)
 
 ```cpp
 void popBack() {
@@ -173,7 +173,7 @@ void popBack() {
 }
 ```
 
-### 5.6 `removeValue(value)` — O(n)
+### 5.6 `removeValue(value)`, O(n)
 
 ```mermaid
 graph LR
@@ -203,7 +203,7 @@ bool removeValue(const T& value) {
 
 Note both edge cases handled explicitly: removing the head (`prev == nullptr`) and removing the tail (`curr == tail`). Skipping either is the #1 source of bugs in hand-rolled linked list code.
 
-### 5.7 `contains` / search — O(n)
+### 5.7 `contains` / search, O(n)
 
 ```cpp
 bool contains(const T& value) const {
@@ -220,19 +220,19 @@ bool contains(const T& value) const {
 | Operation | Time | Why |
 |---|---|---|
 | `pushFront` | O(1) | just relink `head` |
-| `pushBack` | O(1) | *only* because we track `tail` — O(n) otherwise |
+| `pushBack` | O(1) | *only* because we track `tail`, O(n) otherwise |
 | `insertAt(pos)` | O(pos) | must walk to the position first |
 | `popFront` | O(1) | just relink `head` |
-| `popBack` | O(n) | must find the node *before* `tail` — no backward pointer |
+| `popBack` | O(n) | must find the node *before* `tail`, no backward pointer |
 | `removeValue` | O(n) | search + unlink |
 | `contains` / search | O(n) | no way to skip nodes |
-| access by index | O(n) | no random access — the key difference from `std::vector` |
+| access by index | O(n) | no random access, the key difference from `std::vector` |
 
 ---
 
 ## 7. Common Pitfalls (worth memorizing, not just reading)
 
-**Pitfall 1 — deleting before reading `next`:**
+**Pitfall 1, deleting before reading `next`:**
 ```cpp
 // WRONG: undefined behavior
 while (head != nullptr) {
@@ -249,13 +249,13 @@ while (head != nullptr) {
 }
 ```
 
-**Pitfall 2 — forgetting to null out `tail` when the list becomes empty.** After the last `popFront`/`popBack`, if you don't reset `tail`, it's left pointing at freed memory. The very next `pushBack` will then write through a dangling pointer.
+**Pitfall 2, forgetting to null out `tail` when the list becomes empty.** After the last `popFront`/`popBack`, if you don't reset `tail`, it's left pointing at freed memory. The very next `pushBack` will then write through a dangling pointer.
 
-**Pitfall 3 — shallow copies.** Without the Rule of 5 (copy ctor, copy assignment, destructor — plus move ctor/assignment for completeness), copying a list copies the `head` pointer's value, not the nodes. Two objects now "own" the same chain → double free on destruction.
+**Pitfall 3, shallow copies.** Without the Rule of 5 (copy ctor, copy assignment, destructor, plus move ctor/assignment for completeness), copying a list copies the `head` pointer's value, not the nodes. Two objects now "own" the same chain → double free on destruction.
 
-**Pitfall 4 — empty-list edge cases.** Every operation that touches `head` or `tail` needs an explicit check for the empty list, or you dereference `nullptr`.
+**Pitfall 4, empty-list edge cases.** Every operation that touches `head` or `tail` needs an explicit check for the empty list, or you dereference `nullptr`.
 
-**Pitfall 5 — comparing pointers instead of values.** `curr == value` is a type error waiting to happen if `T` is convertible from a pointer; the intended check is always `curr->data == value`.
+**Pitfall 5, comparing pointers instead of values.** `curr == value` is a type error waiting to happen if `T` is convertible from a pointer; the intended check is always `curr->data == value`.
 
 ---
 
@@ -434,19 +434,70 @@ Build and run it as-is: `g++ -std=c++17 -Wall -Wextra list.cpp -o list && ./list
 
 ---
 
-## 9. Practice for This Topic
+## 9. Questions you will be asked
 
-Do these *after* you've implemented the class above yourself, from memory, once — that's what actually cements it:
+1. Why is `pushBack` O(1) here but O(n) in a list that keeps only `head`? What invariant must every operation keep?
+2. Why is `popBack` O(n) even with a `tail` pointer?
+3. What breaks if `tail` is not reset when the list becomes empty? Show the sequence of calls.
+4. A linked list and a `std::vector` both hold 1,000,000 ints. Which uses more memory, which iterates faster, and why? (Cache lines and per-node allocation overhead; the cache effect is explained in [Arrays and strings 01](../01_arrays_and_strings/01_complexity_and_arrays_in_memory.md).)
+5. When is a linked list the right choice? (Constant-time insert or erase at a position you already hold, stable references to elements, splicing.) When is it the wrong one?
+6. What does the Rule of 5 require for this class, and what goes wrong with the compiler-generated copy?
+7. Why can destroying a very long list overflow the stack if the destructor is written recursively?
+8. How do you remove a node when you have only a pointer to that node (LeetCode 237)? What can it not remove?
 
-- LeetCode 707 — Design Linked List (forces you to hit every edge case above)
-- LeetCode 203 — Remove Linked List Elements
-- LeetCode 237 — Delete Node in a Linked List (a fun trick: no access to the previous node)
-- LeetCode 876 — Middle of the Linked List (a preview of Phase 2's two-pointer technique)
+## 10. Problems
+
+Implement the class from section 8 yourself, from memory, once, before the LeetCode problems.
+
+### 10.1 On paper
+
+**A.** Starting from an empty list, apply `pushBack(1)`, `pushBack(2)`, `popFront()`, `popFront()`, `pushBack(3)`. After each call write `head`, `tail` and `size`. Which call is the one that must reset `tail`?
+
+**B.** The loop `while (head) { delete head; head = head->next; }` is wrong. Write the corrected loop and say which pointer you must save.
+
+**C.** For a list of `n` nodes, give the number of pointer hops for `pushFront`, `pushBack` (with and without `tail`), `popBack` and `contains` in the worst case.
+
+### 10.2 On LeetCode
+
+| Problem | Number | Where | How to approach |
+|---|---|---|---|
+| Design Linked List | 707 | LeetCode | Singly linked with a size counter; check the index against `size` before walking; every edge case in section 7 appears here |
+| Remove Linked List Elements | 203 | LeetCode | Walk with `prev` and `curr`; do not advance `prev` after an unlink; the head may match, which is what the next topic's dummy node removes |
+| Delete Node in a Linked List | 237 | LeetCode | You hold the node, not its predecessor: copy the next node's value into this one, then unlink the next node. Works only for a non-tail node |
+| Middle of the Linked List | 876 | LeetCode | Two pointers, one moving twice as fast; for an even length it returns the second middle (previewed here, built in the next topic) |
+
+### Answers
+
+**A.** After `pushBack(1)`: head = tail = 1, size 1. After `pushBack(2)`: head 1, tail 2, size 2. After the first `popFront()`: head 2, tail 2, size 1. After the second `popFront()`: head and tail must both become null, size 0. That is the call that resets `tail`. After `pushBack(3)`: head = tail = 3, size 1.
+
+**B.** `while (head) { Node* next = head->next; delete head; head = next; }`. Save `next` before the delete, because reading through a freed pointer is undefined behaviour.
+
+**C.** `pushFront` 0 hops. `pushBack` 0 with a `tail`, `n - 1` without. `popBack` `n - 2` (walk to the node before `tail`), so O(n). `contains` up to `n`.
+
+**237.** `node->val = node->next->val; node->next = node->next->next;` (and free the old next node if you own it). It copies a value instead of unlinking the node itself, so any outside pointer to the next node now dangles; that is why it is a trick, not a technique.
+
+**876.** `slow = fast = head; while (fast && fast->next) { slow = slow->next; fast = fast->next->next; } return slow;`
+
+## Cheat sheet
+
+- A node holds a value and a `next` pointer; nodes sit anywhere in memory. Access by index is O(n).
+- Track `head`, `tail` and `size`. `pushFront`, `popFront` and (with `tail`) `pushBack` are O(1); `popBack` is O(n).
+- Save `next` before you delete. Reset `tail` when the list empties. Check the empty list in every operation.
+- Own your nodes: Rule of 5 (copy, move, destructor), and free iteratively so a long list cannot overflow the stack.
+- Compare values with `curr->data == value`, not pointers.
+- Use a list for stable references and O(1) splicing; use a vector when you iterate or index.
+
+---
+
+## Sources
+
+- The operations, complexities and pitfalls are standard; see CLRS (the section on linked lists) and Stroustrup, *The C++ Programming Language* (copy and move). The explanations and code here are my own, and the companion implementation is tested as described in section 8.
+- LeetCode numbers and titles are from memory; check a number before you rely on it.
 
 ---
 
 ## What's Next
 
-Phase 2 builds directly on this class: the two-pointer (fast/slow) technique, Floyd's cycle detection, and reversing a list in place — all of which reuse this exact `Node`/list shape.
+Phase 2 builds directly on this class: the two-pointer (fast/slow) technique, Floyd's cycle detection, and reversing a list in place, all of which reuse this exact `Node`/list shape.
 
 Study this, ask whatever doubts come up, and say "next" when you're ready for Topic 2.

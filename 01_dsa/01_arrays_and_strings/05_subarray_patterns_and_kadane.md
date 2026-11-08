@@ -792,4 +792,12 @@ The function `maxProfitUnlimited` of section 7.2 is the answer. For `{1, 2, 3, 4
 - **Stock:** 121 Kadane on changes; 122 sum of rises; fee: cash and hold; cooldown: hold, sold, idle; at most k: `buy[j]`, `sell[j]`, and `k >= n/2` means unlimited.
 - **Systems:** Kadane's empty-allowed loop is the CUSUM change detector; Misra-Gries finds top talkers with k − 1 counters; mergeable summaries parallelise.
 
+---
+
+## Sources
+
+- Counts, outputs and timings in this tutorial were produced by running the code shown in it on the machine described in the text. Times are that machine's, not yours.
+- The algorithms and data structures are standard; for further reading see the "Extra practice and resources" section of the [area plan](00_plan.md), which lists the textbook chapters and free references for this area. The explanations and code are my own.
+- LeetCode numbers and titles are from memory; check a number before you rely on it.
+
 **Next:** tutorial 06, Matrix Traversal and In-Place Tricks. Say "next" when you are ready.

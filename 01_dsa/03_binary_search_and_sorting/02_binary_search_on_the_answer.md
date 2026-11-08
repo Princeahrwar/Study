@@ -573,4 +573,12 @@ The interval is 2 wide, and ⌈log2(2 / 10^-12)⌉ = ⌈40.86⌉ = **41** rounds
 - USACO Guide, [Binary Search on the Answer](https://usaco-guide-git-patch-1.cpinitiative.vercel.app/silver/binary-search-ans) (the answer function must be monotone; the "first true" and "last true" forms; `long long` for large bounds). cp-algorithms, [Binary search](https://gh.cp-algorithms.com/1384/num_methods/binary_search.html) (real-valued search in O(log((R - L) / δ))). CSES, *Factory Machines* and *Array Division*, with the binary-search solution described on the [USACO Guide solution pages](https://usaco-guide-git-simulationredo.cpinitiative.vercel.app/solutions/cses-1620).
 - PyTorch Lightning, [`BatchSizeFinder`](https://lightning.ai/docs/pytorch/latest/api/lightning.pytorch.callbacks.BatchSizeFinder.html) (the `power` and `binsearch` modes and the `margin`).
 
+---
+
+## Sources
+
+- Counts, outputs and timings in this tutorial come from the companion `02_binary_search_on_the_answer_demo.cpp` (it prints the number of checks it passed) on the machine described in the text. Times are that machine's, not yours.
+- The algorithms and data structures are standard; for further reading see the "Extra practice and resources" section of the [area plan](00_plan.md), which lists the textbook chapters and free references for this area. The explanations and code are my own.
+- LeetCode numbers and titles are from memory; check a number before you rely on it.
+
 **Next:** tutorial 03, rotated, peak and 2D search (rotated arrays, peak finding, sorted matrices, median of two sorted arrays, exponential search). Say "next" when you are ready.

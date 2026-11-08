@@ -673,4 +673,12 @@ The splits are `[7, 3] | [5, 3, 1]`, then `[5] | [3, 1]`. The merges, in order: 
 - glibc `qsort`: [LWN, January 2024](https://lwn.net/Articles/960309). Linux kernel: `lib/sort.c` at [v5.8.1](https://elixir.free-electrons.com/linux/v5.8.1/source/lib/sort.c) and [`lib/list_sort.c`](https://android.googlesource.com/kernel/common/+/52d1e606ee733/lib/list_sort.c).
 - Python: the [Sorting HOWTO](https://docs.python.org/3.11/howto/sorting.html). Java: the [source of `java.util.Arrays`](https://code.yawk.at/java/8/java/util/Arrays.java) (a mirror of an older JDK; the version is not stated on the page). GNU sort: the [manual](https://www-zeuthen.desy.de/dv/documentation/unixguide/infohtml/coreutils/sort-invocation.html).
 
+---
+
+## Sources
+
+- Counts, outputs and timings in this tutorial come from the companion `04_sorting_algorithms_inside_demo.cpp` (it prints the number of checks it passed) on the machine described in the text. Times are that machine's, not yours.
+- The algorithms and data structures are standard; for further reading see the "Extra practice and resources" section of the [area plan](00_plan.md), which lists the textbook chapters and free references for this area. The explanations and code are my own.
+- LeetCode numbers and titles are from memory; check a number before you rely on it.
+
 **Next:** tutorial 05, sorting patterns and comparators (strict weak ordering and what breaks when it is wrong, quickselect and median of medians, top-K by heap versus selection versus bucket, interval sorting). Say "next" when you are ready.

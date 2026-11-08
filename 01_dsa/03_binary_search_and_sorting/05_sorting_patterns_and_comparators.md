@@ -585,4 +585,12 @@ Groups of 5, `n = 100`: 20 groups; the pivot is the 10th smallest median, so at 
 - Selection: [MIT 6.046J, lecture 6](https://www.ocw.mit.edu/courses/6-046j-introduction-to-algorithms-sma-5503-fall-2005/ca4e5673e2b64eacc5691cda564cba49_lec6.pdf) (groups of 5, the 3n/4 bound); *Introduction to Algorithms* (CLRS), chapter 9; Blum, Floyd, Pratt, Rivest and Tarjan, "Time bounds for selection", 1973.
 - Java: [JDK-8134576](https://bugs.openjdk.org/browse/JDK-8134576) (the contract exception appears on some inputs and not on others; closed as Won't Fix). Python: [Sorting Techniques](https://docs.python.org/3/howto/sorting.html) (the key function is called once per record; `functools.cmp_to_key`).
 
+---
+
+## Sources
+
+- Counts, outputs and timings in this tutorial come from the companion `05_sorting_patterns_and_comparators_demo.cpp` (it prints the number of checks it passed) on the machine described in the text. Times are that machine's, not yours.
+- The algorithms and data structures are standard; for further reading see the "Extra practice and resources" section of the [area plan](00_plan.md), which lists the textbook chapters and free references for this area. The explanations and code are my own.
+- LeetCode numbers and titles are from memory; check a number before you rely on it.
+
 **Next:** this closes the binary search and sorting area, so solve its problem lists before moving on. The next tutorial is Linked lists 03, doubly and circular lists (the sentinel node behind `std::list` and the Linux kernel's `list_head`). Say "next" when you are ready.

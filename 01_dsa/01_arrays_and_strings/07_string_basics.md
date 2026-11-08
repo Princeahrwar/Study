@@ -847,4 +847,12 @@ The function `compareVersion` of section 4.3 is the answer (reading revisions on
 - **Building:** `+=` and `reserve`; never `s = s + c`; build backwards and reverse once instead of inserting at the front; use views instead of `substr`.
 - **C strings:** `strlen` is O(n); `strncpy` may not terminate; use `snprintf`. **memmove:** `dst` below `src` (or no overlap) front to back, else back to front.
 
+---
+
+## Sources
+
+- Counts, outputs and timings in this tutorial come from the companion `07_string_basics_demo.cpp` (it prints the number of checks it passed) on the machine described in the text. Times are that machine's, not yours.
+- The algorithms and data structures are standard; for further reading see the "Extra practice and resources" section of the [area plan](00_plan.md), which lists the textbook chapters and free references for this area. The explanations and code are my own.
+- LeetCode numbers and titles are from memory; check a number before you rely on it.
+
 **Next:** area 02, Hashing. Say "next" when you are ready.

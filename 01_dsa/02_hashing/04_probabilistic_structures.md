@@ -812,4 +812,12 @@ The table in section 1 says what each structure answers and how it merges. The f
 - Apache Cassandra, [Bloom filters](https://cassandra.apache.org/doc/4.0/operating/bloom_filters.html) (a filter per SSTable, `bloom_filter_fp_chance`, the memory comparison). RocksDB wiki, [RocksDB Bloom Filter](https://github.com/facebook/rocksdb/wiki/RocksDB-Bloom-Filter) (bits per key against rate, cache-local filters, point lookups).
 - Apache Cloudberry's copy of PostgreSQL's [`hyperloglog.c`](https://apache.googlesource.com/cloudberry/+/HEAD/src/backend/lib/hyperloglog.c) (α constants 0.673, 0.697, 0.709 and 0.7213/(1 + 1.079/m), linear counting at 2.5 m, a large-range correction for 32-bit hashes).
 
+---
+
+## Sources
+
+- Counts, outputs and timings in this tutorial come from the companion `04_probabilistic_structures_demo.cpp` (it prints the number of checks it passed) on the machine described in the text. Times are that machine's, not yours.
+- The algorithms and data structures are standard; for further reading see the "Extra practice and resources" section of the [area plan](00_plan.md), which lists the textbook chapters and free references for this area. The explanations and code are my own.
+- LeetCode numbers and titles are from memory; check a number before you rely on it.
+
 **Next:** hashing is complete (tutorials 01 to 04). The next DSA area is 03, binary search and sorting, starting with tutorial 01, binary search templates (loop invariants, `lower_bound` and `upper_bound`). Say "next" when you are ready.

@@ -500,4 +500,12 @@ The test `a[i] <= 7` on `[9, 7, 7, 4, 1]` gives `no, yes, yes, yes, yes`, so `fi
 - [`git bisect` documentation](https://code.googlesource.com/git/+/07f14d31abeb00437c2e5d3f6074d56582957e1d/Documentation/git-bisect.txt) (binary search, the "roughly 10 steps" example). Linux [`lib/bsearch.c`](https://android-kvm.googlesource.com/linux/+/refs/tags/v5.8/lib/bsearch.c) (v5.8).
 - Algorithmica, [Binary Search](https://en.algorithmica.org/hpc/data-structures/binary-search/) (branch-free search, why it loses its edge on large arrays, Eytzinger layout).
 
+---
+
+## Sources
+
+- Counts, outputs and timings in this tutorial come from the companion `01_binary_search_templates_demo.cpp` (it prints the number of checks it passed) on the machine described in the text. Times are that machine's, not yours.
+- The algorithms and data structures are standard; for further reading see the "Extra practice and resources" section of the [area plan](00_plan.md), which lists the textbook chapters and free references for this area. The explanations and code are my own.
+- LeetCode numbers and titles are from memory; check a number before you rely on it.
+
 **Next:** tutorial 02, binary search on the answer (monotone predicates: minimum eating speed, ship capacity, split array largest sum). Say "next" when you are ready.

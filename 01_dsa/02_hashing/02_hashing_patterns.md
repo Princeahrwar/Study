@@ -792,4 +792,12 @@ The test: keep the last `W` accepted ids in a plain vector, scan it for each new
 | top K | count, then buckets, heap or `nth_element` | O(n), O(n + d log k), O(n + d) |
 | cycle without memory | slow and fast walker | O(1) space |
 
+---
+
+## Sources
+
+- Counts, outputs and timings in this tutorial come from the companion `02_hashing_patterns_demo.cpp` (it prints the number of checks it passed) on the machine described in the text. Times are that machine's, not yours.
+- The algorithms and data structures are standard; for further reading see the "Extra practice and resources" section of the [area plan](00_plan.md), which lists the textbook chapters and free references for this area. The explanations and code are my own.
+- LeetCode numbers and titles are from memory; check a number before you rely on it.
+
 **Next:** Hashing tutorial 03, design a hash map (Robin Hood hashing with backward-shift deletion, cuckoo hashing, the Swiss-table idea, iterators and the rehash policy, LRU cache). Say "next" when you are ready.

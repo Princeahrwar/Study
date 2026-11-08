@@ -789,4 +789,12 @@ A hash map from key to list node and a list ordered by last touch, as in section
 - The Go blog, Faster Go maps with Swiss Tables: [go.dev/blog/swisstable](https://go.dev/blog/swisstable) (groups of 8, 64-bit control word, 8-byte SIMD on amd64 with a portable fallback, tables of at most 1024 entries that grow independently).
 - Redis, `dict.c`: [github.com/redis/redis/blob/unstable/src/dict.c](https://github.com/redis/redis/blob/unstable/src/dict.c) (two tables, `rehashidx`, a rehash step per operation, inserts into the new table, lookups in both).
 
+---
+
+## Sources
+
+- Counts, outputs and timings in this tutorial come from the companion `03_design_a_hash_map_demo.cpp` (it prints the number of checks it passed) on the machine described in the text. Times are that machine's, not yours.
+- The algorithms and data structures are standard; for further reading see the "Extra practice and resources" section of the [area plan](00_plan.md), which lists the textbook chapters and free references for this area. The explanations and code are my own.
+- LeetCode numbers and titles are from memory; check a number before you rely on it.
+
 **Next:** Hashing tutorial 04, probabilistic structures (Bloom filter, counting Bloom and cuckoo filters, count-min sketch, HyperLogLog, MinHash). Say "next" when you are ready.

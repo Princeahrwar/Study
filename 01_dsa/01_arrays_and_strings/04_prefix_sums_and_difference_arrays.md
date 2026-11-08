@@ -692,4 +692,12 @@ O(n + number of bookings). For bookings `{1,2,10}`, `{2,3,20}`, `{2,5,25}` and `
 - Counters, counting sort offsets, histogram percentiles and parallel scan are all prefix sums.
 - Mixed updates and queries: Fenwick or segment tree. Static range min/max: sparse table.
 
+---
+
+## Sources
+
+- Counts, outputs and timings in this tutorial were produced by running the code shown in it on the machine described in the text. Times are that machine's, not yours.
+- The algorithms and data structures are standard; for further reading see the "Extra practice and resources" section of the [area plan](00_plan.md), which lists the textbook chapters and free references for this area. The explanations and code are my own.
+- LeetCode numbers and titles are from memory; check a number before you rely on it.
+
 **Next:** tutorial 05, Subarray Patterns and Kadane. Say "next" when you are ready.

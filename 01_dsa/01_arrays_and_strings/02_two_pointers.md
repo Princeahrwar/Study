@@ -449,4 +449,12 @@ Why it is correct: whenever `height[l] < height[r]`, the tallest wall at or beyo
 - Use `int` for pointers, `long long` for sums, `l < r` for pairs.
 - Duplicates in the answer: sort, then skip equal values at each level.
 
+---
+
+## Sources
+
+- Counts, outputs and timings in this tutorial come from the companion `02_two_pointers_demo.cpp` (it prints the number of checks it passed) on the machine described in the text. Times are that machine's, not yours.
+- The algorithms and data structures are standard; for further reading see the "Extra practice and resources" section of the [area plan](00_plan.md), which lists the textbook chapters and free references for this area. The explanations and code are my own.
+- LeetCode numbers and titles are from memory; check a number before you rely on it.
+
 **Next:** tutorial 03, Sliding Window. Say "next" when you are ready.
