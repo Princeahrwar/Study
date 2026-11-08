@@ -47,7 +47,7 @@ The order below is the study order. Each area builds on the ones before it: hash
 | 08 | [`08_graphs/`](08_graphs/00_plan.md) | 9 tutorials: 8 core, 1 stretch (all written) | ~38 | 11–12 | Written |
 | 09 | [`09_greedy_and_intervals/`](09_greedy_and_intervals/00_plan.md) | 3 tutorials (all written) | ~15 | 13 | Written |
 | 10 | [`10_dynamic_programming/`](10_dynamic_programming/00_plan.md) | 8 tutorials: 7 core, 1 stretch (all written) | ~42 | 13–15 | Written |
-| 11 | `11_bits_and_math/` | 4 tutorials | ~16 | 15 | To write |
+| 11 | [`11_bits_and_math/`](11_bits_and_math/00_plan.md) | 4 tutorials (01 written) | ~16 | 15 | In progress |
 | 12 | `12_string_algorithms/` | 6 tutorials: 4 core, 2 stretch | ~12 | 16 | To write |
 | 13 | `13_design_style_coding/` | 4 tutorials | ~12 | 20 | To write |
 | 14 | `14_theory_and_advanced_techniques/` | 4 tutorials: 1 core, 3 stretch | ~4 | 21 and after | To write |
