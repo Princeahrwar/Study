@@ -23,18 +23,18 @@ Bit tricks, number theory, counting and probability, and a little geometry. Thes
 | 01 | [`01_bit_manipulation.md`](01_bit_manipulation.md) | The three identities (`x & (x - 1)`, `x & -x`, `x \| (x + 1)`), four ways to count bits, `ctz`/`clz`/log2/reverse/parity, XOR puzzles (single number in the once, twice and thrice forms, missing number, `xor_upto`), Gray code, counting bits over ranges and pairs, bitmasks as sets (submask enumeration and its `3^n` cost, Gosper's hack, sum over subsets), addition/division/multiplication with bits, AND of a range, maximum XOR | Written |
 | 02 | [`02_number_theory_and_arithmetic.md`](02_number_theory_and_arithmetic.md) | Euclid's gcd and its step count, overflow-safe lcm, extended Euclid and Bezout, modular arithmetic with 128-bit and portable `mulmod`, fast exponentiation, three modular inverses (extended Euclid, Fermat, the linear table), the simple and linear sieves, trial-division factoring, divisors and Euler's phi, deterministic Miller-Rabin for 64 bits, overflow-safe midpoint and ceiling division, trailing zeros of `n!`, `Pow(x, n)`, integer square root by binary search and Newton | Written |
 | 03 | [`03_combinatorics_probability_and_sampling.md`](03_combinatorics_probability_and_sampling.md) | Exact `C(n, k)` without overflow, Pascal's triangle, factorial and inverse-factorial tables, multinomials, stars and bars, Lucas' theorem, Catalan numbers, inclusion-exclusion and derangements, linearity of expectation, birthday and coupon collector, Fisher-Yates and the biased shuffle (counted exactly), reservoir sampling, weighted choice by prefix sums and the alias method, `rand10` from `rand7`, modulo bias, rejection sampling | Written |
-| 04 | `04_geometry_for_interviews.md` | Cross product and orientation, segment intersection, polygon area, convex hull, exact arithmetic for points on a line, rectangle overlap, k closest points, closest pair | To write |
+| 04 | [`04_geometry_for_interviews.md`](04_geometry_for_interviews.md) | Exact integer geometry: the cross product and orientation (and why `double` fails, shown with Fibonacci points), segment intersection with every degenerate case, shoelace area, point in polygon by ray casting, Pick's theorem, Andrew's monotone chain hull, rectangle overlap and union, most points on a line by gcd-reduced directions, sorting by angle without trigonometry, `k` closest points (`nth_element` and heap), closest pair by divide and conquer | Written |
 
 ---
 
-## Problem list (about 39 with practice)
+## Problem list (about 50 with practice)
 
 | Tutorial | Problems (LeetCode number) |
 |---|---|
 | 01 | Number of 1 Bits (191), Power of Two (231), Power of Four (342), Counting Bits (338), Single Number (136), Single Number II (137), Single Number III (260), Missing Number (268), Reverse Bits (190), Hamming Distance (461), Total Hamming Distance (477), Bitwise AND of Numbers Range (201), Sum of Two Integers (371), Divide Two Integers (29), Maximum XOR of Two Numbers in an Array (421), Subsets (78), Gray Code (89), UTF-8 Validation (393) |
 | 02 | Count Primes (204), Pow(x, n) (50), Sqrt(x) (69), Super Pow (372), Water and Jug Problem (365), Greatest Common Divisor of Strings (1071), Factorial Trailing Zeroes (172), Ugly Number II (264), Prime Arrangements (1175), Perfect Number (507) |
 | 03 | Unique Paths (62), Pascal's Triangle (118, 119), Unique Binary Search Trees (96), Generate Parentheses (22), Count Sorted Vowel Strings (1641), Shuffle an Array (384), Linked List Random Node (382), Random Pick Index (398), Random Pick with Weight (528), Implement Rand10() Using Rand7() (470), Number of Ways to Reorder Array to Get Same BST (1569) |
-| 04 | Added when the tutorial is written |
+| 04 | Max Points on a Line (149), K Closest Points to Origin (973), Rectangle Overlap (836), Rectangle Area (223), Check If It Is a Straight Line (1232), Valid Boomerang (1037), Largest Triangle Area (812), Valid Square (593), Erect the Fence (587), Minimum Area Rectangle (939), Random Point in Non-overlapping Rectangles (497) |
 
 Log every attempt in [`../practice_log.md`](../practice_log.md).
 
@@ -55,7 +55,7 @@ Log every attempt in [`../practice_log.md`](../practice_log.md).
 |---|---|---|
 | 01 | Bit manipulation | Written |
 | 02 | Number theory and arithmetic | Written |
-| 03 | Combinatorics, probability and sampling | To write |
-| 04 | Geometry for interviews | To write |
+| 03 | Combinatorics, probability and sampling | Written |
+| 04 | Geometry for interviews | Written |
 
 Track view: [`../00_plan.md`](../00_plan.md).
