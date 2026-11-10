@@ -77,7 +77,7 @@ Used in the topic tables of the track plans.
 
 | Track | Status | Next |
 |---|---|---|
-| DSA | Arrays and strings 01 to 07, Hashing 01 to 04, Binary search 01 to 05, LL 01 to 07, Stacks and queues 01 to 04, Recursion and backtracking 01 to 04 (area complete), Trees 01 to 34 written (area complete), Graphs 01 to 09 written (area complete), Greedy and intervals 01 to 03 written (area complete), Dynamic programming 01 to 08 written (area complete); C language 01 written, Bits and math 01 to 04 written (area complete), String algorithms 01 to 06 written (area complete), Design-style coding 01 to 04 written (area complete), Theory and advanced techniques 01 written | DSA 14.02 randomised and approximate algorithms (areas 14 to 15: 4 tutorials still to write), then C 02 pointers and arrays |
+| DSA | Arrays and strings 01 to 07, Hashing 01 to 04, Binary search 01 to 05, LL 01 to 07, Stacks and queues 01 to 04, Recursion and backtracking 01 to 04 (area complete), Trees 01 to 34 written (area complete), Graphs 01 to 09 written (area complete), Greedy and intervals 01 to 03 written (area complete), Dynamic programming 01 to 08 written (area complete); C language 01 written, Bits and math 01 to 04 written (area complete), String algorithms 01 to 06 written (area complete), Design-style coding 01 to 04 written (area complete), Theory and advanced techniques 01 to 02 written | DSA 14.03 sqrt techniques, offline queries and meet in the middle (areas 14 to 15: 3 tutorials still to write), then C 02 pointers and arrays |
 | C | Planned | C 01 |
 | C++ | Primer written | CPP 01 |
 | Computer organization | CO 01 to 31 written; track complete | The next track |
