@@ -50,7 +50,7 @@ The order below is the study order. Each area builds on the ones before it: hash
 | 11 | [`11_bits_and_math/`](11_bits_and_math/00_plan.md) | 4 tutorials (all written) | ~16 | 15 | Complete |
 | 12 | [`12_string_algorithms/`](12_string_algorithms/00_plan.md) | 6 tutorials: 4 core, 2 stretch (all written) | ~12 | 16 | Written |
 | 13 | [`13_design_style_coding/`](13_design_style_coding/00_plan.md) | 4 tutorials (all written) | ~12 | 20 | Written |
-| 14 | `14_theory_and_advanced_techniques/` | 4 tutorials: 1 core, 3 stretch | ~4 | 21 and after | To write |
+| 14 | [`14_theory_and_advanced_techniques/`](14_theory_and_advanced_techniques/00_plan.md) | 4 tutorials: 1 core, 3 stretch (01 written) | ~4 | 21 and after | In progress |
 | 15 | `15_pattern_map_and_drills/` | 1 tutorial and mixed timed sets | ~10 | 18 and after | To write |
 | | **Total** | **104 tutorials: 89 core, 15 stretch** | **~310** | | |
 
