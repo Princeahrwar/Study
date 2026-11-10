@@ -25,7 +25,7 @@ Searching and analysing text: pattern matching in linear time, hashing substring
 | 03 | [`03_palindromes_and_manacher.md`](03_palindromes_and_manacher.md) | Centres and radii, why expansion is quadratic, Manacher's algorithm (two-array and padded forms), `O(1)` palindrome queries, longest and count, fewest cuts, shortest palindrome by prepending, the palindromic tree (eertree) for distinct palindromes and occurrence counts, measured costs | Core | Written |
 | 04 | [`04_multi_pattern_matching_tries_and_aho_corasick.md`](04_multi_pattern_matching_tries_and_aho_corasick.md) | Failure links on a trie (equal to the prefix function for one pattern), the full automaton versus the lazy fail-walking matcher, dictionary links for reporting, counting every pattern's occurrences by pushing visit counts down the failure links, the stream matcher, bold tags from the longest word ending at each position, counting strings that avoid all patterns with a DP over the states, the worst single-letter cost, memory and measured costs at 100,000 patterns, where it is used (from memory) | Core | Written |
 | 05 | [`05_automata_and_regular_expressions.md`](05_automata_and_regular_expressions.md) | DFAs and NFAs, Thompson's construction (linear size), matching with sets of states in `O(n m)` with no backtracking, the lazy DFA and its `2^(k+1)` state blow-up, a backtracking matcher with a step counter (exponential on `(a\|aa)*c`, measured, also in `std::regex`), ReDoS and its fixes, LeetCode 10 and 44 as DPs checked against the NFA, what finite automata cannot do | Stretch | Written |
-| 06 | `06_suffix_arrays_and_automata.md` | Suffix array with LCP, distinct substrings, the idea of a suffix automaton | Stretch | To write |
+| 06 | [`06_suffix_arrays_and_automata.md`](06_suffix_arrays_and_automata.md) | Substrings as prefixes of suffixes, the suffix array by prefix doubling (rounds counted), Kasai's `O(n)` LCP array (and the speed bug no test of answers can see), search by two binary searches, distinct substrings, longest repeated and longest common substring, the suffix automaton (endpos classes, `len`, `link`, cloning, the `2n - 1` and `3n - 4` bounds, occurrence counts), measured costs and memory against the array | Stretch | Written |
 
 ---
 
@@ -38,7 +38,7 @@ Searching and analysing text: pattern matching in linear time, hashing substring
 | 03 | Longest Palindromic Substring (5), Palindromic Substrings (647), Palindrome Partitioning (131), Palindrome Partitioning II (132), Palindrome Partitioning IV (1745), Shortest Palindrome (214), Maximum Number of Non-overlapping Palindrome Substrings (2472), Palindrome Pairs (336), Maximum Product of the Length of Two Palindromic Substrings (1960) |
 | 04 | Stream of Characters (1032), Add Bold Tag / Bold Words in String (616 / 758), Replace Words (648), Word Search II (212), String Matching in an Array (1408), Length of the Longest Valid Substring (2781), Find All Good Strings (1397) |
 | 05 | Regular Expression Matching (10), Wildcard Matching (44), Valid Number (65), String to Integer (8), Is Subsequence (392), Number of Matching Subsequences (792), Check if Binary String Has at Most One Segment of Ones (1784) |
-| 06 | Added when the tutorial is written |
+| 06 | Longest Duplicate Substring (1044), Longest Repeating Substring (1062), Maximum Length of Repeated Subarray (718), Number of Distinct Substrings in a String (1698), Longest Common Subpath (1923), Find the Index of the First Occurrence in a String (28) |
 
 Log every attempt in [`../practice_log.md`](../practice_log.md).
 
@@ -53,6 +53,6 @@ Log every attempt in [`../practice_log.md`](../practice_log.md).
 | 03 | Palindromes and Manacher | Written |
 | 04 | Multi-pattern matching: tries and Aho-Corasick | Written |
 | 05 | Automata and regular expressions | Written |
-| 06 | Suffix arrays and suffix automata | To write |
+| 06 | Suffix arrays and suffix automata | Written |
 
 Track view: [`../00_plan.md`](../00_plan.md).
