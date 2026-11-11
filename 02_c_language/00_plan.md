@@ -27,7 +27,7 @@ C is the language of kernels, drivers, firmware, network data planes and languag
 | # | File | Topic | Key subtopics | Status | Week |
 |---|---|---|---|---|---|
 | 01 | `01_types_conversions_and_undefined_behavior.md` | Types, conversions and undefined behaviour | Integer types and their guaranteed ranges, two's complement, integer promotion and the usual arithmetic conversions, signed overflow vs unsigned wraparound, the UB catalogue (overflow, out-of-bounds, use-after-free, unsequenced modification, strict aliasing), what optimisers do with UB | Written | 1 |
-| 02 | `02_pointers_and_arrays.md` | Pointers and arrays in depth | Array-to-pointer decay and its three exceptions, pointer arithmetic, `T[]` vs `T*` in parameters, multi-dimensional arrays, pointers to pointers, function pointers and callback tables, `void *` and generic code | To write | 2 |
+| 02 | [`02_pointers_and_arrays.md`](02_pointers_and_arrays.md) | Pointers and arrays in depth | Array-to-pointer decay and its exceptions (`a` against `&a`, with `_Generic` type printouts), pointer arithmetic and the one-past-the-end rule, half-open pointer ranges (rotate by three reversals, `lower_bound`), `T[]` against `T*` in parameters, `char *p` against `char a[]` (write to a literal: `SIGSEGV`), multi-dimensional arrays and three heap layouts (column-wise access 3 to 13 times slower, measured), `Node **` list removal without a head case, reading declarations and function-pointer dispatch tables, a `qsort` comparator that overflows (UBSan), `void *` generic code (byte-wise swap 5 to 6 times slower), dangling pointers and out-of-bounds access under ASan | Written | 2 |
 | 03 | `03_memory_stack_heap_and_malloc.md` | Memory: stack, heap and `malloc` | Storage durations, stack frames, how `malloc` and `free` work (free lists, bins, `brk` and `mmap`), fragmentation, leaks, double frees and corruption, AddressSanitizer and Valgrind; lab: write a small allocator | To write | 3 |
 | 04 | `04_structs_unions_bitfields_and_alignment.md` | Structs, unions, bit-fields and alignment | Padding and alignment rules, `offsetof`, packing and its cost on ARM, endianness and network byte order, bit-fields and why drivers avoid them, unions and type punning, flexible array members | To write | 4 |
 | 05 | `05_qualifiers_storage_classes_and_linkage.md` | Qualifiers, storage classes and linkage | `const` (and `const` pointers), `volatile` (what it does and does not guarantee), `restrict`, `static` at file and function scope, `extern`, internal and external linkage, `inline` in C99 | To write | 5 |
@@ -95,6 +95,8 @@ ELF tools need Linux; the Mac produces Mach-O binaries. `99_toolchain/README.md`
 
 | # | Topic | Status |
 |---|---|---|
-| 01–08 | All topics | To write, starting week 1 |
+| 01 | Types, conversions and undefined behaviour | Written |
+| 02 | Pointers and arrays | Written |
+| 03–08 | Remaining topics | To write |
 
 Cross-track view: [`../00_MASTER_PLAN.md`](../00_MASTER_PLAN.md).
