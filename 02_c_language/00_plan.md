@@ -57,7 +57,8 @@ Some C-adjacent subjects belong to other tracks, because the interview questions
 | `mmap`, copy-on-write, page faults | [OS 09 and OS 10](../05_operating_systems/00_plan.md) |
 | Threads, mutexes, condition variables, atomics, memory barriers | [OS 06 and OS 07](../05_operating_systems/00_plan.md); C 10 covers the C11 interfaces |
 | Socket programming in C, `select`, `poll`, `epoll`, `io_uring` | [NET 04 and NET 05](../07_networking/00_plan.md) |
-| Signals from the shell, `/proc`, debugging with `gdb`, `strace` and sanitizers | [LX 02 and LX 04](../06_linux/00_plan.md) |
+| Signals from the shell and `/proc` | [LX 02](../06_linux/00_plan.md) |
+| Debugging with `gdb`, core dumps, sanitizers, Valgrind, `strace`, `rr` | [Debugging track](../16_debugging/00_plan.md) |
 | IEEE-754 representation, rounding and subnormals | [CO 02 and CO 05](../04_computer_organization/00_plan.md); C 10 covers the C-level traps |
 | Calling conventions, stack frames, inline assembly, ELF | [CO 07](../04_computer_organization/00_plan.md); C 06 goes deeper on linking |
 | Linker scripts, the vector table, startup code on a microcontroller | [EMB 04](../13_embedded/00_plan.md) |

@@ -18,7 +18,7 @@ To read a tutorial, fetch it from GitHub (or ask Prince to attach it); do not ex
 
 ## How the tree is organised
 
-`Study/` has numbered areas: 00_MASTER_PLAN.md, 01_dsa, 02_c_language, 03_cpp, 04_computer_organization, 05_operating_systems, 06_linux, 07_networking, 08_kernel, 09_drivers, 10_lld, 11_hld, 12_gpu_cuda, 13_embedded, 14_projects, 15_interviews, 99_toolchain. Each area has a `00_plan.md` with its tutorial list, problem list and progress table. `00_MASTER_PLAN.md` is the overview and `README.md` holds the status line and the next topic.
+`Study/` has numbered areas: 00_MASTER_PLAN.md, 01_dsa, 02_c_language, 03_cpp, 04_computer_organization, 05_operating_systems, 06_linux, 07_networking, 08_kernel, 09_drivers, 10_lld, 11_hld, 12_gpu_cuda, 13_embedded, 14_projects, 15_interviews, 16_debugging (added 2026-11-12: 10 tutorials, DBG 01 to 10, replacing LX 04), 99_toolchain. Each area has a `00_plan.md` with its tutorial list, problem list and progress table. `00_MASTER_PLAN.md` is the overview and `README.md` holds the status line and the next topic.
 
 ## The working method ("continue next")
 

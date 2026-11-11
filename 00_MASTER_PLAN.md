@@ -79,6 +79,7 @@ Each track has a `00_plan.md` with its topics, status, week, labs, interview que
 | 13 | [Embedded](13_embedded/00_plan.md) | EMB | 1 core (exists) + stretch | 23 | ~4 |
 | 14 | [Projects](14_projects/00_plan.md) | PRJ | 6 projects | 12–23 | ~70 net |
 | 15 | [Interviews](15_interviews/00_plan.md) | INT | Stories, resume, mocks, flashcards, optional company notes | 5–26 | ~25 |
+| 16 | [Debugging](16_debugging/00_plan.md) | DBG | 10 (`gdb` basics to Python scripting, core dumps, sanitizers, concurrency bugs, live processes, `rr`, remote and embedded) | 8–14, 17, 24 | ~25 |
 | 99 | [Toolchain](99_toolchain/README.md) | — | Mac, Linux VM, QEMU, counters, cloud GPU | 3, 14, 20, 21 | — |
 
 In total: about **170 new tutorials** and **40 rewrites** of older notes, written one at a time as each track reaches them.
@@ -144,13 +145,13 @@ Each week is about 25 hours: roughly 8 h DSA, 8 h systems, 6 h design, and 3 h f
 | Week | Starts | DSA | Systems | Design | C/C++ · projects · interviews |
 |---|---|---|---|---|---|
 | 7 | 23 Nov | Trees 03–05 | OS 04, OS 05; LX 03 | LLD 10, 11 | C 07 |
-| 8 | 30 Nov | Trees 06–08 | OS 06, OS 07; LX 04 | LLD 12, 13, 14 | C 08 |
-| 9 | 7 Dec | Trees 09–11 | OS 08, OS 09; LX 05 | LLD 15, 16, 17 | C 09; CPP 01 |
-| 10 | 14 Dec | Trees 12, 15, 16 (heaps) | OS 10, OS 11; NET 01 | LLD-P 01, 06, 02 | C 10; CPP 02 |
-| 11 | 21 Dec | Trees 17–18 (tries); graphs I | OS 12, OS 13; NET 02 | LLD-P 03, 07, 04; HLD 01, 02 | C 11; CPP 03 (holiday week: use as buffer if needed) |
-| 12 | 28 Dec | Graphs II; Trees 28 (union-find) | OS 14; NET 03, NET 04 | LLD-P 05, 08; HLD 03, 04 | CPP 04; **rkv M1** |
-| 13 | 4 Jan | Greedy & intervals; DP I | OS 15; NET 05, NET 06 | LLD-P 09, 10; HLD 05, 06, 07 | CPP 05; rkv M2–M3; resume rewrite |
-| 14 | 11 Jan | DP II | NET 07, NET 08; K 01 | LLD 18, 20, 21; HLD 08, 09, 10 | CPP 06; rkv M4; first mock loop; **Milestone: apply-ready** |
+| 8 | 30 Nov | Trees 06–08 | OS 06, OS 07; DBG 01, DBG 02 | LLD 12, 13, 14 | C 08 |
+| 9 | 7 Dec | Trees 09–11 | OS 08, OS 09; LX 05; DBG 03 | LLD 15, 16, 17 | C 09; CPP 01 |
+| 10 | 14 Dec | Trees 12, 15, 16 (heaps) | OS 10, OS 11; NET 01; DBG 04 | LLD-P 01, 06, 02 | C 10; CPP 02 |
+| 11 | 21 Dec | Trees 17–18 (tries); graphs I | OS 12, OS 13; NET 02; DBG 05 | LLD-P 03, 07, 04; HLD 01, 02 | C 11; CPP 03 (holiday week: use as buffer if needed) |
+| 12 | 28 Dec | Graphs II; Trees 28 (union-find) | OS 14; NET 03, NET 04; DBG 06 | LLD-P 05, 08; HLD 03, 04 | CPP 04; **rkv M1** |
+| 13 | 4 Jan | Greedy & intervals; DP I | OS 15; NET 05, NET 06; DBG 07 | LLD-P 09, 10; HLD 05, 06, 07 | CPP 05; rkv M2–M3; resume rewrite |
+| 14 | 11 Jan | DP II | NET 07, NET 08; K 01; DBG 08 (stretch) | LLD 18, 20, 21; HLD 08, 09, 10 | CPP 06; rkv M4; first mock loop; **Milestone: apply-ready** |
 
 ### Phase C — Systems depth and design breadth (weeks 15–20)
 
@@ -158,7 +159,7 @@ Each week is about 25 hours: roughly 8 h DSA, 8 h systems, 6 h design, and 3 h f
 |---|---|---|---|---|---|
 | 15 | 18 Jan | DP III; bits & math | NET 09; K 02; DRV 01 | HLD 11, 12; HLD-P 01 | CPP 07; rkv M5; **rkdma M1** |
 | 16 | 25 Jan | String algorithms; Trees 13 (kernel rbtree) | K 03; DRV 02, DRV 03 | HLD 13, 14, 15; HLD-P 02 | CPP 08; rkdma M2 |
-| 17 | 1 Feb | Trees 19–21 (range queries) | K 04, K 05; DRV 04, DRV 05 | HLD 16, 17; HLD-P 03, 04 | rkdma M3 |
+| 17 | 1 Feb | Trees 19–21 (range queries) | K 04, K 05; DRV 04, DRV 05; DBG 09 | HLD 16, 17; HLD-P 03, 04 | rkdma M3 |
 | 18 | 8 Feb | Trees 24, 25, 29; mixed medium–hard set | K 06; DRV 06, DRV 07 | HLD-P 05, 06, 07 | rkdma M4 |
 | 19 | 15 Feb | Timed mixed set; AI-assisted coding practice (LLD 19) | DRV 08, DRV 09 | HLD-P 08, 09, 10 | **rkdma shipped** |
 | 20 | 22 Feb | Design-style coding; Trees 31, 34; systems-flavoured set (bits, parsing, caches, rate limiters) | DRV 10; K 07, K 08 | LLD-S 01, 02; HLD-P 11, 12 | **pfilt M1**; **Checkpoint 3** |
@@ -175,7 +176,7 @@ Each week is about 25 hours: roughly 8 h DSA, 8 h systems, 6 h design, and 3 h f
 
 | Week | Starts | Focus |
 |---|---|---|
-| 24 | 22 Mar | Mock loops (two or three this week); six extended LLD problems cold; LX 06 and C 12 question banks; concept flashcards |
+| 24 | 22 Mar | Mock loops (two or three this week); six extended LLD problems cold; LX 06, C 12 and DBG 10 question banks; concept flashcards |
 | 25 | 29 Mar | More mock loops with different interviewers; behavioural polish; notes for any company you are interviewing with |
 | 26 | 5 Apr | Buffer and revision: flashcards, your own summary files, weak areas |
 

@@ -49,7 +49,7 @@ The company notes are short today. Each is rewritten into a full guide (loop for
 | 14 | Mock rubric written; **first full mock loop**; start applying |
 | 14–23 | One mock a week, alternating coding, design and systems; behavioural mock every three weeks |
 | 20 | Company notes rewritten for the companies you are interviewing with |
-| 24 | Two or three mock loops in the week; concept flashcards; LX 06 and C 12 question banks |
+| 24 | Two or three mock loops in the week; concept flashcards; LX 06, C 12 and DBG 10 question banks |
 | 25 | More mock loops with different interviewers; behavioural polish |
 | 26 | Revision from flashcards and your own summary files; weak areas |
 

@@ -16,7 +16,7 @@ You already know Linux as a user and developer. This track is revision with a pu
 1. Answer "what does this command do" and "write a one-liner that…" questions with `grep`, `sed`, `awk`, `find`, `xargs` and `sort`.
 2. Explain signals, `/proc`, resource limits, cgroups, namespaces and capabilities, and build a minimal container by hand.
 3. Describe the boot sequence from firmware to a login prompt, and diagnose a failing systemd unit.
-4. Debug a crash from a core dump, a hang with `gdb` and `strace`, and a leak with sanitizers and Valgrind.
+4. Debug a crash from a core dump, a hang with `gdb` and `strace`, and a leak with sanitizers and Valgrind (taught in the [debugging track](../16_debugging/00_plan.md)).
 5. Find where CPU time goes with `perf` and a flame graph, and trace kernel events with `ftrace` and `bpftrace`.
 6. Use the network toolbox (`ip`, `ss`, `tcpdump`, `ethtool`, `iperf3`) to diagnose a connectivity or throughput problem.
 
@@ -29,7 +29,7 @@ You already know Linux as a user and developer. This track is revision with a pu
 | 01 | `01_shell_and_core_tools.md` | The shell and core tools | Pipes and redirection, quoting, globbing, exit codes, job control; `grep`, `sed`, `awk`, `find`, `xargs`, `sort`, `uniq`, `cut`, `tr`; permissions, umask, setuid; robust bash scripts (`set -euo pipefail`, traps) | To write | 3 |
 | 02 | `02_processes_signals_proc_and_containers.md` | Processes, signals, `/proc` and containers | Process tree, `ps` and `top` fields, signals and default actions, `/proc/<pid>/` (maps, status, fd, stack), `ulimit` and rlimits, load average explained, cgroups v2, namespaces, capabilities, building a container with `unshare` | To write | 4 |
 | 03 | `03_boot_systemd_and_logs.md` | Boot, systemd and logs | Firmware (UEFI) → bootloader → kernel → initramfs → systemd; units, targets, dependencies; `journalctl`, `dmesg`; kernel command line; module loading with `modprobe` and `udev` | To write | 7 |
-| 04 | `04_debugging_gdb_sanitizers_strace.md` | Debugging | `gdb` (breakpoints, watchpoints, backtraces, threads, attaching), core dumps and `coredumpctl`, ASan, UBSan, TSan, Valgrind, `strace` and `ltrace`, `lsof`, debugging a hung process | To write | 8 |
+| 04 | (moved) | Debugging | Moved to its own track, [`16_debugging`](../16_debugging/00_plan.md) (DBG 01 to 10): the method, `gdb` from the basics to Python scripting, core dumps and symbols, sanitizers and Valgrind, concurrency bugs, live-process debugging with `strace` and `/proc`, `rr`, and remote, embedded and kernel debugging | Moved to DBG | 8 |
 | 05 | `05_performance_and_tracing_perf_ebpf.md` | Performance and tracing | The USE method, `vmstat`, `iostat`, `mpstat`, `pidstat`; `perf stat`, `perf record` and flame graphs; `ftrace` and `trace-cmd`; eBPF and `bpftrace` one-liners; network tools: `ip`, `ss`, `tcpdump`, `ethtool`, `iperf3` | To write | 9 |
 | 06 | `06_linux_interview_question_bank.md` | Linux interview question bank | 50 questions with answers: commands, internals, debugging scenarios ("the disk is full but `du` disagrees", "the server is slow"), and performance triage | To write | 24 |
 
@@ -42,7 +42,6 @@ You already know Linux as a user and developer. This track is revision with a pu
 | `labs/log_analysis/` | 01 | Answer ten questions about a web-server log using only shell one-liners (top IPs, error rates per minute, slowest endpoints) |
 | `labs/container_by_hand/` | 02 | Build a container with `unshare`, a new root filesystem with `pivot_root`, and a cgroup memory limit; watch the OOM killer act |
 | `labs/broken_service/` | 03 | Diagnose and fix a deliberately broken systemd unit from its journal |
-| `labs/debug_the_crash/` | 04 | Five small buggy programs (segfault, deadlock, leak, data race, fd leak); find each bug with the right tool |
 | `labs/flame_graph/` | 05 | Profile a slow program with `perf`, build a flame graph, fix the hot spot, and measure the improvement |
 | `labs/bpftrace_oneliners/` | 05 | Count syscalls per process, histogram `read` latency, trace TCP retransmits |
 

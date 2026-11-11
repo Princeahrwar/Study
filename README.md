@@ -19,7 +19,7 @@ A self-study program for senior systems-engineering work and interviews: fifteen
 | [`03_cpp/`](03_cpp/00_plan.md) | C++ | `01_primer/` (from scratch) and `02_interview/` (internals) |
 | [`04_computer_organization/`](04_computer_organization/00_plan.md) | Computer organization | Bits to out-of-order cores, caches, DRAM, coherence, GPUs, PCIe, virtualization |
 | [`05_operating_systems/`](05_operating_systems/00_plan.md) | Operating systems | Processes to the user/kernel boundary |
-| [`06_linux/`](06_linux/00_plan.md) | Linux | Shell, `/proc`, containers, debugging, `perf` and eBPF |
+| [`06_linux/`](06_linux/00_plan.md) | Linux | Shell, `/proc`, containers, `perf` and eBPF (debugging has its own track) |
 | [`07_networking/`](07_networking/00_plan.md) | Networking | L2 to TLS, sockets, the Linux stack, firewalls and IPS |
 | [`08_kernel/`](08_kernel/00_plan.md) | Kernel internals | Your own kernel in QEMU: syscalls, memory, locking, RCU, debugging |
 | [`09_drivers/`](09_drivers/00_plan.md) | Device drivers | Modules to PCIe and NAPI |
@@ -27,6 +27,7 @@ A self-study program for senior systems-engineering work and interviews: fifteen
 | [`11_hld/`](11_hld/00_plan.md) | System design | Fundamentals, 19 design problems, domain designs |
 | [`12_gpu_cuda/`](12_gpu_cuda/00_plan.md) | GPU and CUDA | Architecture, CUDA, the system view |
 | [`13_embedded/`](13_embedded/00_plan.md) | Embedded and edge AI | RTOS constraints; stretch topics |
+| [`16_debugging/`](16_debugging/00_plan.md) | Debugging | The method, `gdb` in depth, core dumps, sanitizers, concurrency bugs, live processes, `rr`, remote and embedded |
 | [`14_projects/`](14_projects/00_plan.md) | Projects | Six specs: `rkv`, `rkdma`, `pfilt`, `nanoinfer`, `telemetrix`, `tinyos` |
 | [`15_interviews/`](15_interviews/00_plan.md) | Interviews | Stories, mocks, flashcards, optional company notes |
 | [`99_toolchain/`](99_toolchain/README.md) | Toolchain | Mac, Linux VM, QEMU kernels, cloud GPU |
