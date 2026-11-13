@@ -82,7 +82,7 @@ Used in the topic tables of the track plans.
 | C | C 01 to C 12 written; track complete | The next track |
 | C++ | Primer written | CPP 01 |
 | Computer organization | CO 01 to 31 written; track complete | The next track |
-| Operating systems | OS 01 to 05 written; 5 older notes | OS 06 |
+| Operating systems | OS 01 to 06 written; 5 older notes | OS 07 |
 | Linux | Planned | LX 01 |
 | Networking | 2 older notes | NET 01 |
 | Kernel | 1 older note | K 01 |
