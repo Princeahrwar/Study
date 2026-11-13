@@ -1,6 +1,6 @@
 # NET 05 — epoll and io_uring
 
-> Prerequisite: `05_operating_systems/15_user_kernel_boundary.md`.
+> Prerequisite: `05_operating_systems/19_user_kernel_boundary.md`.
 
 ## Readiness versus completion
 
@@ -64,7 +64,7 @@ re-queue, which is a nice detail to volunteer.
 
 `SO_REUSEPORT` plus one epoll instance per pinned thread plus per-core state is
 the standard shape of a modern high-concurrency server, and it is the same
-shared-nothing pattern as `05_operating_systems/11_numa.md`.
+shared-nothing pattern as `05_operating_systems/13_numa.md`.
 
 ## io_uring
 

@@ -33,7 +33,7 @@ table. 400 us at ~0.4 ns per touched line is roughly a 1M-entry sequential scan.
 Test: does spike period match the sweep interval, and does
 `dtlb_load_misses.walk_active` spike with it? Fix: amortise the sweep into the
 packet path — N buckets per packet — converting a 400 us tail into nanoseconds of
-mean. (See `05_operating_systems/10_virtual_memory_and_tlb`, `09`, and `10_lld/02_systems_lld/04_lockfree_data_structures`.)
+mean. (See `05_operating_systems/12_virtual_memory_and_tlb`, `10` and `11`, and `10_lld/02_systems_lld/04_lockfree_data_structures`.)
 
 **Follow-up ladder.** "The core is isolated and tickless, now what?" (removes the
 easy answer) -> "another core just called munmap" (TLB shootdown IPI) -> "there is
@@ -61,7 +61,7 @@ cores; and one sentence on what an attacker who controls the 5-tuple does.
 | Staff | Bucket-per-cache-line so a lookup is one miss; keyed hash for DoS resistance; 2 MiB pages justified by reach arithmetic; aging amortised into the packet path; per-core counters; states the eviction policy and what it counts |
 
 Self-score by counting the numbers in your answer. Fewer than six and you wrote
-an opinion. (See `10_lld/02_systems_lld/04_lockfree_data_structures`, `05_operating_systems/10_virtual_memory_and_tlb`.)
+an opinion. (See `10_lld/02_systems_lld/04_lockfree_data_structures`, `05_operating_systems/12_virtual_memory_and_tlb`.)
 
 ---
 
@@ -88,7 +88,7 @@ once; cardinality explosion; what it costs per day. (See `11_hld/01_fundamentals
 Staff answer climbs the ladder explicitly (recvmmsg -> AF_PACKET -> XDP ->
 AF_XDP -> DPDK), does the 100 ns/packet arithmetic first, picks a rung, and says
 what that rung gives up. Reaching straight for DPDK without the arithmetic is the
-failure mode. (See `07_networking/07_zero_copy_networking`, `05_operating_systems/15_user_kernel_boundary`.)
+failure mode. (See `07_networking/07_zero_copy_networking`, `05_operating_systems/19_user_kernel_boundary`.)
 
 ---
 
@@ -113,7 +113,7 @@ adjacent in one cache line; a non-power-of-two capacity with a modulo; missing
 
 Staff answer names each, says which are *correctness* bugs and which are
 *performance* bugs, and notes that the relaxed one will pass every test on x86
-and fail on ARM. (See `05_operating_systems/07_memory_barriers`, `10_lld/02_systems_lld/03_thread_safe_primitives`.)
+and fail on ARM. (See `05_operating_systems/08_memory_barriers`, `10_lld/02_systems_lld/03_thread_safe_primitives`.)
 
 ---
 

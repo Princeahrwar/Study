@@ -1,6 +1,6 @@
 # Embedded Systems and Edge AI: Track Plan
 
-> **Track code:** EMB · **Weeks:** 23 for topic 01; everything else is stretch · **Budget:** ~4 hours core, ~25 hours with stretch · **Prerequisites:** OS 04–06 (scheduling, synchronisation); DRV 05–08 for the stretch topics; CO 04 (clock domains), CO 25 and 26 (buses, interrupts, DMA)
+> **Track code:** EMB · **Weeks:** 23 for topic 01; everything else is stretch · **Budget:** ~4 hours core, ~25 hours with stretch · **Prerequisites:** OS 04–07 (scheduling, synchronisation); DRV 05–08 for the stretch topics; CO 04 (clock domains), CO 25 and 26 (buses, interrupts, DMA)
 
 This is a small, targeted track. Topic 01 (RTOS design constraints) is core because real-time scheduling and priority inversion come up in network-equipment, platform and embedded-adjacent loops, and because it sharpens your device-platform stories. Topics 02 and 03 support edge-AI roles and Staff-level hardware/software discussions. Topics 04–08 build embedded firmware from zero and are worth doing only if you target firmware roles.
 
@@ -48,7 +48,7 @@ Stretch labs use QEMU's Cortex-M machines or an inexpensive board (an STM32 Nucl
 
 ## 4. How to study this track
 
-1. Topic 01: the five-step method in [`../README.md`](../README.md), with OS 04–06 fresh in mind.
+1. Topic 01: the five-step method in [`../README.md`](../README.md), with OS 04–07 fresh in mind.
 2. Topics 02–03: read before an edge-AI or Staff-level hardware interview.
 3. Topics 04–08: only for firmware roles, after week 26.
 

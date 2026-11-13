@@ -153,7 +153,7 @@ How to read it:
 - Addresses begin with `55...` for the program (position-independent executable), `7f...` for libraries and the vDSO, `7ff...` for the stack. They are different on every run: **ASLR** (address-space layout randomisation, level 2 here) moves each base at `execve`.
 - The permissions column `p` means a private mapping: a write is copy-on-write (section 6).
 
-The address space is virtual. These regions are mappings the kernel records in `mm_struct`; physical pages are attached on first touch by the page-fault handler ([OS 01](01_os_structure_and_system_calls.md) showed 25,600 faults for 100 MiB; OS 09 covers the memory manager).
+The address space is virtual. These regions are mappings the kernel records in `mm_struct`; physical pages are attached on first touch by the page-fault handler ([OS 01](01_os_structure_and_system_calls.md) showed 25,600 faults for 100 MiB; OS 10 and OS 11 cover the memory manager).
 
 ---
 
@@ -579,7 +579,7 @@ This explains known production behaviour: Redis snapshots by forking and letting
 
 ### 6.2 Overcommit
 
-`fork` of a large process requires the kernel to promise the child as much memory as the parent has, though almost none of it will be copied. Linux's default overcommit mode (`/proc/sys/vm/overcommit_memory` is 0 here, heuristic) allows it unless it looks absurd. If that promise is later called in (every page written), the **OOM killer** picks a process to kill (OS 09).
+`fork` of a large process requires the kernel to promise the child as much memory as the parent has, though almost none of it will be copied. Linux's default overcommit mode (`/proc/sys/vm/overcommit_memory` is 0 here, heuristic) allows it unless it looks absurd. If that promise is later called in (every page written), the **OOM killer** picks a process to kill (OS 12).
 
 ---
 

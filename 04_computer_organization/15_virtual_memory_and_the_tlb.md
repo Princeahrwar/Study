@@ -399,7 +399,7 @@ A huge page (2 MB or 1 GB on x86-64) is a mapping that stops the walk early (sec
 | 256 MB | 11.8 to 16.9 | 5.8 to 10.9 | **1.5 to 2.3** |
 | 1 GiB | 16 to 29 | 6.3 to 17 | **1.6 to 2.7** |
 
-The gain grows with the footprint, as the reach arithmetic says. (The ranges are wide because they span two sessions; within one session the 4 KB and 2 MB runs were taken back to back, so the speed-up is more stable than either column. On the dependent chain of section 6.2 the gain was only 20 to 30% in most runs, because the hypervisor's own 4 KB mappings limit it, section 6.4.) The chain benchmark recorded in the operating-system note `05_operating_systems/10_virtual_memory_and_tlb.md` found gains of 1.2 to 1.3 times on one x86 Xeon and up to 4.4 times on an Arm machine, so measure on the hardware you will run on.
+The gain grows with the footprint, as the reach arithmetic says. (The ranges are wide because they span two sessions; within one session the 4 KB and 2 MB runs were taken back to back, so the speed-up is more stable than either column. On the dependent chain of section 6.2 the gain was only 20 to 30% in most runs, because the hypervisor's own 4 KB mappings limit it, section 6.4.) The chain benchmark recorded in the operating-system note `05_operating_systems/12_virtual_memory_and_tlb.md` found gains of 1.2 to 1.3 times on one x86 Xeon and up to 4.4 times on an Arm machine, so measure on the hardware you will run on.
 
 ### 9.2 What they cost
 

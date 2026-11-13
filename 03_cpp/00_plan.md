@@ -67,7 +67,7 @@ Each topic has a companion `NN_<topic>_demo.cpp`, built with `-std=c++20 -Wall -
 | [`../10_lld/00_foundations/02_stl_for_system_design.md`](../10_lld/00_foundations/02_stl_for_system_design.md) | CPP 05 |
 | [`../10_lld/00_foundations/18_cpp_oop_interview_rapid_fire.md`](../10_lld/00_foundations/18_cpp_oop_interview_rapid_fire.md) | CPP 01, 08 |
 | [`../10_lld/02_systems_lld/02_cpp_memory_model.md`](../10_lld/02_systems_lld/02_cpp_memory_model.md) | CPP 07 |
-| [`../05_operating_systems/07_memory_barriers.md`](../05_operating_systems/07_memory_barriers.md) | CPP 07 |
+| [`../05_operating_systems/08_memory_barriers.md`](../05_operating_systems/08_memory_barriers.md) | CPP 07 |
 
 ---
 

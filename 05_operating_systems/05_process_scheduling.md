@@ -111,8 +111,8 @@ thread stalls, the suspects are:
 2. **Interrupts and softirqs** landing on your core. Network RX in particular.
 3. **The timer tick** — 100-1000 Hz of periodic interruption unless you disable it.
 4. **Kernel work on your behalf**: RCU callbacks, kworker threads, page reclaim.
-5. **TLB shootdown IPIs** from another thread's `munmap` (`10_virtual_memory_and_tlb.md`).
-6. **THP compaction stalls** (`10_virtual_memory_and_tlb.md`).
+5. **TLB shootdown IPIs** from another thread's `munmap` (`12_virtual_memory_and_tlb.md`).
+6. **THP compaction stalls** (`12_virtual_memory_and_tlb.md`).
 7. **Frequency/C-state transitions** — waking from a deep C-state costs
    microseconds, and that is real tail latency on an idle-then-burst workload.
 

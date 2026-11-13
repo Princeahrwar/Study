@@ -147,7 +147,7 @@ configuration. The budget bounds how long one poll can run so other softirqs are
 not starved.
 
 This "interrupt at low rate, poll at high rate" structure recurs far beyond the
-kernel — it is the same idea as spin-then-sleep in `05_operating_systems/14_ipc_mechanisms.md`, and as adaptive
+kernel — it is the same idea as spin-then-sleep in `05_operating_systems/18_ipc_mechanisms.md`, and as adaptive
 batching in a telemetry pipeline. Recognising the pattern across layers is a
 Staff-level observation.
 
@@ -159,7 +159,7 @@ Staff-level observation.
   vector and can be steered to its own core. This is what makes multi-queue
   scaling work at all.
 - **IRQ affinity**: `/proc/irq/<n>/smp_affinity`. Pin each queue's vector to the
-  core that will process it, on the right NUMA node (`05_operating_systems/11_numa.md`).
+  core that will process it, on the right NUMA node (`05_operating_systems/13_numa.md`).
 
 ## Synchronisation with interrupt context
 

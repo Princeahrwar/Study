@@ -24,7 +24,7 @@ You finish with a packets-per-second number for your machine, a latency histogra
 
 | Part of `pfilt` | Tutorials |
 |---|---|
-| SPSC rings with head and tail on separate cache lines | LLD-S 03, OS 07, CO 19 |
+| SPSC rings with head and tail on separate cache lines | LLD-S 03, OS 08, CO 19 |
 | Open-addressed flow table, one bucket of four entries per 64-byte line | CO 13–14, DSA 02 |
 | Keyed hashing against collision attacks | DSA 02, NET 09 |
 | Rule updates with epoch-based reclamation | LLD-S 04 |

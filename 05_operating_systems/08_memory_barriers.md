@@ -1,4 +1,4 @@
-# OS 07 — Memory barriers and the memory model
+# OS 08 — Memory barriers and the memory model
 
 > Prerequisite: `04_computer_organization/20_memory_consistency_and_atomics.md` (the hardware models, litmus tests, fences and atomics, measured), `04_computer_organization/19_cache_coherence.md`, `04_computer_organization/31_arm_vs_x86_and_putting_it_together.md`.
 > This is the hardest tutorial in the OS track and the highest-value one for

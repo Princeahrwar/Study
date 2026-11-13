@@ -1,6 +1,6 @@
-# OS 11 — NUMA
+# OS 13 — NUMA
 
-> Prerequisite: `04_computer_organization/19_cache_coherence.md`, `10_virtual_memory_and_tlb.md`.
+> Prerequisite: `04_computer_organization/19_cache_coherence.md`, `12_virtual_memory_and_tlb.md`.
 > Relevant to: any server-side role. Less so on a single-socket AP, but it is
 > standard interview material for Google, Meta, Nvidia and Microsoft.
 

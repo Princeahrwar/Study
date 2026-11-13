@@ -273,7 +273,7 @@ T3 two threads, 5000000 increments each, expected total 10000000: volatile count
 | `volatile long` counter, `v = v + 1` | 12.95 / 18.33 |
 | `_Atomic long` counter, `fetch_add` | 269.36 / 207.32 |
 
-The volatile counter lost updates (its final value was below 10,000,000; the exact value changes from run to run, so the trace prints only the verdict) and the atomic counter was exact. The volatile version looks faster only because it is wrong: no thread waits for the cache line, so most of the work is thrown away. The atomic version is about 11 to 21 times slower here because the two cores fight over one cache line, and it is correct. The fix for thread-shared data is `_Atomic`, a mutex or another synchronisation primitive (C 10, OS 07, OS 08), never `volatile`. The old pattern `volatile int flag` for a producer/consumer handoff "works" on x86 for simple cases and fails on weaker memory models and when the data guarded by the flag is itself not ordered.
+The volatile counter lost updates (its final value was below 10,000,000; the exact value changes from run to run, so the trace prints only the verdict) and the atomic counter was exact. The volatile version looks faster only because it is wrong: no thread waits for the cache line, so most of the work is thrown away. The atomic version is about 11 to 21 times slower here because the two cores fight over one cache line, and it is correct. The fix for thread-shared data is `_Atomic`, a mutex or another synchronisation primitive (C 10, OS 06 to OS 08), never `volatile`. The old pattern `volatile int flag` for a producer/consumer handoff "works" on x86 for simple cases and fails on weaker memory models and when the data guarded by the flag is itself not ordered.
 
 ### 2.2 What `volatile` costs
 

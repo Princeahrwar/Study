@@ -1,6 +1,6 @@
 # LLD-S 02 — The C++ memory model in practice
 
-> Prerequisite: `05_operating_systems/07_memory_barriers.md`. That tutorial covers the
+> Prerequisite: `05_operating_systems/08_memory_barriers.md`. That tutorial covers the
 > hardware; this one covers what you write and how to reason about it.
 
 ## What the standard actually promises
@@ -234,7 +234,7 @@ to. Mention a model checker for the core primitive.
    says about the non-atomic `value_`.
 2. Implement an intrusive refcounted base with the release/acquire-fence pattern.
    Then weaken the decrement to relaxed and construct a test that fails on ARM.
-3. Take the SPSC ring from `05_operating_systems/07_memory_barriers`, compile it for x86 and aarch64, and
+3. Take the SPSC ring from `05_operating_systems/08_memory_barriers`, compile it for x86 and aarch64, and
    annotate each generated instruction with which memory order produced it.
 4. Write a data race deliberately, run it under TSAN, and read the report end to
    end — both stacks, and the "location" section. Reading TSAN output fluently is

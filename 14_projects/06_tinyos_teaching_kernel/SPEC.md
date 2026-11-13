@@ -27,14 +27,14 @@ RISC-V is used instead of x86 because its privileged architecture is small and c
 | Part of `tinyos` | Tutorials |
 |---|---|
 | Boot, linker script, stack set-up, SBI calls | CO 06–07, OS 01 |
-| Trap vector, saving registers, `ecall` from user mode | OS 01, OS 15 |
+| Trap vector, saving registers, `ecall` from user mode | OS 01, OS 19 |
 | Timer interrupts and preemption | OS 04, CO 26 |
-| Physical page allocator, Sv39 three-level page tables | OS 09, OS 10 |
+| Physical page allocator, Sv39 three-level page tables | OS 10, OS 12 |
 | Processes, context switch, `fork`/`exec`/`wait` | OS 02, OS 03 |
 | Round-robin then MLFQ scheduling | OS 04, OS 05 |
 | Spinlocks and sleep/wakeup | OS 06, K 04 |
-| virtio-blk driver, buffer cache, a simple file system | OS 12, DRV 07 |
-| Pipes and a shell | OS 13 |
+| virtio-blk driver, buffer cache, a simple file system | OS 14, OS 15, DRV 07 |
+| Pipes and a shell | OS 17 |
 
 ---
 
@@ -88,11 +88,11 @@ flowchart TB
 
 | Stretch | What it teaches |
 |---|---|
-| Copy-on-write `fork`, with reference-counted pages and a page-fault handler | OS 09; how Linux's `fork` is cheap |
+| Copy-on-write `fork`, with reference-counted pages and a page-fault handler | OS 11; how Linux's `fork` is cheap |
 | Multicore boot with per-CPU scheduler loops and spinlocks | OS 06, K 04; the bugs that only appear with two CPUs |
 | MLFQ scheduler, measured against round robin on mixed workloads | OS 04 |
-| Lazy allocation and demand paging from the file system | OS 09 |
-| A crash-consistent file system with a write-ahead log | OS 12 |
+| Lazy allocation and demand paging from the file system | OS 11 |
+| A crash-consistent file system with a write-ahead log | OS 16 |
 | Port the boot path to AArch64 on QEMU `virt` | CO 31, ARM exception levels |
 
 ---

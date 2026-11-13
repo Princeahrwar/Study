@@ -273,7 +273,7 @@ The rule: **between the store and the load there must be a full barrier.** In C+
 2. Make the "ready" store a **release** and the reader's load an **acquire**. Everything the writer did before is now visible after the read.
 3. Look for the **store, then load another location** shape on both sides (section 4.4). Those need `seq_cst` or a full fence.
 4. Everything else, for example statistics counters whose value nobody uses to decide anything about other data, can stay **relaxed**.
-5. **Do not trust a test on x86.** x86 hides every mistake except StoreLoad. Use ThreadSanitizer for the data races, run the code on a weak machine (an Arm server or an Apple-silicon Mac), or check the core primitive with a model checker (`herd7`/`litmus7` for the hardware models, CppMem or CDSChecker for C++). The OS track's [memory barriers note](../05_operating_systems/07_memory_barriers.md) has the single-producer single-consumer ring worked through line by line.
+5. **Do not trust a test on x86.** x86 hides every mistake except StoreLoad. Use ThreadSanitizer for the data races, run the code on a weak machine (an Arm server or an Apple-silicon Mac), or check the core primitive with a model checker (`herd7`/`litmus7` for the hardware models, CppMem or CDSChecker for C++). The OS track's [memory barriers note](../05_operating_systems/08_memory_barriers.md) has the single-producer single-consumer ring worked through line by line.
 
 ---
 

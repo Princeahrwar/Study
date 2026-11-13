@@ -1,6 +1,6 @@
-# OS 15 — The user/kernel boundary
+# OS 19 — The user/kernel boundary
 
-> Prerequisite: `10_virtual_memory_and_tlb.md`.
+> Prerequisite: `12_virtual_memory_and_tlb.md`.
 > This tutorial is the bridge into the kernel track.
 
 ## What a syscall actually costs

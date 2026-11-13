@@ -2,7 +2,7 @@
 
 *Part of the [Operating systems plan](00_plan.md) · Time: about 7 hours (4 reading and experiments, 3 problems) · You need: [OS 01](01_os_structure_and_system_calls.md) (system calls), [OS 02](02_processes.md) (processes, `fork`, address space), and C 01 to C 06 for the code; the C track's chapter on concurrency basics is helpful but not required*
 
-A thread is a unit of execution inside a process. Several threads share one address space, so they can work on the same data without copying it, and they can corrupt it just as readily. Interview questions about threads come in a fixed set: what is shared and what is private, how are Linux threads built, what is the difference between a kernel thread and a user thread, why is thread creation cheaper than `fork` and by how much, what is thread-local storage, why does `fork` in a multithreaded program deadlock, and why does a server use a pool of threads instead of one thread per request. This tutorial answers each with programs run on a real Linux kernel, with the output pasted from the runs. Synchronisation (locks, semaphores, deadlock theory) is OS 06; here you meet a race and the three standard answers to it, so you can see why the rest of the track exists.
+A thread is a unit of execution inside a process. Several threads share one address space, so they can work on the same data without copying it, and they can corrupt it just as readily. Interview questions about threads come in a fixed set: what is shared and what is private, how are Linux threads built, what is the difference between a kernel thread and a user thread, why is thread creation cheaper than `fork` and by how much, what is thread-local storage, why does `fork` in a multithreaded program deadlock, and why does a server use a pool of threads instead of one thread per request. This tutorial answers each with programs run on a real Linux kernel, with the output pasted from the runs. Synchronisation (locks, semaphores, deadlock theory) is OS 06 to OS 09; here you meet a race and the three standard answers to it, so you can see why the rest of the track exists.
 
 By the end you can:
 
@@ -561,7 +561,7 @@ A tool finds this class of bug without waiting for a bad run. Compiling the same
 
 ThreadSanitizer reported a data race in `racy` (the plain counter, which showed no wrong result) and two in `racy_volatile`, and **nothing** for the atomic and mutex versions. So it caught the bug the output hid. (TSan reports the first occurrence of each race and slows the program by a large factor; use it in tests.)
 
-The full theory (critical sections, locks, semaphores, deadlock, memory ordering) is OS 06, OS 07 and OS 08.
+The full theory (critical sections, locks, semaphores, deadlock, memory ordering) is OS 06 to OS 09.
 
 ---
 
@@ -798,7 +798,7 @@ VmSize grew by 666 MiB, VmRSS grew by 81 MiB
 - 10,000 threads with 64 KiB stacks used 81 MiB RSS, about 8 KiB each, and `pthread_create` did not fail. The kernel also holds a kernel stack and a `task_struct` per thread (not in `VmRSS`, from memory).
 - Limits: `/proc/sys/kernel/threads-max` is 63992 here, and `pid_max` is 32768; every thread takes an ID from the same pool as processes, so those bound the number of threads (from memory; I did not create 30,000 to test it). On a 32-bit machine, the 8 MiB virtual stacks are what ran out of address space.
 
-A thread per connection therefore costs about 8 KiB of RAM plus kernel structures, which is fine for thousands of connections and poor for hundreds of thousands, which is why event-driven servers (OS 15, `epoll` and `io_uring`) exist.
+A thread per connection therefore costs about 8 KiB of RAM plus kernel structures, which is fine for thousands of connections and poor for hundreds of thousands, which is why event-driven servers (NET 05 and OS 19, `epoll` and `io_uring`) exist.
 
 ---
 

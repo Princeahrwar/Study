@@ -36,7 +36,7 @@ than any amount of system-design vocabulary.
 ## Your angle
 
 You have measured this hardware. Lead with numbers: the ARM-vs-x86 hugepage
-finding from `05_operating_systems/10_virtual_memory_and_tlb` is exactly the kind of thing that lands here,
+finding from `05_operating_systems/12_virtual_memory_and_tlb` is exactly the kind of thing that lands here,
 because it shows you verify rather than repeat.
 
 ## Trap

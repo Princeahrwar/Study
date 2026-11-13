@@ -95,7 +95,7 @@ whether the split works:
                    complete. Exactly 09_drivers/07_dma.
   Mailbox / queue  for commands with responses.
   Shared state     lowest overhead, hardest to get right: you need the memory
-                   ordering discipline from 05_operating_systems/07_memory_barriers on both sides.
+                   ordering discipline from 05_operating_systems/08_memory_barriers on both sides.
 ```
 
 The rule that generalises: **make the interface batch-friendly.** A hardware
@@ -103,7 +103,7 @@ block you must poke once per packet has moved the bottleneck to the interface.
 One doorbell per 32 descriptors is a different machine from one per descriptor.
 
 This is the same amortisation argument as syscall batching in
-`05_operating_systems/15_user_kernel_boundary`, and drawing that parallel out loud is a good cross-layer move.
+`05_operating_systems/19_user_kernel_boundary`, and drawing that parallel out loud is a good cross-layer move.
 
 ## Power
 

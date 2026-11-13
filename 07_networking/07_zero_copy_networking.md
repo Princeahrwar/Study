@@ -1,6 +1,6 @@
 # NET 07 — Zero-copy networking
 
-> Prerequisite: `09_drivers/07_dma.md`, `05_operating_systems/15_user_kernel_boundary.md`.
+> Prerequisite: `09_drivers/07_dma.md`, `05_operating_systems/19_user_kernel_boundary.md`.
 > The most directly relevant tutorial for Palo Alto, Cisco and Meta infra roles.
 
 ## The copies you are trying to remove
@@ -148,7 +148,7 @@ and no sk_buff, while leaving the rest of the machine's networking intact.
 ```
 
 Four single-producer/single-consumer rings, which is exactly the structure from
-`05_operating_systems/07_memory_barriers`. The descriptor discipline is the same; only the names change.
+`05_operating_systems/08_memory_barriers`. The descriptor discipline is the same; only the names change.
 
 Why it is usually the right choice over DPDK:
 
@@ -171,7 +171,7 @@ and a dedicated core spinning at 100% per queue. What you gain is complete
 control of the data path and no unpredictable kernel work on your core.
 
 DPDK's other contributions are worth knowing by name because they show up as
-design patterns elsewhere: hugepage-backed mempools (the TLB-reach arithmetic in `05_operating_systems/10_virtual_memory_and_tlb.md`),
+design patterns elsewhere: hugepage-backed mempools (the TLB-reach arithmetic in `05_operating_systems/12_virtual_memory_and_tlb.md`),
 per-core lockless rings, burst-oriented APIs that amortise everything over 32
 packets at a time, and RSS/flow steering to bind queues to cores.
 

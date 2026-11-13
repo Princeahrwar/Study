@@ -1,6 +1,6 @@
 # Project 01 — `rkv`: a Redis-compatible in-memory data server in C
 
-> **Weeks:** 12–15 · **Effort:** ~22 hours · **Language:** C11 on Linux · **Prerequisites:** NET 04 (sockets) for M1, NET 05 (`epoll`) for M2, DSA 02 (hashing), DSA linked lists 07 (skip lists), OS 12 (`fsync`)
+> **Weeks:** 12–15 · **Effort:** ~22 hours · **Language:** C11 on Linux · **Prerequisites:** NET 04 (sockets) for M1, NET 05 (`epoll`) for M2, DSA 02 (hashing), DSA linked lists 07 (skip lists), OS 16 (`fsync`)
 
 ## 1. The pitch
 
@@ -26,12 +26,12 @@ It is the most useful kind of project: a real protocol, real clients, a world-cl
 | Part of `rkv` | What it teaches | Tutorials |
 |---|---|---|
 | RESP parser that handles input arriving in arbitrary pieces | Stream framing, state machines, defensive parsing | NET 04 |
-| `epoll` event loop with per-client buffers | Readiness I/O, level- vs edge-triggered, backpressure | NET 05, OS 15 |
+| `epoll` event loop with per-client buffers | Readiness I/O, level- vs edge-triggered, backpressure | NET 05, OS 19 |
 | Hash table with incremental rehashing and keyed hashing | Amortised vs worst-case latency, hash-flooding defence | DSA 02, C 03 |
 | `SCAN` that stays correct while the table resizes | Reverse-binary cursor iteration, a beautiful trick | DSA 02, DSA 11 (bits) |
 | Skip list with spans for sorted sets | Probabilistic balancing, rank queries in O(log n) | DSA linked lists 07, trees 30 |
 | Lazy and active expiry | Sampling algorithms, time budgets in a single-threaded server | DSA 11 (randomisation) |
-| Append-only file with three `fsync` policies | The page cache, what durability really costs, crash testing | OS 12, OS 15 |
+| Append-only file with three `fsync` policies | The page cache, what durability really costs, crash testing | OS 16, OS 19 |
 | Benchmarking against Redis | Throughput vs latency, percentiles, `perf` and flame graphs | LX 05, CO 28 |
 
 ---
@@ -146,7 +146,7 @@ Being within 50–80% of Redis's throughput is a strong result for a first imple
 
 | Stretch | What it teaches |
 |---|---|
-| Snapshot with `fork()` and copy-on-write: the child writes the dataset while the parent keeps serving; measure fork latency and memory growth against write rate | OS 02 and 09 in one experiment; a favourite interview story |
+| Snapshot with `fork()` and copy-on-write: the child writes the dataset while the parent keeps serving; measure fork latency and memory growth against write rate | OS 02 and OS 11 in one experiment; a favourite interview story |
 | Replication: a replica does a full sync, then streams the command log with offsets | HLD 10 from the inside |
 | `maxmemory` with approximate LRU by sampling (Redis samples 5 keys by default) | Why exact LRU is too expensive at scale |
 | Pub/Sub (`SUBSCRIBE`, `PUBLISH`) | Fan-out inside an event loop |

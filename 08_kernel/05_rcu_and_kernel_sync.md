@@ -1,6 +1,6 @@
 # K 05 — RCU and kernel synchronisation
 
-> Prerequisite: `05_operating_systems/07_memory_barriers.md`, `09_drivers/05_interrupt_handling.md`.
+> Prerequisite: `05_operating_systems/08_memory_barriers.md`, `09_drivers/05_interrupt_handling.md`.
 > RCU is the concept that most distinguishes kernel concurrency from userspace
 > concurrency, and it is a frequent deep-dive topic.
 
@@ -68,7 +68,7 @@ Two pairings to state explicitly, because that is what gets probed:
 - `rcu_dereference` is a **dependency-ordered** load: the reader cannot see the
   pointer without also seeing the contents it points to.
 
-They are the release/acquire pair from `05_operating_systems/07_memory_barriers` in kernel clothing.
+They are the release/acquire pair from `05_operating_systems/08_memory_barriers` in kernel clothing.
 
 ### Asynchronous reclamation
 

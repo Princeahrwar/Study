@@ -1,10 +1,10 @@
 # Networking and Communication: Track Plan
 
-> **Track code:** NET · **Weeks:** 10–15 · **Budget:** ~25 hours · **Prerequisites:** OS 01–03 and 13 (system calls, processes, IPC basics); C 02–04 (pointers, structs, endianness)
+> **Track code:** NET · **Weeks:** 10–15 · **Budget:** ~25 hours · **Prerequisites:** OS 01–03 and 17 (system calls, processes, IPC basics); C 02–04 (pointers, structs, endianness)
 
 This track follows a packet all the way down and back up: from Ethernet frames and IP routing, through TCP's state machine and congestion control, into the socket API and the Linux network stack, out to the protocols the web runs on, and finally into the security devices that inspect it all. Your Wi-Fi platform experience covers parts of L2 already; this track makes the rest as solid, and builds the network-security depth that security roles interview for.
 
-"IPC and communication" is split across two tracks: local IPC (pipes, shared memory, signals, Unix sockets) is in `05_operating_systems` (OS 13 and 14); network communication is here.
+"IPC and communication" is split across two tracks: local IPC (pipes, shared memory, signals, Unix sockets) is in `05_operating_systems` (OS 17 and 18); network communication is here.
 
 ---
 

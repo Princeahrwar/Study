@@ -1,6 +1,6 @@
-# OS 14 — IPC mechanisms and their real costs
+# OS 18 — IPC mechanisms and their real costs
 
-> Prerequisite: `15_user_kernel_boundary.md` is a useful companion; read either order.
+> Prerequisite: `19_user_kernel_boundary.md` is a useful companion; read either order.
 
 ## The decision table
 
@@ -88,7 +88,7 @@ private:
 };
 ```
 
-Place the SPSC ring from `07_memory_barriers.md` in that region and you have a zero-syscall,
+Place the SPSC ring from `08_memory_barriers.md` in that region and you have a zero-syscall,
 zero-copy channel between processes.
 
 **The three problems shared memory creates**, and you must have answers:
@@ -224,7 +224,7 @@ Offsets, because the base address differs per process.
 ## Exercises
 
 1. Build a shared-memory SPSC ring between two processes using the class above
-   plus the ring from `07_memory_barriers.md`. Measure messages per second and p99 latency.
+   plus the ring from `08_memory_barriers.md`. Measure messages per second and p99 latency.
 2. Add eventfd wakeups and implement spin-then-sleep. Sweep the spin duration
    from 0 to 100 us and plot latency against CPU utilisation. Find the knee.
 3. Compare the same workload over: shared memory, Unix socket, pipe, loopback

@@ -10,7 +10,7 @@
 > Object) or a single atomic word (the Rate Limiter's token count). For the
 > full, Staff-depth memory-model treatment (all six `memory_order` values,
 > the assembly underneath each, `std::atomic_ref`) —
-> `10_lld/02_systems_lld/02_cpp_memory_model.md` and `05_operating_systems/07_memory_barriers.md`
+> `10_lld/02_systems_lld/02_cpp_memory_model.md` and `05_operating_systems/08_memory_barriers.md`
 > are the reference; this file gives you what you need to *design* with
 > atomics correctly, not the full formal model.
 
@@ -48,7 +48,7 @@ from a real one and you can't just retry.
 
 ## Memory orders, the practical subset
 
-The full six-value model is `05_operating_systems/07_memory_barriers.md`'s territory
+The full six-value model is `05_operating_systems/08_memory_barriers.md`'s territory
 — here's the three you'll actually reach for when designing a container:
 
 - **`memory_order_relaxed`** — atomicity only, no ordering guarantee

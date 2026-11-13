@@ -18,7 +18,7 @@ A self-study program for senior systems-engineering work and interviews: fifteen
 | [`02_c_language/`](02_c_language/00_plan.md) | C in depth | Types and UB, pointers, memory, layout, linking, advanced pointers and pointer bugs, struct design and OOP in C, advanced features, testing, fuzzing and secure C, question bank |
 | [`03_cpp/`](03_cpp/00_plan.md) | C++ | `01_primer/` (from scratch) and `02_interview/` (internals) |
 | [`04_computer_organization/`](04_computer_organization/00_plan.md) | Computer organization | Bits to out-of-order cores, caches, DRAM, coherence, GPUs, PCIe, virtualization |
-| [`05_operating_systems/`](05_operating_systems/00_plan.md) | Operating systems | Processes to the user/kernel boundary |
+| [`05_operating_systems/`](05_operating_systems/00_plan.md) | Operating systems | System calls to file systems, IPC, protection and a numericals bank (21 topics) |
 | [`06_linux/`](06_linux/00_plan.md) | Linux | Shell, `/proc`, containers, `perf` and eBPF (debugging has its own track) |
 | [`07_networking/`](07_networking/00_plan.md) | Networking | L2 to TLS, sockets, the Linux stack, firewalls and IPS |
 | [`08_kernel/`](08_kernel/00_plan.md) | Kernel internals | Your own kernel in QEMU: syscalls, memory, locking, RCU, debugging |

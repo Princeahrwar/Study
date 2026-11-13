@@ -1,6 +1,6 @@
 # DRV 01 — Kernel modules and the build system
 
-> Prerequisite: `05_operating_systems/15_user_kernel_boundary.md`.
+> Prerequisite: `05_operating_systems/19_user_kernel_boundary.md`.
 > Lab: `09_drivers/labs/`. This tutorial gets you to a loading `.ko`.
 
 ## The rules of the kernel environment

@@ -165,7 +165,7 @@ Costs: an IOTLB miss requires a page walk, and map/unmap operations are
 relatively expensive. High-rate drivers therefore keep mappings alive and reuse
 them rather than mapping per packet, and `iommu.strict=0` trades some safety for
 deferred invalidation. Knowing that the IOMMU has a TLB of its own, with the same
-reach arithmetic as `05_operating_systems/10_virtual_memory_and_tlb.md`, is a nice connection to draw.
+reach arithmetic as `05_operating_systems/12_virtual_memory_and_tlb.md`, is a nice connection to draw.
 
 ## Exposing the ring to userspace
 
@@ -190,7 +190,7 @@ static int rk_mmap(struct file *filp, struct vm_area_struct *vma)
 }
 ```
 
-Then the SPSC ring discipline from `05_operating_systems/07_memory_barriers` applies across the
+Then the SPSC ring discipline from `05_operating_systems/08_memory_barriers` applies across the
 kernel/user boundary, with the kernel as producer.
 
 ## Interview angles

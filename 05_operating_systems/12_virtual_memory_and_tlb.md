@@ -1,4 +1,4 @@
-# OS 10 — Virtual memory, paging and the TLB
+# OS 12 — Virtual memory, paging and the TLB
 
 > Prerequisite: `04_computer_organization/13_cache_basics.md`, `04_computer_organization/14_cache_optimisation_and_the_real_hierarchy.md` and `04_computer_organization/15_virtual_memory_and_the_tlb.md` (the hardware side of this note).
 > Lab: tlb2.cpp (removed). Diagram: `diagrams/memory_load_path.mmd`.

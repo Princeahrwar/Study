@@ -2,7 +2,7 @@
 
 *Part of the [C language plan](00_plan.md) · Time: about 6 hours (4 reading, 2 problems) · You need: [C 03](03_memory_stack_heap_and_malloc.md) for the heap and the sanitizers, [C 05](05_qualifiers_storage_classes_and_linkage.md) for `volatile` and linkage, [C 06](06_preprocessor_compilation_and_linking.md) for macros, [C 08](08_advanced_pointers_and_pointer_bugs.md) for function pointers, and [C 09](09_struct_design_and_oop_in_c.md) for ownership. There is no companion demo file: every program below was compiled and run, and its real output is printed under it*
 
-This tutorial is the toolbox that separates code that works from code that survives production: functions with a variable number of arguments, the conventions for reporting and cleaning up after errors, non-local jumps with `setjmp`, type-generic macros, the C11 atomics and threads that the operating system tracks (OS 06 and OS 07) are built on, signals, the GCC extensions the Linux kernel is written in, floating point, and what C23 changed. Most of the lessons come from things that went wrong in the experiments: a variadic call that printed `4.52606e-316`, a `volatile` that changed a result, a flag loop that never ended, and a `-ffast-math` that deleted a NaN check.
+This tutorial is the toolbox that separates code that works from code that survives production: functions with a variable number of arguments, the conventions for reporting and cleaning up after errors, non-local jumps with `setjmp`, type-generic macros, the C11 atomics and threads that the operating system tracks (OS 06 to OS 08) are built on, signals, the GCC extensions the Linux kernel is written in, floating point, and what C23 changed. Most of the lessons come from things that went wrong in the experiments: a variadic call that printed `4.52606e-316`, a `volatile` that changed a result, a flag loop that never ended, and a `-ffast-math` that deleted a NaN check.
 
 By the end you can:
 
@@ -789,7 +789,7 @@ C23 makes the **variably modified types** (pointer to VLA, as in the parameters 
 
 ## 7. Atomics and threads
 
-C11 added `<stdatomic.h>` (atomic types and operations), `<threads.h>` (threads, mutexes, condition variables), and a memory model; glibc 2.39 provides both headers, and the threads here use `thrd_create`. This section is the C language side of the topics in OS 06 and OS 07: the operating system gives you the scheduler and the futex, and the language gives you a way to say what is allowed to be reordered.
+C11 added `<stdatomic.h>` (atomic types and operations), `<threads.h>` (threads, mutexes, condition variables), and a memory model; glibc 2.39 provides both headers, and the threads here use `thrd_create`. This section is the C language side of the topics in OS 06 to OS 08: the operating system gives you the scheduler and the futex, and the language gives you a way to say what is allowed to be reordered.
 
 **A data race is undefined behaviour.** Two threads access the same object, at least one writes, and nothing orders them. The result is not "an occasional wrong number"; the compiler may assume it cannot happen. Four threads each incremented three counters one million times:
 

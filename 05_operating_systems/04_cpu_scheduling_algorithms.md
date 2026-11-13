@@ -327,6 +327,17 @@ Trace of the tie rule (Problem B): A arrives at 0 with burst 5, B at 1 with burs
 
 Each job has a priority; the highest-priority ready job runs. Non-preemptive: the running job keeps the CPU until it ends. Preemptive: a newly ready higher-priority job takes the CPU at once. Priorities come from outside (importance, user, deadline) or from inside (the system raises I/O-bound jobs). **Weakness: starvation**, section 6.
 
+### 4.5 Two more that exam-style questions use: HRRN and the multilevel queue
+
+**HRRN (highest response ratio next)** is non-preemptive. When the CPU becomes free it computes, for every ready job, the ratio `(waiting time + burst) / burst` and runs the job with the largest ratio. A short job starts with a high ratio, as in SJF, but a long job's ratio grows the longer it waits, so it cannot be postponed for ever. This is aging built into the formula. These hand-worked examples were checked with a short script, which is not printed here:
+
+- On the section 4 workload, at tick 7 the ratios are B `(5+4)/4 = 2.25`, C `(3+1)/1 = 4.0` and D `(2+4)/4 = 1.5`, so C runs. At tick 8 they are B 2.5 and D 1.75, so B runs, then D. The schedule and the averages (turnaround 8.00, waiting 4.00) are the same as SJF's here.
+- The difference shows with a stream of short jobs. A arrives at 0 with burst 3 and L at 1 with burst 6. Six 2-tick jobs arrive at 2, 4, 6, 8, 10 and 12. Under SJF, L always loses to a 2-tick job and finishes **last, at 21**. Under HRRN, at tick 5 L's ratio is `(4+6)/6 = 1.67` against 1.5 for the waiting short job, so L runs and finishes **at 11**. The short jobs finish later (the last at 21 instead of 15). HRRN also needs burst lengths, so it has SJF's estimation problem.
+
+**Multilevel queue** (without feedback) splits the ready jobs into fixed classes, for example interactive (foreground) and batch (background). Each class has its own queue and its own algorithm, often round robin for the foreground and FCFS for the background. Between the queues the scheduler uses either strict priority (background runs only when the foreground queue is empty, so it can starve) or a time split (for example 80 percent of the CPU to the foreground). A job never changes class. Letting it change class based on its behaviour is the step that turns this into the MLFQ of section 8. Linux's scheduling classes (section 9) are a multilevel queue with strict priority between classes.
+
+**Real jobs alternate CPU and I/O bursts.** Every job in this chapter's examples is one CPU burst. A real interactive job computes for a millisecond, then waits for I/O. A scheduler treats each CPU burst as a separate job, so while one job waits for the disk another runs: CPU and I/O overlap. This is why favouring short bursts (SJF, MLFQ) helps interactive jobs: they get the CPU back quickly and their next I/O starts sooner.
+
 ---
 
 ## 5. Choosing the quantum
@@ -419,7 +430,7 @@ aging every 3  : the low-priority job first runs at tick 12 and finishes at tick
 
 Without aging the low-priority job does not run until every high-priority job has finished (tick 22). With aging its priority number falls by one every 3 waiting ticks, it reaches the priority of the stream after 12 ticks, ties are broken by arrival (it arrived first) and it runs at tick 12, 10 ticks sooner, and the stream finishes later (27 instead of 22) because the victim took its 5 ticks. Aging does not remove the trade-off; it limits how long a job can be postponed.
 
-**Priority inversion** (from memory; the full treatment is OS 06): a high-priority job waits for a lock held by a low-priority job, and a medium-priority job keeps running, so the low-priority job never releases the lock. The standard fix is **priority inheritance**: the lock holder temporarily takes the priority of the highest waiter.
+**Priority inversion** (from memory; the full treatment is OS 07): a high-priority job waits for a lock held by a low-priority job, and a medium-priority job keeps running, so the low-priority job never releases the lock. The standard fix is **priority inheritance**: the lock holder temporarily takes the priority of the highest waiter.
 
 ---
 
@@ -1006,7 +1017,7 @@ two equal CPU-bound threads, one per CPU:          0.75 s
 ratio: 2.05
 ```
 
-Two threads on one CPU took about twice as long (ratio 2.05): the CPU is the resource and pinning leaves the other one idle. Used well, pinning avoids migrations; used badly, it wastes a CPU. How Linux balances load across CPUs, NUMA nodes and cache domains is OS 05 and OS 11.
+Two threads on one CPU took about twice as long (ratio 2.05): the CPU is the resource and pinning leaves the other one idle. Used well, pinning avoids migrations; used badly, it wastes a CPU. How Linux balances load across CPUs, NUMA nodes and cache domains is OS 05 and OS 13.
 
 ---
 
@@ -1063,6 +1074,7 @@ Two threads on one CPU took about twice as long (ratio 2.05): the CPU is the res
 14. **Global versus per-CPU run queues?** Global balances automatically and contends on a lock; per-CPU scales and needs load balancing or stealing.
 15. **What does `nice` do on Linux?** It sets a weight, about 1.25 times per step; measured 9.1 to 1 at nice 10.
 16. **How can a real-time task starve the system, and what stops it?** A `SCHED_FIFO` loop never yields; the kernel throttles real-time tasks to 95 percent per second so normal tasks keep 5.
+17. **What is HRRN, and why does it not starve long jobs?** It runs the job with the highest `(waiting + burst) / burst`. A waiting job's ratio keeps rising, so in section 4.5 the long job finished at 11 instead of 21 under SJF.
 
 ---
 
@@ -1274,6 +1286,8 @@ The boost moves every job, in queue order, back to level 0, so the long job gets
 | Round robin | Yes | Bounded response; fair | Overhead; poor turnaround |
 | Priority | Either | Expresses importance | Starvation; inversion |
 | MLFQ | Yes | Learns job type; good response | Tuning; gaming without accounting |
+| HRRN | No | SJF-like, with built-in aging | Needs burst lengths |
+| Multilevel queue | Either | Separate policy per class | Fixed classes; the lower class can starve |
 | Lottery / stride | Yes | Proportional share | Noisy short run / arrival rule |
 | RM | Fixed priority | Predictable | `U` bound `n(2^(1/n) - 1)` sufficient only |
 | EDF | Dynamic priority | `U <= 1` | Overload behaves badly (from memory) |

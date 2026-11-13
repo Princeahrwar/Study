@@ -229,7 +229,7 @@ Design decisions and the reasoning, which is what an interviewer wants:
 - **Four entries per line** so a lookup is one miss. Beyond four you need a
   second line and lose the property.
 - **2 MiB pages** for the table. At 400 MiB with 4 KiB pages it can never be
-  TLB-resident (the arithmetic in `05_operating_systems/10_virtual_memory_and_tlb`), and on ARM we measured that
+  TLB-resident (the arithmetic in `05_operating_systems/12_virtual_memory_and_tlb`), and on ARM we measured that
   as up to 4.4x.
 - **Aging amortised into the packet path** — check a few buckets per packet
   rather than sweeping periodically, which is exactly the 400 us tail-latency bug
@@ -276,7 +276,7 @@ Low contention, verification cost, starvation concerns, and "shard it instead".
    reader cost for each at 1, 4 and 8 threads.
 3. Build the `FlowBucket` table. Verify `sizeof` is 64, then measure lookups per
    second with 4 KiB and 2 MiB pages on your ARM machine. Compare the ratio to
-   the `05_operating_systems/10_virtual_memory_and_tlb` measurement.
+   the `05_operating_systems/12_virtual_memory_and_tlb` measurement.
 4. Attack your own table: generate 5-tuples that collide under a non-keyed hash
    and measure the lookup degradation. Then switch to SipHash and show it is
    gone. This experiment is a portfolio piece by itself.
