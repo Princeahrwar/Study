@@ -29,7 +29,7 @@ Topics 05, 07, 10, 11, 14 and 15 are older, Staff-level notes; each is rewritten
 
 | # | File | Topic | Key subtopics | Status | Week |
 |---|---|---|---|---|---|
-| 01 | `01_os_structure_and_system_calls.md` | OS structure and system calls | User and kernel mode, privilege levels, traps, exceptions and interrupts, the system-call mechanism (`syscall`, `svc`), monolithic vs microkernel vs hybrid, how Linux boots | To write | 5 |
+| 01 | [`01_os_structure_and_system_calls.md`](01_os_structure_and_system_calls.md) | OS structure and system calls | User and kernel mode, privilege levels, traps, exceptions and interrupts, the system-call mechanism (`syscall`, `svc`), monolithic vs microkernel vs hybrid, how Linux boots | Written | 5 |
 | 02 | `02_processes.md` | Processes | The process abstraction, PCB (`task_struct`), process states, `fork`, `exec`, `wait`, zombies and orphans, copy-on-write, the address-space layout, what a context switch saves | To write | 6 |
 | 03 | `03_threads.md` | Threads | Threads vs processes, kernel vs user threads, the 1:1 model in Linux (`clone`), pthreads API, thread-local storage, thread pools, the cost of creating and switching threads | To write | 6 |
 | 04 | `04_cpu_scheduling_algorithms.md` | CPU scheduling algorithms | Metrics (turnaround, response, throughput, fairness), FCFS, SJF and SRTF, round robin and quantum choice, priority and aging, MLFQ, lottery and stride, real-time (rate-monotonic, EDF), multiprocessor scheduling | To write | 7 |
@@ -106,6 +106,7 @@ All labs run in a Linux VM or on a Linux machine (see `99_toolchain/README.md`).
 
 | # | Topic | Status |
 |---|---|---|
-| 01–15 | All topics | 01 is next (week 5); 05, 07, 10, 11, 14, 15 are rewritten when reached |
+| 01 | OS structure and system calls | Written |
+| 02–15 | All other topics | 02 is next (week 6); 05, 07, 10, 11, 14, 15 are rewritten when reached |
 
 Cross-track view: [`../00_MASTER_PLAN.md`](../00_MASTER_PLAN.md).
