@@ -68,7 +68,7 @@ Each track has a `00_plan.md` with its topics, status, week, labs, interview que
 | 02 | [C language](02_c_language/00_plan.md) | C | 12 (all written, C 01 to C 12 done early) | 1–11, 24 | ~30 |
 | 03 | [C++](03_cpp/00_plan.md) | CPP | Primer (14, written) + 8 interview topics | 9–16 | ~20 |
 | 04 | [Computer organization](04_computer_organization/00_plan.md) | CO | 31 (all written) | 1–6 | ~70 core, ~83 all |
-| 05 | [Operating systems](05_operating_systems/00_plan.md) | OS | 15 (OS 01 to 02 written, 6 older notes) | 5–13 | ~35 |
+| 05 | [Operating systems](05_operating_systems/00_plan.md) | OS | 15 (OS 01 to 03 written, 6 older notes) | 5–13 | ~35 |
 | 06 | [Linux](06_linux/00_plan.md) | LX | 6 | 3–9, 24 | ~12 |
 | 07 | [Networking](07_networking/00_plan.md) | NET | 9 core (2 exist) + 1 optional | 10–15 | ~25 |
 | 08 | [Kernel internals](08_kernel/00_plan.md) | K | 8 (1 exists) | 14–20 | ~30 |
