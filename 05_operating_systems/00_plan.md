@@ -28,7 +28,7 @@ Operating-system concepts show up in system-software rounds (virtual memory, the
 
 ## 3. Topics
 
-Topics 05, 08, 12, 13, 18 and 19 are older, Staff-level notes; each is rewritten in the same detailed style as the new tutorials before you study it. The rest are new foundation tutorials. The plan grew from 15 to 21 topics after the November 2026 coverage audit (section 9): synchronisation, memory management, and file systems and I/O were each split in two, and protection and security, I/O systems with disk scheduling, and a question bank were added.
+Topics 08, 12, 13, 18 and 19 are older, Staff-level notes; each is rewritten in the same detailed style as the new tutorials before you study it. The rest are new foundation tutorials. The plan grew from 15 to 21 topics after the November 2026 coverage audit (section 9): synchronisation, memory management, and file systems and I/O were each split in two, and protection and security, I/O systems with disk scheduling, and a question bank were added.
 
 | # | File | Topic | Key subtopics | Status | Week |
 |---|---|---|---|---|---|
@@ -36,7 +36,7 @@ Topics 05, 08, 12, 13, 18 and 19 are older, Staff-level notes; each is rewritten
 | 02 | [`02_processes.md`](02_processes.md) | Processes | The process abstraction, PCB (`task_struct`), process states, `fork`, `exec`, `wait`, zombies and orphans, copy-on-write, the address-space layout, what a context switch saves | Written | 6 |
 | 03 | [`03_threads.md`](03_threads.md) | Threads | Threads vs processes, kernel vs user threads, the 1:1 model in Linux (`clone`), pthreads API, thread-local storage, thread pools, the cost of creating and switching threads | Written | 6 |
 | 04 | [`04_cpu_scheduling_algorithms.md`](04_cpu_scheduling_algorithms.md) | CPU scheduling algorithms | Metrics (turnaround, response, throughput, fairness), FCFS, SJF and SRTF, HRRN, round robin and quantum choice, priority and aging, multilevel queue, MLFQ, lottery and stride, real-time (rate-monotonic, EDF), multiprocessor scheduling | Written | 7 |
-| 05 | [`05_process_scheduling.md`](05_process_scheduling.md) | Scheduling in Linux | CFS and EEVDF (virtual runtime, lag, weights from nice), run queues and load balancing, scheduling classes (`SCHED_OTHER`, `FIFO`, `RR`, `DEADLINE`, `BATCH`, `IDLE`), `sched_ext` in outline, preemption models and PREEMPT_RT, CPU isolation, where latency goes, measuring scheduling delay | Exists, rewrite due | 7 |
+| 05 | [`05_process_scheduling.md`](05_process_scheduling.md) | Scheduling in Linux | CFS and EEVDF (virtual runtime, lag, weights from nice), run queues and load balancing, scheduling classes (`SCHED_OTHER`, `FIFO`, `RR`, `DEADLINE`, `BATCH`, `IDLE`), `sched_ext` in outline, preemption models and PREEMPT_RT, CPU isolation, where latency goes, measuring scheduling delay | Written | 7 |
 | 06 | `06_locks.md` | Locks: from Peterson to the futex | The critical-section problem and its three requirements, why disabling interrupts fails on multicore, Peterson's and Lamport's bakery algorithms, test-and-set, CAS and fetch-and-add, spinlocks (TAS, TTAS, ticket, MCS), spin vs yield vs sleep, two-phase locks, the futex and how a pthread mutex is built on it, lock contention and scalability, locked data structures (approximate counter, hand-over-hand list, concurrent hash table) | To write | 8 |
 | 07 | `07_condition_variables_and_semaphores.md` | Condition variables, semaphores and classic problems | Condition variables and the `while` rule, Mesa vs Hoare semantics, monitors, counting and binary semaphores, mutex vs semaphore, producer-consumer (bounded buffer), readers-writers (both preferences), dining philosophers, sleeping barber, barriers, the thundering herd; concurrency bug patterns (atomicity and order violations); priority inversion and inheritance | To write | 8 |
 | 08 | [`08_memory_barriers.md`](08_memory_barriers.md) | Memory barriers and the memory model | Hardware vs language memory models, the canonical reordering example, the six C++ memory orders, StoreLoad, fences, the kernel's barrier vocabulary, a correct SPSC ring | Exists, rewrite due | 9 |
@@ -146,7 +146,8 @@ All labs run in a Linux VM or on a Linux machine (see `99_toolchain/README.md`).
 | 02 | Processes | Written |
 | 03 | Threads | Written |
 | 04 | CPU scheduling algorithms | Written (HRRN and multilevel queue added after the audit) |
-| 05 to 21 | All other topics | 05 is next (week 7); 05, 08, 12, 13, 18, 19 are rewritten when reached |
+| 05 | Scheduling in Linux | Written (replaces the older note) |
+| 06 to 21 | All other topics | 06 is next (week 8); 08, 12, 13, 18, 19 are rewritten when reached |
 
 ---
 
