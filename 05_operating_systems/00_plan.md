@@ -32,7 +32,7 @@ Topics 05, 07, 10, 11, 14 and 15 are older, Staff-level notes; each is rewritten
 | 01 | [`01_os_structure_and_system_calls.md`](01_os_structure_and_system_calls.md) | OS structure and system calls | User and kernel mode, privilege levels, traps, exceptions and interrupts, the system-call mechanism (`syscall`, `svc`), monolithic vs microkernel vs hybrid, how Linux boots | Written | 5 |
 | 02 | [`02_processes.md`](02_processes.md) | Processes | The process abstraction, PCB (`task_struct`), process states, `fork`, `exec`, `wait`, zombies and orphans, copy-on-write, the address-space layout, what a context switch saves | Written | 6 |
 | 03 | [`03_threads.md`](03_threads.md) | Threads | Threads vs processes, kernel vs user threads, the 1:1 model in Linux (`clone`), pthreads API, thread-local storage, thread pools, the cost of creating and switching threads | Written | 6 |
-| 04 | `04_cpu_scheduling_algorithms.md` | CPU scheduling algorithms | Metrics (turnaround, response, throughput, fairness), FCFS, SJF and SRTF, round robin and quantum choice, priority and aging, MLFQ, lottery and stride, real-time (rate-monotonic, EDF), multiprocessor scheduling | To write | 7 |
+| 04 | [`04_cpu_scheduling_algorithms.md`](04_cpu_scheduling_algorithms.md) | CPU scheduling algorithms | Metrics (turnaround, response, throughput, fairness), FCFS, SJF and SRTF, round robin and quantum choice, priority and aging, MLFQ, lottery and stride, real-time (rate-monotonic, EDF), multiprocessor scheduling | Written | 7 |
 | 05 | [`05_process_scheduling.md`](05_process_scheduling.md) | Scheduling in Linux | CFS and EEVDF, scheduling classes (`SCHED_OTHER`, `FIFO`, `RR`, `DEADLINE`), preemption models and PREEMPT_RT, where latency goes, measuring scheduling delay | Exists, rewrite due | 7 |
 | 06 | `06_synchronization.md` | Synchronisation | Race conditions and critical sections, Peterson's algorithm, hardware atomics (test-and-set, CAS), spinlocks, mutexes, semaphores, condition variables, monitors, RW locks; producer–consumer, readers–writers, dining philosophers; priority inversion and inheritance | To write | 8 |
 | 07 | [`07_memory_barriers.md`](07_memory_barriers.md) | Memory barriers and the memory model | Hardware vs language memory models, the canonical reordering example, the six C++ memory orders, StoreLoad, fences, the kernel's barrier vocabulary, a correct SPSC ring | Exists, rewrite due | 8 |
@@ -109,6 +109,7 @@ All labs run in a Linux VM or on a Linux machine (see `99_toolchain/README.md`).
 | 01 | OS structure and system calls | Written |
 | 02 | Processes | Written |
 | 03 | Threads | Written |
-| 04–15 | All other topics | 04 is next (week 7); 05, 07, 10, 11, 14, 15 are rewritten when reached |
+| 04 | CPU scheduling algorithms | Written |
+| 05–15 | All other topics | 05 is next (week 7); 05, 07, 10, 11, 14, 15 are rewritten when reached |
 
 Cross-track view: [`../00_MASTER_PLAN.md`](../00_MASTER_PLAN.md).
