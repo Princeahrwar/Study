@@ -32,7 +32,7 @@ It turns the hardest driver questions ("why did I read stale data after DMA?", "
 | Platform driver bound through a device-tree overlay | DRV 06 |
 | Coherent and streaming DMA, sync calls, the IOMMU | DRV 07 |
 | Producer/consumer indices with the right barriers | OS 07, K 04 |
-| Measuring with `perf` and bpftrace | LX 05 |
+| Measuring with `perf` and bpftrace | LX 10, LX 11 |
 
 ---
 

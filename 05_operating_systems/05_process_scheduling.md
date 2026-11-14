@@ -584,7 +584,7 @@ Each process got close to its fair share of 4,000 ms (two thirds of a CPU), with
 
 ## 6. Groups: cgroups, shares and quotas
 
-Fairness between tasks is not always what you want. If user A runs one process and user B runs a hundred, task-level fairness gives B 99 percent of the CPU. **Group scheduling** applies the fair algorithm at several levels: the CPU is first shared between groups by group weight, then each group's share between its tasks. The [CFS documentation](https://www.kernel.org/doc/html/latest/scheduler/sched-design-CFS.html) gives the example of a `multimedia` group with `cpu.shares` 2048 getting twice the CPU of a `browser` group with 1024. Containers are built on this (LX 02). Two controls matter:
+Fairness between tasks is not always what you want. If user A runs one process and user B runs a hundred, task-level fairness gives B 99 percent of the CPU. **Group scheduling** applies the fair algorithm at several levels: the CPU is first shared between groups by group weight, then each group's share between its tasks. The [CFS documentation](https://www.kernel.org/doc/html/latest/scheduler/sched-design-CFS.html) gives the example of a `multimedia` group with `cpu.shares` 2048 getting twice the CPU of a `browser` group with 1024. Containers are built on this (LX 09). Two controls matter:
 
 - **Weight**: `cpu.shares` in cgroup v1 (default 1024), `cpu.weight` in cgroup v2 (default 100; from memory). Weights only matter when the CPU is contended.
 - **Bandwidth quota**: `cpu.cfs_quota_us` per `cpu.cfs_period_us` in v1, `cpu.max` in v2. A hard cap that applies even when the CPU is otherwise idle: once the group has used its quota in a period it is **throttled** until the next period.

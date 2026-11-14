@@ -61,7 +61,7 @@ Diagrams: [`diagrams/memory_load_path.mmd`](diagrams/memory_load_path.mmd), [`di
 | Topic | Where |
 |---|---|
 | Hardware support for virtualization, VMs vs containers vs microVMs | CO 27 |
-| Namespaces, cgroups v2, capabilities in use, building a container by hand | LX 02 |
+| Namespaces, cgroups v2, capabilities in use, building a container by hand | LX 09 |
 | Disks, SSDs and the FTL, RAID, ECC and CRCs (the hardware side of storage) | CO 17 |
 | Side channels, Spectre and Meltdown, KPTI, NX, ASLR, secure boot | CO 30 |
 | `malloc` internals, arenas and pools (user-space allocators) | C 03 |

@@ -32,7 +32,7 @@ It is the most useful kind of project: a real protocol, real clients, a world-cl
 | Skip list with spans for sorted sets | Probabilistic balancing, rank queries in O(log n) | DSA linked lists 07, trees 30 |
 | Lazy and active expiry | Sampling algorithms, time budgets in a single-threaded server | DSA 11 (randomisation) |
 | Append-only file with three `fsync` policies | The page cache, what durability really costs, crash testing | OS 16, OS 19 |
-| Benchmarking against Redis | Throughput vs latency, percentiles, `perf` and flame graphs | LX 05, CO 28 |
+| Benchmarking against Redis | Throughput vs latency, percentiles, `perf` and flame graphs | LX 05, LX 10, CO 28 |
 
 ---
 

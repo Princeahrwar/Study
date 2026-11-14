@@ -52,7 +52,7 @@ It replaces the single Linux tutorial LX 04: one tutorial was not enough for som
 |---|---|
 | Kernel debugging: oops decoding, `printk`, dynamic debug, ftrace, kprobes, KASAN, KCSAN, lockdep, kdump and `crash` | [K 08](../08_kernel/00_plan.md); DBG 09 sets up the tools |
 | Driver observability: debugfs, tracepoints | [DRV 04](../09_drivers/00_plan.md) |
-| Performance debugging: `perf`, flame graphs, the USE method, eBPF | [LX 05](../06_linux/00_plan.md) |
+| Performance debugging: `perf`, flame graphs, the USE method, eBPF | [LX 05, LX 10 and LX 11](../06_linux/00_plan.md) |
 | JTAG and SWD hardware, hard-fault dumps on a microcontroller | [EMB 04](../13_embedded/00_plan.md); DBG 09 covers the `gdb` side |
 | Testing, fuzzing and static analysis (finding bugs before they ship) | [C 11](../02_c_language/00_plan.md) |
 | Undefined behaviour and why `-O0` against `-O2` differ | [C 01](../02_c_language/01_types_conversions_and_undefined_behavior.md) |

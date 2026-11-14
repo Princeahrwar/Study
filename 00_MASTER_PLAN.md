@@ -15,7 +15,7 @@
 | 30 | ~22 weeks | ~week 12 |
 | 35+ | ~19 weeks | ~week 10 |
 
-The track budgets in the table in section 2 add up to about 745 hours (the DSA and computer-organization tracks grew after coverage reviews); 26 weeks at 25 hours is 650, so at that pace the full program is nearer 30 weeks than 26. The overflow rule in section 5 still applies: when a week runs over, drop a stretch item, never the practice. The pace table above and the week tables in section 5 are to be re-cut once you choose a pace.
+The track budgets in the table in section 2 add up to about 775 hours (the DSA and computer-organization tracks grew after coverage reviews); 26 weeks at 25 hours is 650, so at that pace the full program is nearer 31 weeks than 26. The overflow rule in section 5 still applies: when a week runs over, drop a stretch item, never the practice. The pace table above and the week tables in section 5 are to be re-cut once you choose a pace.
 
 This file is the order and the schedule. The method is in [`README.md`](README.md), and each track's `00_plan.md` has its topics and their status.
 
@@ -69,7 +69,7 @@ Each track has a `00_plan.md` with its topics, status, week, labs, interview que
 | 03 | [C++](03_cpp/00_plan.md) | CPP | Primer (14, written) + 8 interview topics | 9–16 | ~20 |
 | 04 | [Computer organization](04_computer_organization/00_plan.md) | CO | 31 (all written) | 1–6 | ~70 core, ~83 all |
 | 05 | [Operating systems](05_operating_systems/00_plan.md) | OS | 21 (OS 01 to 21 written, 2 older notes) | 5–14 | ~50 |
-| 06 | [Linux](06_linux/00_plan.md) | LX | 6 | 3–9, 24 | ~12 |
+| 06 | [Linux](06_linux/00_plan.md) | LX | 14 | 3–19, 24 | ~42 |
 | 07 | [Networking](07_networking/00_plan.md) | NET | 9 core (2 exist) + 1 optional | 10–15 | ~25 |
 | 08 | [Kernel internals](08_kernel/00_plan.md) | K | 8 (1 exists) | 14–20 | ~30 |
 | 09 | [Device drivers](09_drivers/00_plan.md) | DRV | 10 (5 exist) | 15–20 | ~30 |
@@ -82,7 +82,7 @@ Each track has a `00_plan.md` with its topics, status, week, labs, interview que
 | 16 | [Debugging](16_debugging/00_plan.md) | DBG | 10 (`gdb` basics to Python scripting, core dumps, sanitizers, concurrency bugs, live processes, `rr`, remote and embedded) | 8–14, 17, 24 | ~25 |
 | 99 | [Toolchain](99_toolchain/README.md) | — | Mac, Linux VM, QEMU, counters, cloud GPU | 3, 14, 20, 21 | — |
 
-In total: about **176 new tutorials** and **40 rewrites** of older notes, written one at a time as each track reaches them.
+In total: about **184 new tutorials** and **40 rewrites** of older notes, written one at a time as each track reaches them.
 
 "IPC and communication" is covered in two places: local IPC in OS 17–18, and network communication in the networking track. Intrusion prevention (IPS) is NET 09.
 
@@ -138,18 +138,18 @@ Each week is about 25 hours: roughly 8 h DSA, 8 h systems, 6 h design, and 3 h f
 | 3 | 26 Oct | Hashing; LL 04 | CO 05, CO 06; LX 01 | LLD 05, 06 | C 03; set up the Linux VM |
 | 4 | 2 Nov | Binary search & sorting; LL 05 | CO 07, CO 08; LX 02 | LLD 07 | C 04 |
 | 5 | 9 Nov | Stacks & queues; LL 06 | CO 09, CO 10; OS 01 | LLD 08 | C 05; start the story bank |
-| 6 | 16 Nov | Recursion & backtracking; Trees 02; LL 07 | CO 11, CO 12; OS 02, OS 03 | LLD 09 | C 06; **Checkpoint 1** |
+| 6 | 16 Nov | Recursion & backtracking; Trees 02; LL 07 | CO 11, CO 12; OS 02, OS 03; LX 03 | LLD 09 | C 06; **Checkpoint 1** |
 
 ### Phase B — Core interview material (weeks 7–14)
 
 | Week | Starts | DSA | Systems | Design | C/C++ · projects · interviews |
 |---|---|---|---|---|---|
-| 7 | 23 Nov | Trees 03–05 | OS 04 (done), OS 05 (done); LX 03 | LLD 10, 11 | C 07 |
+| 7 | 23 Nov | Trees 03–05 | OS 04 (done), OS 05 (done); LX 04 | LLD 10, 11 | C 07 |
 | 8 | 30 Nov | Trees 06–08 | OS 06 (done), OS 07 (done); DBG 01, DBG 02 | LLD 12, 13, 14 | C 08 |
 | 9 | 7 Dec | Trees 09–11 | OS 08 (done), OS 09 (done); LX 05; DBG 03 | LLD 15, 16, 17 | C 09; CPP 01 |
-| 10 | 14 Dec | Trees 12, 15, 16 (heaps) | OS 10 (done), OS 11 (done); NET 01; DBG 04 | LLD-P 01, 06, 02 | C 10; CPP 02 |
+| 10 | 14 Dec | Trees 12, 15, 16 (heaps) | OS 10 (done), OS 11 (done); NET 01; LX 06; DBG 04 | LLD-P 01, 06, 02 | C 10; CPP 02 |
 | 11 | 21 Dec | Trees 17–18 (tries); graphs I | OS 12 (done), OS 13 (done), OS 14 (done); NET 02; DBG 05 | LLD-P 03, 07, 04; HLD 01, 02 | C 11; CPP 03 (holiday week: use as buffer if needed) |
-| 12 | 28 Dec | Graphs II; Trees 28 (union-find) | OS 15 (done), OS 16 (done), OS 17 (done); NET 03, NET 04; DBG 06 | LLD-P 05, 08; HLD 03, 04 | CPP 04; **rkv M1** |
+| 12 | 28 Dec | Graphs II; Trees 28 (union-find) | OS 15 (done), OS 16 (done), OS 17 (done); NET 03, NET 04; LX 07; DBG 06 | LLD-P 05, 08; HLD 03, 04 | CPP 04; **rkv M1** |
 | 13 | 4 Jan | Greedy & intervals; DP I | OS 18 (done), OS 19 (done); NET 05, NET 06; DBG 07 | LLD-P 09, 10; HLD 05, 06, 07 | CPP 05; rkv M2–M3; resume rewrite |
 | 14 | 11 Jan | DP II | OS 20 (done), OS 21 (done); NET 07, NET 08; K 01; DBG 08 (stretch) | LLD 18, 20, 21; HLD 08, 09, 10 | CPP 06; rkv M4; first mock loop; **Milestone: apply-ready** |
 
@@ -157,11 +157,11 @@ Each week is about 25 hours: roughly 8 h DSA, 8 h systems, 6 h design, and 3 h f
 
 | Week | Starts | DSA | Systems | Design | C/C++ · projects · interviews |
 |---|---|---|---|---|---|
-| 15 | 18 Jan | DP III; bits & math | NET 09; K 02; DRV 01 | HLD 11, 12; HLD-P 01 | CPP 07; rkv M5; **rkdma M1** |
-| 16 | 25 Jan | String algorithms; Trees 13 (kernel rbtree) | K 03; DRV 02, DRV 03 | HLD 13, 14, 15; HLD-P 02 | CPP 08; rkdma M2 |
-| 17 | 1 Feb | Trees 19–21 (range queries) | K 04, K 05; DRV 04, DRV 05; DBG 09 | HLD 16, 17; HLD-P 03, 04 | rkdma M3 |
-| 18 | 8 Feb | Trees 24, 25, 29; mixed medium–hard set | K 06; DRV 06, DRV 07 | HLD-P 05, 06, 07 | rkdma M4 |
-| 19 | 15 Feb | Timed mixed set; AI-assisted coding practice (LLD 19) | DRV 08, DRV 09 | HLD-P 08, 09, 10 | **rkdma shipped** |
+| 15 | 18 Jan | DP III; bits & math | NET 09; LX 08, LX 09; K 02; DRV 01 | HLD 11, 12; HLD-P 01 | CPP 07; rkv M5; **rkdma M1** |
+| 16 | 25 Jan | String algorithms; Trees 13 (kernel rbtree) | K 03; LX 10; DRV 02, DRV 03 | HLD 13, 14, 15; HLD-P 02 | CPP 08; rkdma M2 |
+| 17 | 1 Feb | Trees 19–21 (range queries) | K 04, K 05; LX 11; DRV 04, DRV 05; DBG 09 | HLD 16, 17; HLD-P 03, 04 | rkdma M3 |
+| 18 | 8 Feb | Trees 24, 25, 29; mixed medium–hard set | K 06; LX 12; DRV 06, DRV 07 | HLD-P 05, 06, 07 | rkdma M4 |
+| 19 | 15 Feb | Timed mixed set; AI-assisted coding practice (LLD 19) | LX 13; DRV 08, DRV 09 | HLD-P 08, 09, 10 | **rkdma shipped** |
 | 20 | 22 Feb | Design-style coding; Trees 31, 34; systems-flavoured set (bits, parsing, caches, rate limiters) | DRV 10; K 07, K 08 | LLD-S 01, 02; HLD-P 11, 12 | **pfilt M1**; **Checkpoint 3** |
 
 ### Phase D — Company specials and projects (weeks 21–23)
@@ -176,7 +176,7 @@ Each week is about 25 hours: roughly 8 h DSA, 8 h systems, 6 h design, and 3 h f
 
 | Week | Starts | Focus |
 |---|---|---|
-| 24 | 22 Mar | Mock loops (two or three this week); six extended LLD problems cold; LX 06, C 12 and DBG 10 question banks; concept flashcards |
+| 24 | 22 Mar | Mock loops (two or three this week); six extended LLD problems cold; LX 14, C 12 and DBG 10 question banks; concept flashcards |
 | 25 | 29 Mar | More mock loops with different interviewers; behavioural polish; notes for any company you are interviewing with |
 | 26 | 5 Apr | Buffer and revision: flashcards, your own summary files, weak areas |
 

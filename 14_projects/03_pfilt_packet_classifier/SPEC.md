@@ -29,7 +29,7 @@ You finish with a packets-per-second number for your machine, a latency histogra
 | Keyed hashing against collision attacks | DSA 02, NET 09 |
 | Rule updates with epoch-based reclamation | LLD-S 04 |
 | Per-core counters read through seqlock snapshots | K 05, LLD-S 03 |
-| False sharing found and fixed with `perf c2c` | CO 19, LX 05 |
+| False sharing found and fixed with `perf c2c` | CO 19, LX 10 |
 | Rule matching on prefixes and port ranges | DSA trees 18 (longest-prefix match), NET 02 |
 
 ---
