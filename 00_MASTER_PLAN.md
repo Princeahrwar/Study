@@ -68,7 +68,7 @@ Each track has a `00_plan.md` with its topics, status, week, labs, interview que
 | 02 | [C language](02_c_language/00_plan.md) | C | 12 (all written, C 01 to C 12 done early) | 1–11, 24 | ~30 |
 | 03 | [C++](03_cpp/00_plan.md) | CPP | Primer (14, written) + 8 interview topics | 9–16 | ~20 |
 | 04 | [Computer organization](04_computer_organization/00_plan.md) | CO | 31 (all written) | 1–6 | ~70 core, ~83 all |
-| 05 | [Operating systems](05_operating_systems/00_plan.md) | OS | 21 (OS 01 to 19 written, 2 older notes) | 5–14 | ~50 |
+| 05 | [Operating systems](05_operating_systems/00_plan.md) | OS | 21 (OS 01 to 20 written, 2 older notes) | 5–14 | ~50 |
 | 06 | [Linux](06_linux/00_plan.md) | LX | 6 | 3–9, 24 | ~12 |
 | 07 | [Networking](07_networking/00_plan.md) | NET | 9 core (2 exist) + 1 optional | 10–15 | ~25 |
 | 08 | [Kernel internals](08_kernel/00_plan.md) | K | 8 (1 exists) | 14–20 | ~30 |
@@ -151,7 +151,7 @@ Each week is about 25 hours: roughly 8 h DSA, 8 h systems, 6 h design, and 3 h f
 | 11 | 21 Dec | Trees 17–18 (tries); graphs I | OS 12 (done), OS 13 (done), OS 14 (done); NET 02; DBG 05 | LLD-P 03, 07, 04; HLD 01, 02 | C 11; CPP 03 (holiday week: use as buffer if needed) |
 | 12 | 28 Dec | Graphs II; Trees 28 (union-find) | OS 15 (done), OS 16 (done), OS 17 (done); NET 03, NET 04; DBG 06 | LLD-P 05, 08; HLD 03, 04 | CPP 04; **rkv M1** |
 | 13 | 4 Jan | Greedy & intervals; DP I | OS 18 (done), OS 19 (done); NET 05, NET 06; DBG 07 | LLD-P 09, 10; HLD 05, 06, 07 | CPP 05; rkv M2–M3; resume rewrite |
-| 14 | 11 Jan | DP II | OS 20, OS 21; NET 07, NET 08; K 01; DBG 08 (stretch) | LLD 18, 20, 21; HLD 08, 09, 10 | CPP 06; rkv M4; first mock loop; **Milestone: apply-ready** |
+| 14 | 11 Jan | DP II | OS 20 (done), OS 21; NET 07, NET 08; K 01; DBG 08 (stretch) | LLD 18, 20, 21; HLD 08, 09, 10 | CPP 06; rkv M4; first mock loop; **Milestone: apply-ready** |
 
 ### Phase C — Systems depth and design breadth (weeks 15–20)
 
