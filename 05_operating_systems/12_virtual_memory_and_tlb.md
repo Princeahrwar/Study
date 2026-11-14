@@ -42,6 +42,34 @@ The measured effect of reach on a real access pattern, from the transparent-huge
 
 Huge pages made random access about 35 to 40 percent faster here (13 to 8 nanoseconds). Every read still has a cache miss (256 MiB is beyond the cache), so the saving is the TLB-miss share of the access, which is what reach predicts: with 4 KiB pages the region needs 65,536 entries for a 2,048-entry TLB, with huge pages 128. This is a guest of a hypervisor, so the gain is a measurement of this host's backing, not a promise (CO 15 saw the gain come and go between sessions).
 
+### 1.1 Your own measurement: x86 against ARM64 (carried over)
+
+The earlier version of this note held a measurement taken on your own hardware, and it is kept here because other notes cite it (the Nvidia playbook). **It was not re-run for this rewrite**: the benchmark source (`tlb2.cpp`) is no longer in the repository, so these are the earlier figures as recorded, not numbers from the machine used for the rest of this chapter. The test chases a pointer through one node per page, so the data footprint stays small while the page footprint grows; the loads are dependent, so nothing hides the walk, and the offsets inside each page are scattered so that cache-set conflicts do not contaminate it. Per-hop time, 4 KiB pages against 2 MiB pages.
+
+x86 Xeon:
+
+| Footprint | 4 KiB pages | 2 MiB pages | Hugepage gain |
+| --- | --- | --- | --- |
+| 256 KiB | 1.77 ns | 1.81 ns | none |
+| 1 MiB | 4.29 ns | 4.29 ns | none |
+| 4 MiB | 7.92 ns | 8.07 ns | none |
+| 16 MiB | 20.34 ns | 16.86 ns | 1.2x |
+| 64 MiB | 27.44 ns | 21.14 ns | 1.3x |
+| 256 MiB | 71.11 ns | 56.80 ns | 1.25x |
+
+The ARM64 machine, same binary, same benchmark:
+
+| Footprint | 4 KiB pages | 2 MiB pages | Hugepage gain |
+| --- | --- | --- | --- |
+| 256 KiB | 0.69 ns | 0.68 ns | none |
+| 1 MiB | 2.05 ns | 0.68 ns | 3.0x |
+| 4 MiB | 2.54 ns | 1.82 ns | 1.4x |
+| 16 MiB | 23.61 ns | 5.34 ns | **4.4x** |
+| 64 MiB | 25.55 ns | 12.04 ns | 2.1x |
+| 256 MiB | 33.34 ns | 20.59 ns | 1.6x |
+
+Read the two against each other. On the x86 machine huge pages bought 20 to 30 percent once the footprint passed the TLB reach, which would lead an x86-only engineer to treat them as a minor tuning knob; on the ARM64 machine they bought up to 4.4 times. The lesson for an interview is the method, not the figure: measure on the hardware you will run on, as CO 15 section 6.4 also concludes (a virtual machine's TLB entry size depends on how the host backs the guest, so a gain seen on one host does not transfer). The random-read result above (13 against 8 nanoseconds, 1.6 times) is a different test (independent reads, not a dependent chain, and a 256 MiB region) from this virtual machine, so the sets of numbers are not comparable cell by cell.
+
 ---
 
 ## 2. Reading a process's memory: virtual, resident and proportional
@@ -344,6 +372,16 @@ a further mmap of 2 huge pages: granted
 
 The practical rule: **verify, do not assume.** Whichever you chose, read `AnonHugePages` (THP) or `HugePages_Free` and `Rsvd` (`hugetlbfs`) after the process is up and check that the mapping got what you asked for, as CO 15 section 9.3 shows.
 
+### 4.4 Address-space machinery that causes latency spikes
+
+Three mechanisms outside the page tables themselves show up as tail latency on a data plane, and are named in interviews. CO 15 section 10 explains them in depth; this is the checklist (they were not measured for this chapter).
+
+- **TLB shootdown.** When one thread unmaps or changes the permissions of a mapping (`munmap`, `mprotect`), every core running that address space must invalidate its stale TLB entries, which the kernel does with an inter-processor interrupt. The other cores stop and service it, so a busy `munmap` or `mprotect` loop in one thread is a latency source for unrelated threads that share the address space. It is a good answer to "what else could cause a spike on an isolated core?"
+- **ASID and PCID.** Tagging TLB entries with an address-space identifier lets a context switch avoid flushing the whole TLB; without it, switches between processes cost much more.
+- **KPTI.** The Meltdown mitigation keeps separate kernel and user page tables, which made system calls noticeably more expensive and explains why syscall-heavy workloads regressed on some kernel upgrades (CO 15 section 11.4).
+
+A spike of a few hundred microseconds on an isolated core therefore has a short list of suspects: a shootdown IPI from another thread, a THP compaction stall (section 4.1), or a major fault. The counters to tell them apart are `perf stat -e minor-faults,major-faults` (or `/usr/bin/time -v`) for faults and `thp_fault_fallback` and `compact_stall` in `/proc/vmstat` for compaction (from memory; not run here).
+
 ---
 
 ## 5. Paying for page faults in advance
@@ -588,6 +626,8 @@ The incidents interviewers describe map onto a short list. Start from the sympto
 10. *How do you avoid page faults on a latency-sensitive path?* Reserve, pre-fault (`MAP_POPULATE` or touching), and `mlock` the memory at start-up; use huge pages for the TLB.
 11. *`MADV_FREE` against `MADV_DONTNEED`?* DONTNEED drops the pages immediately (next touch is a zero page); FREE marks them reclaimable and the kernel takes them lazily, so RSS stays until pressure.
 12. *When would you run mode 2?* When early, local failure is worth more than the cost of charging forks and large address-space reservations: safety and embedded systems with fixed memory.
+13. *Why 512 entries per page-table level?* 512 entries of 8 bytes are 4,096 bytes, one page, so every table is itself page-sized and allocated like data.
+14. *A thread on an isolated core has a 400 microsecond spike. Ideas?* A TLB shootdown IPI from another thread, a THP compaction stall, or a major fault; name the shootdown specifically (section 4.4).
 
 ---
 
@@ -647,7 +687,7 @@ A service loads 2 GiB of read-only data into its heap, then forks 200 workers; e
 
 ## Sources
 
-Measured on the VM described above (sysctls, the huge-page pool and the cgroup restored afterwards). Fetched and used: the four kernel documents below. Not fetched, and stated from memory in the text: the OOM badness formula and its use of the limit (the measurements reproduce its behaviour), `malloc_trim`, allocator `MADV_FREE` options, `systemd`'s `OOMScoreAdjust=`, `mlockall` side effects, THP-switch incidents, ARM64 granule configurations in Linux kernels, and the `/proc/PID/smaps_rollup` field list.
+Measured on the VM described above (sysctls, the huge-page pool and the cgroup restored afterwards). The x86 and ARM64 table of section 1.1 is carried over from the earlier version of this note and was not re-run. Fetched and used: the four kernel documents below. Not fetched, and stated from memory in the text: the OOM badness formula and its use of the limit (the measurements reproduce its behaviour), `malloc_trim`, allocator `MADV_FREE` options, `systemd`'s `OOMScoreAdjust=`, `mlockall` side effects, THP-switch incidents, ARM64 granule configurations in Linux kernels, and the `/proc/PID/smaps_rollup` field list.
 
 - [Linux kernel: Overcommit accounting](https://docs.kernel.org/mm/overcommit-accounting.html), fetched: the three modes, `CommitLimit` in mode 2 and what each mapping type is charged
 - [Linux kernel: Transparent hugepage support](https://docs.kernel.org/admin-guide/mm/transhuge.html), fetched: `enabled`, `defrag`, `khugepaged`, counters, `madvise` flags, the waste caveat
