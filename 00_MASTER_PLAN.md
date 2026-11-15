@@ -69,7 +69,7 @@ Each track has a `00_plan.md` with its topics, status, week, labs, interview que
 | 03 | [C++](03_cpp/00_plan.md) | CPP | Primer (14, written) + 8 interview topics | 9–16 | ~20 |
 | 04 | [Computer organization](04_computer_organization/00_plan.md) | CO | 31 (all written) | 1–6 | ~70 core, ~83 all |
 | 05 | [Operating systems](05_operating_systems/00_plan.md) | OS | 21 (OS 01 to 21 written, 2 older notes) | 5–14 | ~50 |
-| 06 | [Linux](06_linux/00_plan.md) | LX | 14 (LX 01 to 03 written) | 3–19, 24 | ~42 |
+| 06 | [Linux](06_linux/00_plan.md) | LX | 14 (LX 01 to 04 written) | 3–19, 24 | ~42 |
 | 07 | [Networking](07_networking/00_plan.md) | NET | 9 core (2 exist) + 1 optional | 10–15 | ~25 |
 | 08 | [Kernel internals](08_kernel/00_plan.md) | K | 8 (1 exists) | 14–20 | ~30 |
 | 09 | [Device drivers](09_drivers/00_plan.md) | DRV | 10 (5 exist) | 15–20 | ~30 |
@@ -144,7 +144,7 @@ Each week is about 25 hours: roughly 8 h DSA, 8 h systems, 6 h design, and 3 h f
 
 | Week | Starts | DSA | Systems | Design | C/C++ · projects · interviews |
 |---|---|---|---|---|---|
-| 7 | 23 Nov | Trees 03–05 | OS 04 (done), OS 05 (done); LX 04 | LLD 10, 11 | C 07 |
+| 7 | 23 Nov | Trees 03–05 | OS 04 (done), OS 05 (done); LX 04 (done) | LLD 10, 11 | C 07 |
 | 8 | 30 Nov | Trees 06–08 | OS 06 (done), OS 07 (done); DBG 01, DBG 02 | LLD 12, 13, 14 | C 08 |
 | 9 | 7 Dec | Trees 09–11 | OS 08 (done), OS 09 (done); LX 05; DBG 03 | LLD 15, 16, 17 | C 09; CPP 01 |
 | 10 | 14 Dec | Trees 12, 15, 16 (heaps) | OS 10 (done), OS 11 (done); NET 01; LX 06; DBG 04 | LLD-P 01, 06, 02 | C 10; CPP 02 |
