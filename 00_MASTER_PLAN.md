@@ -69,7 +69,7 @@ Each track has a `00_plan.md` with its topics, status, week, labs, interview que
 | 03 | [C++](03_cpp/00_plan.md) | CPP | Primer (14, written) + 8 interview topics | 9–16 | ~20 |
 | 04 | [Computer organization](04_computer_organization/00_plan.md) | CO | 31 (all written) | 1–6 | ~70 core, ~83 all |
 | 05 | [Operating systems](05_operating_systems/00_plan.md) | OS | 21 (OS 01 to 21 written, 2 older notes) | 5–14 | ~50 |
-| 06 | [Linux](06_linux/00_plan.md) | LX | 14 (LX 01 and 02 written) | 3–19, 24 | ~42 |
+| 06 | [Linux](06_linux/00_plan.md) | LX | 14 (LX 01 to 03 written) | 3–19, 24 | ~42 |
 | 07 | [Networking](07_networking/00_plan.md) | NET | 9 core (2 exist) + 1 optional | 10–15 | ~25 |
 | 08 | [Kernel internals](08_kernel/00_plan.md) | K | 8 (1 exists) | 14–20 | ~30 |
 | 09 | [Device drivers](09_drivers/00_plan.md) | DRV | 10 (5 exist) | 15–20 | ~30 |
@@ -138,7 +138,7 @@ Each week is about 25 hours: roughly 8 h DSA, 8 h systems, 6 h design, and 3 h f
 | 3 | 26 Oct | Hashing; LL 04 | CO 05, CO 06; LX 01 (done) | LLD 05, 06 | C 03; set up the Linux VM |
 | 4 | 2 Nov | Binary search & sorting; LL 05 | CO 07, CO 08; LX 02 (done) | LLD 07 | C 04 |
 | 5 | 9 Nov | Stacks & queues; LL 06 | CO 09, CO 10; OS 01 | LLD 08 | C 05; start the story bank |
-| 6 | 16 Nov | Recursion & backtracking; Trees 02; LL 07 | CO 11, CO 12; OS 02, OS 03; LX 03 | LLD 09 | C 06; **Checkpoint 1** |
+| 6 | 16 Nov | Recursion & backtracking; Trees 02; LL 07 | CO 11, CO 12; OS 02, OS 03; LX 03 (done) | LLD 09 | C 06; **Checkpoint 1** |
 
 ### Phase B — Core interview material (weeks 7–14)
 

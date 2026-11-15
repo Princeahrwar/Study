@@ -21,7 +21,7 @@ By the end you can:
 - answer a question about a log with a short pipeline and check it (measured: 30 one-liners over 200,000 lines, **30 of 30 matched an independent Python computation**);
 - predict how `set -e` and `pipefail` treat `grep` (measured: `grep` returns **1 when nothing matches**, which stops a `set -e` script).
 
-**Where the numbers come from.** Eight scripts plus the bank were run with bash 5.2.21 on Linux 6.18.44 in a Firecracker micro-VM (2 vCPUs, about 7 GiB of memory), running as root, with GNU grep 3.11, GNU sed 4.9, GNU Awk 5.2.1 (also `mawk`), GNU coreutils 9.4 (`sort`, `uniq`, `join`, `comm`, `paste`, `column`), findutils, `jq` 1.7, ripgrep 14.1 and Python 3 for the checks. The `en_US.UTF-8` locale was compiled into a scratch directory for this session (`localedef -i en_US -f UTF-8`) and selected with `LOCPATH`, because the VM ships only `C`, `POSIX` and `C.utf8`. Transcripts print `$ command` before each command's output; scripts that create temporary names print them masked or not at all.
+**Where the numbers come from.** Eight scripts plus the bank were run with bash 5.2.21 on Linux 6.18.44 in a Firecracker micro-VM (2 vCPUs, about 8 GiB (7.8 GiB reported) of memory), running as root, with GNU grep 3.11, GNU sed 4.9, GNU Awk 5.2.1 (also `mawk`), GNU coreutils 9.4 (`sort`, `uniq`, `join`, `comm`, `paste`, `column`), findutils, `jq` 1.7, ripgrep 14.1 and Python 3 for the checks. The `en_US.UTF-8` locale was compiled into a scratch directory for this session (`localedef -i en_US -f UTF-8`) and selected with `LOCPATH`, because the VM ships only `C`, `POSIX` and `C.utf8`. Transcripts print `$ command` before each command's output; scripts that create temporary names print them masked or not at all.
 
 **Data and timing.** The four logs are **synthetic**, generated deterministically (a seeded Python script, the same output on every run): `access.log` (200,000 lines, 23 MiB, a web server's combined format with the request time added as the last field, covering 18:00 to 23:59 on 14 November 2026 from 3,000 client IPs with a skewed popularity), `access_big.log` (600,000 lines, 69 MiB, same format, used for the speed tests), `auth.log` (9,900 lines of `sshd` messages: failed passwords, invalid users, accepted logins, session open and close), `syslog` (50,000 lines from six programs) and `app.jsonl` (5,000 JSON records). A sample line of each is printed where it is first used. Timings are the fastest of three runs; quote them as ranges.
 
@@ -1955,7 +1955,7 @@ Fetched in this session (what each confirmed):
 
 Not retrieved: the GNU awk manual page on string functions (the site refused the fetch), so the `substr` behaviour for a start below 1 and the gawk-only extensions are stated **from the measurements only** (gawk 5.2.1 and mawk, which disagree for `substr`).
 
-Run in this session: GNU grep 3.11, GNU sed 4.9, GNU Awk 5.2.1 and mawk, GNU coreutils 9.4, findutils, jq 1.7, ripgrep 14.1, bash 5.2.21 and Python 3 (the oracle), on Linux 6.18.44 (2 vCPUs, about 7 GiB). The `en_US.UTF-8` locale was compiled for this session.
+Run in this session: GNU grep 3.11, GNU sed 4.9, GNU Awk 5.2.1 and mawk, GNU coreutils 9.4, findutils, jq 1.7, ripgrep 14.1, bash 5.2.21 and Python 3 (the oracle), on Linux 6.18.44 (2 vCPUs, about 8 GiB (7.8 GiB reported)). The `en_US.UTF-8` locale was compiled for this session.
 
 Cross-references: [LX 01](01_shell_and_scripting.md) (quoting, pipes, `pipefail`, the `find | xargs` and `read` patterns, atomic writes).
 
