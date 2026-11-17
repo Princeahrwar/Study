@@ -69,7 +69,7 @@ Each track has a `00_plan.md` with its topics, status, week, labs, interview que
 | 03 | [C++](03_cpp/00_plan.md) | CPP | Primer (14, written) + 8 interview topics | 9–16 | ~20 |
 | 04 | [Computer organization](04_computer_organization/00_plan.md) | CO | 31 (all written) | 1–6 | ~70 core, ~83 all |
 | 05 | [Operating systems](05_operating_systems/00_plan.md) | OS | 21 (OS 01 to 21 written, 2 older notes) | 5–14 | ~50 |
-| 06 | [Linux](06_linux/00_plan.md) | LX | 14 (LX 01 to 12 written) | 3–19, 24 | ~42 |
+| 06 | [Linux](06_linux/00_plan.md) | LX | 14 (LX 01 to 13 written) | 3–19, 24 | ~42 |
 | 07 | [Networking](07_networking/00_plan.md) | NET | 9 core (2 exist) + 1 optional | 10–15 | ~25 |
 | 08 | [Kernel internals](08_kernel/00_plan.md) | K | 8 (1 exists) | 14–20 | ~30 |
 | 09 | [Device drivers](09_drivers/00_plan.md) | DRV | 10 (5 exist) | 15–20 | ~30 |
@@ -161,7 +161,7 @@ Each week is about 25 hours: roughly 8 h DSA, 8 h systems, 6 h design, and 3 h f
 | 16 | 25 Jan | String algorithms; Trees 13 (kernel rbtree) | K 03; LX 10 (done); DRV 02, DRV 03 | HLD 13, 14, 15; HLD-P 02 | CPP 08; rkdma M2 |
 | 17 | 1 Feb | Trees 19–21 (range queries) | K 04, K 05; LX 11 (done); DRV 04, DRV 05; DBG 09 | HLD 16, 17; HLD-P 03, 04 | rkdma M3 |
 | 18 | 8 Feb | Trees 24, 25, 29; mixed medium–hard set | K 06; LX 12 (done); DRV 06, DRV 07 | HLD-P 05, 06, 07 | rkdma M4 |
-| 19 | 15 Feb | Timed mixed set; AI-assisted coding practice (LLD 19) | LX 13; DRV 08, DRV 09 | HLD-P 08, 09, 10 | **rkdma shipped** |
+| 19 | 15 Feb | Timed mixed set; AI-assisted coding practice (LLD 19) | LX 13 (done); DRV 08, DRV 09 | HLD-P 08, 09, 10 | **rkdma shipped** |
 | 20 | 22 Feb | Design-style coding; Trees 31, 34; systems-flavoured set (bits, parsing, caches, rate limiters) | DRV 10; K 07, K 08 | LLD-S 01, 02; HLD-P 11, 12 | **pfilt M1**; **Checkpoint 3** |
 
 ### Phase D — Company specials and projects (weeks 21–23)
