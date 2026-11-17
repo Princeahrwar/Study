@@ -83,7 +83,7 @@ Used in the topic tables of the track plans.
 | C++ | Primer written | CPP 01 |
 | Computer organization | CO 01 to 31 written; track complete | The next track |
 | Operating systems | OS 01 to 21 written; track complete; 2 older notes | The next track |
-| Linux | Plan widened to 14 tutorials (audited Nov 2026); LX 01 to LX 13 written | LX 14 |
+| Linux | Plan widened to 14 tutorials (audited Nov 2026); LX 01 to LX 14 written; track complete | none |
 | Networking | 2 older notes | NET 01 |
 | Kernel | 1 older note | K 01 |
 | Drivers | 5 older notes | DRV 01 |

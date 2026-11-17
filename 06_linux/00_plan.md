@@ -52,7 +52,7 @@ Tutorials are numbered in study order. A tutorial that depends on an OS or netwo
 | 11 | [`11_ftrace_ebpf_and_bpftrace.md`](11_ftrace_ebpf_and_bpftrace.md) | `ftrace`, eBPF and `bpftrace` | Tracepoints, kprobes, uprobes and USDT; `ftrace` (`function`, `function_graph`, `trace-cmd`, `tracefs`); eBPF in one picture (programs, maps, the verifier, CO-RE and `libbpf`); the `bcc` tools worth knowing (`execsnoop`, `opensnoop`, `biolatency`, `runqlat`, `tcpconnect`, `tcpretrans`, `ext4slower`, `profile`, `offcputime`); `bpftrace` one-liners and short scripts (counts, histograms, stacks); cost and safety of tracing in production | Written | 17 |
 | 12 | [`12_users_ssh_and_hardening.md`](12_users_ssh_and_hardening.md) | Users, SSH and hardening | Users, groups, NSS, `/etc/passwd` and `shadow`; `sudo` and `sudoers`; PAM in outline; SSH keys, the agent, `~/.ssh/config`, `ProxyJump`, local, remote and dynamic forwarding, `ControlMaster`, host keys, and a hardened `sshd_config`; SELinux and AppArmor from the administrator's side (contexts, booleans, reading an AVC denial); `setcap` and file capabilities; basic firewall policy with `nft`; `auditd`; package management (`apt`, `dnf`, `rpm`) and signed repositories; time sync | Written | 18 |
 | 13 | [`13_tuning_for_latency_and_throughput.md`](13_tuning_for_latency_and_throughput.md) | Tuning for latency and throughput | CPU affinity and `cpuset`; `isolcpus` and `nohz_full`; IRQ affinity, RSS, RPS and XPS; NUMA placement; frequency governors and C-states; huge pages against TLB misses; real-time priorities (`SCHED_FIFO`) and an introduction to `PREEMPT_RT`; `tuned` profiles; `sysctl` for the network and VM; NIC ring sizes and offloads; measuring jitter; what each change costs and how to prove it helped | Written | 19 |
-| 14 | `14_linux_interview_question_bank.md` | Linux interview question bank | 80 questions with answers across shell, processes, memory, storage, networking, containers, performance and security; 15 troubleshooting scenarios worked end to end ("the server is slow", "the disk is full but `du` disagrees", "a process hangs", "packets are dropped", "a container is `OOMKilled`"); a one-page triage decision tree | To write | 24 |
+| 14 | [`14_linux_interview_question_bank.md`](14_linux_interview_question_bank.md) | Linux interview question bank | 80 questions with answers across shell, processes, memory, storage, networking, containers, performance and security; 15 troubleshooting scenarios worked end to end ("the server is slow", "the disk is full but `du` disagrees", "a process hangs", "packets are dropped", "a container is `OOMKilled`"); a one-page triage decision tree | Written | 24 |
 
 Debugging (`gdb`, core dumps, sanitizers, `rr`) is the separate [`16_debugging`](../16_debugging/00_plan.md) track (DBG 01 to 10); it replaced the old LX 04.
 
@@ -179,7 +179,7 @@ All labs run in the Linux VM from [`../99_toolchain/README.md`](../99_toolchain/
 | 11 | `ftrace`, eBPF and `bpftrace` | Written |
 | 12 | Users, SSH and hardening | Written |
 | 13 | Tuning for latency and throughput | Written |
-| 14 | Question bank | To write (week 24) |
+| 14 | Question bank | Written |
 
 Cross-track view: [`../00_MASTER_PLAN.md`](../00_MASTER_PLAN.md).
 
