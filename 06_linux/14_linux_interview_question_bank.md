@@ -1,6 +1,6 @@
 # LX 14: Linux interview question bank
 
-*Part of the [Linux plan](00_plan.md) · Time: about 10 hours over a week · You need: all of [LX 01 to LX 13](00_plan.md). This is the **last Linux tutorial**. The earlier ones taught the subject; this one **drills it in the form an interview asks it**: 80 questions with answers short enough to say aloud, 15 troubleshooting scenarios worked end to end, and one page of triage tree to carry in your head.*
+*Part of the [Linux plan](00_plan.md) · Time: about 10 hours over a week · You need: all of [LX 01 to LX 13](00_plan.md). This is the **last Linux tutorial**. The earlier ones taught the subject; this one **drills it in the form an interview asks it**: 80 questions (plus eight added after a review, section 9.1) with answers short enough to say aloud, 15 troubleshooting scenarios worked end to end, and one page of triage tree to carry in your head.*
 
 A Linux interview for a senior or staff role has two halves. The first half asks **"what is X and why does it work that way?"** and rewards a crisp definition followed by one level of depth. The second half hands you a broken machine and asks **"what do you do?"** and rewards a **method**: a first command, a reading of its output, a narrowed hypothesis, a fix, and a way to know the fix worked. This tutorial trains both. The questions are grouped by area (sections 2 to 9), the scenarios are in section 10, and the **triage tree** that ties the second half together is in section 1.
 
@@ -8,7 +8,7 @@ A Linux interview for a senior or staff role has two halves. The first half asks
 
 1. The experiments ran on **one Linux 6.18 VM** (Firecracker, 2 vCPUs, 8 GB, Ubuntu 24.04) as **root**, on small `tmpfs` mounts, cgroups and network namespaces that were created and removed in the same script. **PID 1 here is not systemd**, so `systemctl`, `journalctl`, `cron`, restart loops and unit files were **not run**. Those answers are from memory and marked so.
 2. **Ten of the fifteen scenarios were reproduced and their output is frozen below** (S1 to S10). S11 to S13 are **from memory**. S14 and S15 point at **measured results in LX 12 and LX 13** rather than repeating them.
-3. The **80 answers are written from knowledge, not run one by one**. Where a claim is backed by a run it carries a tag such as **[run S7]**. Untagged answers are standard material; where a number varies by kernel or distribution, the text says so.
+3. The **88 answers are written from knowledge, not run one by one**. Where a claim is backed by a run it carries a tag such as **[run S7]**. Untagged answers are standard material; where a number varies by kernel or distribution, the text says so.
 4. **cgroups on this VM are the version 1 hierarchy** (a hybrid mount), so the scenario outputs show v1 file names such as `memory.limit_in_bytes`. The **v2 equivalents** (`memory.max`, `memory.events`) are given from memory.
 5. **No `netem`, no AppArmor or SELinux policy tools and no `chronyd`** exist here. Packet loss, MAC denials and clock drift are described, not produced.
 6. An interview answer is a **starting position, not a specification**. Kernel behaviour changes between versions (for example the CPU scheduler is EEVDF since 6.6; CFS before). Say "on recent kernels" when it matters, and offer to check.
@@ -16,7 +16,7 @@ A Linux interview for a senior or staff role has two halves. The first half asks
 
 By the end you can:
 
-- **answer 80 standard Linux questions** across shell and files, processes, memory, storage, networking, containers, performance and security in **30 to 90 seconds each**, with one level of depth ready when the interviewer pushes;
+- **answer 88 standard Linux questions** across shell and files, processes, memory, storage, networking, containers, performance and security in **30 to 90 seconds each**, with one level of depth ready when the interviewer pushes;
 - run the **first sixty seconds of a triage** in a fixed order and **read the result**: for example, on a 2 CPU VM with three busy loops, `vmstat` showed a run queue **`r` of 3** and **99 to 100 percent user time** while the one-minute load average still read **0.09** (the average lags, section 10, S1);
 - diagnose **"disk full but `du` disagrees"** and **fix it without a restart** (measured: `df` **6,144 KB used of 8,192**, `du` **0**, found with `lsof +L1`, freed with `: > /proc/PID/fd/3`);
 - distinguish **no space because of blocks** from **no space because of inodes** (measured: **200 of 200 inodes** used at **0 percent** block use, `touch` failing with `No space left on device`);
@@ -25,9 +25,9 @@ By the end you can:
 - explain **why a cron job fails when the same script works in a shell** (measured: PATH of 16 entries against 2, `go: found` against `go: not found`);
 - hold a **one-page triage tree** and say what each branch rules out.
 
-**Where the numbers come from.** Ten scenario scripts (`s1_slow` to `s10_cron`) and four problem-answer scripts (`ans_a` to `ans_d`) were run in this session. Every transcript in the tutorial is a frozen output of one of them. Process ids were replaced by `N` where they changed. Numbers from earlier tutorials (LX 12 and LX 13) are cited with their tutorial. Anything else is marked "from memory".
+**Where the numbers come from.** Twelve experiment scripts (`s1_slow` to `s12_busy`) and four problem-answer scripts (`ans_a` to `ans_d`) were run in this session. Every transcript in the tutorial is a frozen output of one of them. Process ids were replaced by `N` where they changed. Numbers from earlier tutorials (LX 12 and LX 13) are cited with their tutorial. Anything else is marked "from memory".
 
-**Data and timing.** No data sets. Each script runs in under ten seconds. Plan the week as: sections 2 to 9 at one category a day (about 40 minutes each, **saying the answers aloud**), section 10 on the weekend (about 3 hours, with the scripts), sections 11 to 13 the day after.
+**Data and timing.** No data sets. Each script runs in under ten seconds. Plan the week as: sections 2 to 9 (with 9.1) at one category a day (about 40 minutes each, **saying the answers aloud**), section 10 on the weekend (about 3 hours, with the scripts), sections 11 to 13 the day after.
 
 ---
 
@@ -106,7 +106,7 @@ SYMPTOM: "it is slow / down / failing"
          measure percentiles over repeated runs before changing anything
 ```
 
-The tree is **ordered by cost and by how often each branch is the answer**. The first sixty seconds finds the right branch about nine times in ten.
+The tree is **ordered by cost and by how often each branch is the answer**. The first sixty seconds is meant to point at the right branch; if it does not, widen the net rather than guessing.
 
 ### 1.4 What a senior answer sounds like
 
@@ -396,6 +396,65 @@ Arguments are visible to **every user** in `ps` and in `/proc/PID/cmdline`, and 
 **Q80. Name the kernel and userspace hardening features that blunt memory-corruption exploits.**
 **ASLR** (`kernel.randomize_va_space=2`) randomises addresses; **NX** marks data pages non-executable; **stack protectors** (canaries) and **fortified libc functions** catch overflows; **RELRO and PIE** protect the GOT and make the binary relocatable; **SMEP and SMAP** stop the kernel executing or touching user pages by mistake; **`kernel.kptr_restrict`**, **`dmesg_restrict`** and **Yama `ptrace_scope`** hide kernel addresses and limit process tracing; **seccomp** shrinks the system-call surface. None is a fix for the bug, each raises the price of exploiting it.
 
+### 9.1 Eight more questions, added after a review (Q81 to Q88)
+
+A read-through of the finished bank found gaps in boot, limits, terminals and mounts, which Linux interviews do ask. Q82 and Q88 were reproduced; the rest are from memory.
+
+**Q81. What happens between pressing the power button and a login prompt?** (from memory)
+**Firmware** (UEFI) initialises hardware and runs the **bootloader** from the EFI system partition (GRUB or systemd-boot). The bootloader loads the **kernel and an initramfs** and passes a **command line**. The kernel starts, sets up memory, CPUs and drivers, unpacks the **initramfs** (a small root with the drivers needed to find the real root: storage, RAID, LVM, encryption), mounts the real root and **executes PID 1**. **systemd** (or another init) then reaches its default **target** by starting units in dependency order, and a **getty** or the display manager shows the login. Where it fails tells you the stage: no bootloader menu (firmware or ESP), kernel panic `VFS: unable to mount root` (initramfs or root device), a hang in userspace (a unit, often `fstab`). Tools: `systemd-analyze blame` and `critical-chain`, `journalctl -b`, `dmesg`; recovery with the rescue target or a `rd.break` shell. See [LX 04](04_boot_systemd_and_logs.md).
+
+**Q82. "Too many open files." What is limited, and how do you find a leak?**
+Each process has a **soft and a hard `RLIMIT_NOFILE`** (`ulimit -n`; under systemd `LimitNOFILE=`), and the system has a global ceiling (`fs.file-max`). When a process reaches its soft limit, `open`, `socket` and `accept` fail with **`EMFILE`**: measured, with a limit of 12, the next `open` printed `Too many open files`, and both `ulimit -Sn` and `-Hn` read 12 [run Q82, below]. To find a leak, compare `ls /proc/PID/fd | wc -l` against the `Max open files` line of `/proc/PID/limits`, watch the count rise, and group by target (`lsof -p PID | awk '{print $5}' | sort | uniq -c`). A leak is usually a missing `close()` on an error path or a socket never closed (the `CLOSE_WAIT` build-up of Q42).
+
+```text
+--- 1. a per-process limit of 12 descriptors
+$ ulimit -n
+20000
+$ bash -c 'ulimit -n 12; for i in $(seq 1 20); do eval "exec $((i+2))</dev/null" || break; done 2>&1 | tail -1'
+bash: line 1: /dev/null: Too many open files
+$ bash -c 'ulimit -n 12; ulimit -Sn; ulimit -Hn'
+12
+12
+--- 2. where to look for a leak
+$ grep 'Max open files' /proc/N/limits | sed -E 's/ +/ /g'
+Max open files 20000 20000 files
+$ ls /proc/N/fd | wc -l
+3
+```
+
+**Q83. What happens when you press Ctrl-C, Ctrl-Z or close the terminal?** (from memory)
+The **terminal driver** turns the keystroke into a signal sent to the **foreground process group**: Ctrl-C is `SIGINT`, Ctrl-Z is `SIGTSTP` (the job stops; `fg` or `bg` resumes it with `SIGCONT`), Ctrl-\ is `SIGQUIT` (terminate with a core dump). Closing the terminal sends **`SIGHUP`** to the session's processes, which kills a job unless it ignores `SIGHUP` (`nohup`), has been detached from the shell's job table (`disown`), or runs in its own session (`setsid`). Pipelines work because the whole pipeline is one process group.
+
+**Q84. Cron or a systemd timer?** (from memory)
+Both run jobs on a schedule. A **timer** is a unit, so it has **dependencies**, **logs in the journal**, resource limits and sandboxing, can catch up after downtime (`Persistent=true`), can spread load (`RandomizedDelaySec=`) and shows its last and next run in `systemctl list-timers`. **Cron** is simple and universal but has a minimal environment (scenario S10), no catch-up and mail-or-lose output. Prefer timers on systemd hosts for anything that matters; either way, use absolute paths and log the output.
+
+**Q85. `/proc`, `/sys` and `sysctl`: what is each for, and how do you make a setting persist?**
+`/proc` exposes **process and kernel state** (and tunables under `/proc/sys`); `/sys` exposes the **device and driver model** (block queue settings, CPU and NIC attributes). `sysctl -w name=value` writes `/proc/sys` and **lasts until reboot**; to persist, put it in a file under `/etc/sysctl.d/` and apply with `sysctl --system`. Device attributes under `/sys` persist through **udev rules** or a unit that writes them at boot. A setting you changed live and did not persist is a classic cause of "it worked until the reboot".
+
+**Q86. How do kernel modules and udev fit together?** (from memory)
+A **module** is code loaded into the running kernel (`lsmod`, `modinfo`, `modprobe`, which resolves dependencies from the `depmod` map). When hardware appears the kernel emits a **uevent**; **udev** reads rules, loads the matching module (via its alias) and creates the **device node** and symlinks under `/dev`. So "the device is missing" can mean the driver did not load (`dmesg`, `lsmod`), the node was not created (`udevadm monitor`, `udevadm test`), or permissions are wrong (rules, group membership).
+
+**Q87. What is a file descriptor, and what do `fork` and `exec` do to them?** (from memory)
+A descriptor is an index into a **per-process table** whose entries point to **open file descriptions** (offset, flags) in the kernel, which point at the **inode** or socket. `dup` and `fork` make two descriptors share one description, so **they share the file offset**. `execve` **keeps descriptors open** unless they are marked **close-on-exec** (`O_CLOEXEC`), which is why a forgotten descriptor leaks into every child, can hold a port or a deleted file open (scenario S2), and why you should open with `O_CLOEXEC` by default.
+
+**Q88. `umount` says "target is busy". What is using it?**
+Something holds the filesystem: an open file, a **current working directory**, a mount below it, or a memory mapping. `fuser -vm MOUNT` or `lsof +f -- MOUNT` names the holders. Measured: a process whose working directory was inside a `tmpfs` made `umount` print `target is busy`, `fuser -vm` listed `sleep` with access `..c..` (the `c` means current directory), and after it exited `umount` succeeded [run Q88, below]. Avoid `umount -l` (lazy) as a first move: it hides the mount while holders keep using it.
+
+```text
+--- 1. a process whose working directory is inside the mount
+$ umount /tmp/lx14m
+umount: /tmp/lx14m: target is busy.
+$ fuser -vm /tmp/lx14m 2>&1 | sed -E 's/ [0-9]+ / N /'
+                     USER        PID ACCESS COMMAND
+/tmp/lx14m:          root     kernel mount /tmp/lx14m
+                     root        N ..c.. sleep
+$ ls -l /proc/N/cwd | awk '{print $NF}'
+/tmp/lx14m
+--- 2. after the holder exits
+$ umount /tmp/lx14m && echo unmounted
+unmounted
+```
+
 
 ---
 
@@ -623,7 +682,7 @@ rw,noexec,relatime,size=1024k
 --- 2. the shell can still read it as data
 $ sh /tmp/lx14m/run.sh
 ran
---- 3. a wrong interpreter line gives a different message
+--- 3. a bad interpreter line, and no interpreter line at all
 $ /tmp/bad.sh
 bash: /tmp/bad.sh: cannot execute: required file not found
 $ bash -c /tmp/nobang
@@ -690,7 +749,7 @@ $ command -v go
 
 ### S14. "I cannot SSH in, or it is slow"
 
-This one is already measured in [LX 12](12_users_ssh_and_hardening.md), Problem E: **refused** means a RST (no listener, or a reject rule; answered in **2 ms**), **timed out** means a silent drop (**3.002 s** to give up in the test), a **slow login** after the connection is made is usually reverse DNS or GSSAPI, and **connection multiplexing** took 20 connections from **4.074 s to 0.145 s**. Use `ssh -vvv` to see which phase stalls and `sshd -T` on the server for the effective settings.
+The measurements are in [LX 12](12_users_ssh_and_hardening.md), section 8 (the firewall) and section 5 (multiplexing): **refused** means a RST (no listener, or a reject rule; answered in **2 ms**), **timed out** means a silent drop (**3.002 s** in that test), and **connection multiplexing** took 20 connections from **4.074 s to 0.145 s**. From memory: a **slow login after the connection is made** is usually reverse DNS or GSSAPI negotiation on the server, and a key refused despite being right is usually `StrictModes` on a writable home directory (LX 12, Problem E). Use `ssh -vvv` to see which phase stalls and `sshd -T` on the server for the effective settings.
 
 ### S15. "Latency spikes on a pinned, high-priority thread"
 
@@ -835,5 +894,5 @@ The fix follows the evidence: stage elsewhere, signal the daemon to reopen logs 
 - Brendan Gregg, "Linux Performance Analysis in 60,000 Milliseconds" and the USE method (the first-minute command set).
 - Brendan Gregg, *Systems Performance*, 2nd edition (load average, `iostat`, `perf`).
 - Michael Kerrisk, *The Linux Programming Interface* (processes, signals, file I/O semantics).
-- The experiments in sections 10 and 13: scripts `s1_slow` to `s10_cron` and `ans_a` to `ans_d`, run in this session.
+- The experiments in sections 10 and 13: scripts `s1_slow` to `s12_busy` and `ans_a` to `ans_d`, run in this session.
 - Earlier tutorials of this plan: [LX 03](03_processes_signals_and_proc.md), [LX 05](05_performance_methodology_and_triage.md), [LX 06](06_memory_swap_and_the_oom_killer.md), [LX 07](07_files_permissions_and_storage.md), [LX 08](08_linux_networking_toolbox.md), [LX 09](09_containers_namespaces_and_cgroups.md), [LX 12](12_users_ssh_and_hardening.md), [LX 13](13_tuning_for_latency_and_throughput.md).
