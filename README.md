@@ -20,7 +20,7 @@ A self-study program for senior systems-engineering work and interviews: fifteen
 | [`04_computer_organization/`](04_computer_organization/00_plan.md) | Computer organization | Bits to out-of-order cores, caches, DRAM, coherence, GPUs, PCIe, virtualization |
 | [`05_operating_systems/`](05_operating_systems/00_plan.md) | Operating systems | System calls to file systems, IPC, protection and a numericals bank (21 topics) |
 | [`06_linux/`](06_linux/00_plan.md) | Linux | Shell and text tools, `/proc`, memory and storage in practice, networking tools, containers, `perf` and eBPF, tuning (debugging has its own track) |
-| [`07_networking/`](07_networking/00_plan.md) | Networking | L2 to TLS, sockets, the Linux stack, firewalls and IPS |
+| [`07_networking/`](07_networking/00_plan.md) | Networking | L2 to TLS, sockets, the Linux stack, firewalls and IPS, datacenter fabrics, RDMA, load balancing, QoS |
 | [`08_kernel/`](08_kernel/00_plan.md) | Kernel internals | Your own kernel in QEMU: syscalls, memory, locking, RCU, debugging |
 | [`09_drivers/`](09_drivers/00_plan.md) | Device drivers | Modules to PCIe and NAPI |
 | [`10_lld/`](10_lld/00_plan.md) | Low-level design | Foundations, 33 problems, systems LLD, a buildable CMake project |
@@ -84,7 +84,7 @@ Used in the topic tables of the track plans.
 | Computer organization | CO 01 to 31 written; track complete | The next track |
 | Operating systems | OS 01 to 21 written; track complete; 2 older notes | The next track |
 | Linux | Plan widened to 14 tutorials (audited Nov 2026); LX 01 to LX 14 written; track complete | none |
-| Networking | 2 older notes | NET 01 |
+| Networking | Plan widened to 15 topics (audited Nov 2026); 2 older notes | NET 01 |
 | Kernel | 1 older note | K 01 |
 | Drivers | 5 older notes | DRV 01 |
 | LLD | Fully written | LLD 01–02 |

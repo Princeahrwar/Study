@@ -70,7 +70,7 @@ Each track has a `00_plan.md` with its topics, status, week, labs, interview que
 | 04 | [Computer organization](04_computer_organization/00_plan.md) | CO | 31 (all written) | 1–6 | ~70 core, ~83 all |
 | 05 | [Operating systems](05_operating_systems/00_plan.md) | OS | 21 (OS 01 to 21 written, 2 older notes) | 5–14 | ~50 |
 | 06 | [Linux](06_linux/00_plan.md) | LX | 14 (all written) | 3–19, 24 | ~42 |
-| 07 | [Networking](07_networking/00_plan.md) | NET | 9 core (2 exist) + 1 optional | 10–15 | ~25 |
+| 07 | [Networking](07_networking/00_plan.md) | NET | 14 core (2 exist) + 1 optional; NET 11 to 15 added Nov 2026 | 10–19, 24 | ~40 |
 | 08 | [Kernel internals](08_kernel/00_plan.md) | K | 8 (1 exists) | 14–20 | ~30 |
 | 09 | [Device drivers](09_drivers/00_plan.md) | DRV | 10 (5 exist) | 15–20 | ~30 |
 | 10 | [LLD](10_lld/00_plan.md) | LLD | 21 foundations + 33 problems (written) + 6 systems notes (exist) | 1–14, 19–22, 24 | ~85 |
@@ -84,7 +84,7 @@ Each track has a `00_plan.md` with its topics, status, week, labs, interview que
 
 In total: about **184 new tutorials** and **40 rewrites** of older notes, written one at a time as each track reaches them.
 
-"IPC and communication" is covered in two places: local IPC in OS 17–18, and network communication in the networking track. Intrusion prevention (IPS) is NET 09.
+"IPC and communication" is covered in two places: local IPC in OS 17–18, and network communication in the networking track. Intrusion prevention (IPS) is NET 09; datacenter routing, RDMA, load balancing and QoS are NET 11 to 14.
 
 ---
 
@@ -158,10 +158,10 @@ Each week is about 25 hours: roughly 8 h DSA, 8 h systems, 6 h design, and 3 h f
 | Week | Starts | DSA | Systems | Design | C/C++ · projects · interviews |
 |---|---|---|---|---|---|
 | 15 | 18 Jan | DP III; bits & math | NET 09; LX 08 (done), LX 09 (done); K 02; DRV 01 | HLD 11, 12; HLD-P 01 | CPP 07; rkv M5; **rkdma M1** |
-| 16 | 25 Jan | String algorithms; Trees 13 (kernel rbtree) | K 03; LX 10 (done); DRV 02, DRV 03 | HLD 13, 14, 15; HLD-P 02 | CPP 08; rkdma M2 |
-| 17 | 1 Feb | Trees 19–21 (range queries) | K 04, K 05; LX 11 (done); DRV 04, DRV 05; DBG 09 | HLD 16, 17; HLD-P 03, 04 | rkdma M3 |
-| 18 | 8 Feb | Trees 24, 25, 29; mixed medium–hard set | K 06; LX 12 (done); DRV 06, DRV 07 | HLD-P 05, 06, 07 | rkdma M4 |
-| 19 | 15 Feb | Timed mixed set; AI-assisted coding practice (LLD 19) | LX 13 (done); DRV 08, DRV 09 | HLD-P 08, 09, 10 | **rkdma shipped** |
+| 16 | 25 Jan | String algorithms; Trees 13 (kernel rbtree) | K 03; LX 10 (done); NET 11; DRV 02, DRV 03 | HLD 13, 14, 15; HLD-P 02 | CPP 08; rkdma M2 |
+| 17 | 1 Feb | Trees 19–21 (range queries) | K 04, K 05; LX 11 (done); NET 12; DRV 04, DRV 05; DBG 09 | HLD 16, 17; HLD-P 03, 04 | rkdma M3 |
+| 18 | 8 Feb | Trees 24, 25, 29; mixed medium–hard set | K 06; LX 12 (done); NET 13; DRV 06, DRV 07 | HLD-P 05, 06, 07 | rkdma M4 |
+| 19 | 15 Feb | Timed mixed set; AI-assisted coding practice (LLD 19) | LX 13 (done); NET 14; DRV 08, DRV 09 | HLD-P 08, 09, 10 | **rkdma shipped** |
 | 20 | 22 Feb | Design-style coding; Trees 31, 34; systems-flavoured set (bits, parsing, caches, rate limiters) | DRV 10; K 07, K 08 | LLD-S 01, 02; HLD-P 11, 12 | **pfilt M1**; **Checkpoint 3** |
 
 ### Phase D — Company specials and projects (weeks 21–23)
@@ -176,7 +176,7 @@ Each week is about 25 hours: roughly 8 h DSA, 8 h systems, 6 h design, and 3 h f
 
 | Week | Starts | Focus |
 |---|---|---|
-| 24 | 22 Mar | Mock loops (two or three this week); six extended LLD problems cold; LX 14 (done), C 12 and DBG 10 question banks; concept flashcards |
+| 24 | 22 Mar | Mock loops (two or three this week); six extended LLD problems cold; LX 14 (done), NET 15, C 12 and DBG 10 question banks; concept flashcards |
 | 25 | 29 Mar | More mock loops with different interviewers; behavioural polish; notes for any company you are interviewing with |
 | 26 | 5 Apr | Buffer and revision: flashcards, your own summary files, weak areas |
 
