@@ -38,7 +38,7 @@ Topics 05 and 07 are older, Staff-level notes; each is rewritten in the same det
 | # | File | Topic | Key subtopics | Status | Week |
 |---|---|---|---|---|---|
 | 01 | `01_network_models_and_layer2.md` | Network models and layer 2 | OSI vs TCP/IP, encapsulation, Ethernet frames, MAC addresses, switching and MAC learning, VLANs (802.1Q), ARP, MTU, spanning tree at a glance, LAG/LACP, IPv6 neighbour discovery against ARP, 802.1X port authentication, 802.11 framing compared with Ethernet, reading a capture with `tcpdump` and BPF filters | Written, [open](01_network_models_and_layer2.md) | 10 |
-| 02 | `02_ip_routing_and_layer3.md` | IP, routing and layer 3 | IPv4 and IPv6 headers, subnetting and CIDR by hand, routing tables and longest-prefix match, ICMP and traceroute, NAT and PAT, fragmentation and path MTU discovery, IP and TCP header parsing and the Internet checksum in C, longest-prefix-match structures (binary and multibit tries, DIR-24-8, why a hash table does not work), multicast and IGMP, MPLS labels, OSPF and BGP at a glance (the full treatment is NET 11) | To write | 11 |
+| 02 | [`02_ip_routing_and_layer3.md`](02_ip_routing_and_layer3.md) | IP, routing and layer 3 | IPv4 and IPv6 headers, subnetting and CIDR by hand, routing tables and longest-prefix match, ICMP and traceroute, NAT and PAT, fragmentation and path MTU discovery, IP and TCP header parsing and the Internet checksum in C, longest-prefix-match structures (binary and multibit tries, DIR-24-8, why a hash table does not work), multicast and IGMP, MPLS labels, OSPF and BGP at a glance (the full treatment is NET 11) | Written | 11 |
 | 03 | `03_tcp_udp_and_transport.md` | TCP, UDP and the transport layer | Ports and demultiplexing, UDP, TCP handshake and teardown, the state machine, sequence numbers, retransmission and RTO, flow control, congestion control (Reno, CUBIC, BBR), Nagle and delayed ACK, TIME_WAIT, keepalives, timeouts, retries and exponential backoff with jitter, `ss -ti` and `TCP_INFO`, QUIC | To write | 12 |
 | 04 | `04_socket_programming_in_c.md` | Socket programming in C | The socket API end to end, a TCP echo server and client, UDP, byte order, partial reads and writes, framing a message stream, non-blocking sockets, `select` and `poll`, `SIGPIPE` and `SO_REUSEADDR`, deadlines and timeouts on sockets, raw and `AF_PACKET` sockets, a concurrent chat server | To write | 12 |
 | 05 | [`05_epoll_and_io_uring.md`](05_epoll_and_io_uring.md) | `epoll` and `io_uring` | Readiness vs completion, level- vs edge-triggered `epoll`, `EPOLLONESHOT` and `EPOLLEXCLUSIVE`, `io_uring` submission and completion rings, choosing, measuring | Exists, rewrite due | 13 |
@@ -155,7 +155,7 @@ Every NET tutorial follows these rules, so the track is something you run and lo
 
 | # | Topic | Status |
 |---|---|---|
-| 01–09 | Core topics | NET 01 written (Nov 2026), 02 is next (week 11); 05 and 07 are rewritten when reached |
+| 01–09 | Core topics | NET 01 and 02 written (Nov 2026), 03 is next (week 12); 05 and 07 are rewritten when reached |
 | 10 | Wi-Fi sub-track (WF 01 to WF 10) | Stretch; planned in section 10 |
 | 11–14 | Fabrics, RDMA, load balancing, queueing | To write (added after the November 2026 audit) |
 | 15 | Question bank | To write (week 24) |
