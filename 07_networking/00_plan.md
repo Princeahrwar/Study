@@ -33,8 +33,6 @@ Networking questions arrive from several directions: "what happens when you type
 
 ## 3. Topics
 
-Topic 07 is an older, Staff-level note; it is rewritten in the same detailed style as the new tutorials before you study it (topic 05 is already rewritten).
-
 | # | File | Topic | Key subtopics | Status | Week |
 |---|---|---|---|---|---|
 | 01 | `01_network_models_and_layer2.md` | Network models and layer 2 | OSI vs TCP/IP, encapsulation, Ethernet frames, MAC addresses, switching and MAC learning, VLANs (802.1Q), ARP, MTU, spanning tree at a glance, LAG/LACP, IPv6 neighbour discovery against ARP, 802.1X port authentication, 802.11 framing compared with Ethernet, reading a capture with `tcpdump` and BPF filters | Written, [open](01_network_models_and_layer2.md) | 10 |
@@ -43,7 +41,7 @@ Topic 07 is an older, Staff-level note; it is rewritten in the same detailed sty
 | 04 | [`04_socket_programming_in_c.md`](04_socket_programming_in_c.md) | Socket programming in C | The socket API end to end, a TCP echo server and client, UDP, byte order, partial reads and writes, framing a message stream, non-blocking sockets, `select` and `poll`, `SIGPIPE` and `SO_REUSEADDR`, deadlines and timeouts on sockets, raw and `AF_PACKET` sockets, a concurrent chat server | Written | 12 |
 | 05 | [`05_epoll_and_io_uring.md`](05_epoll_and_io_uring.md) | `epoll` and `io_uring` | Readiness vs completion, level- vs edge-triggered `epoll`, `EPOLLONESHOT` and `EPOLLEXCLUSIVE`, `io_uring` submission and completion rings, choosing, measuring | Written | 13 |
 | 06 | `06_linux_network_stack.md` | The Linux network stack | RX path: NIC → DMA ring → interrupt → NAPI poll → GRO → netfilter → routing → TCP → socket queue; TX path; `sk_buff`; offloads (checksum, TSO, GSO, GRO, RSS, RPS); qdiscs; conntrack and netfilter hooks; where packets are dropped and how to see it (`nstat`, `ethtool -S`, `/proc/net/softnet_stat`, `dropwatch`); the socket buffers and `rmem`/`wmem` tuning | Written | 13 |
-| 07 | [`07_zero_copy_networking.md`](07_zero_copy_networking.md) | Zero-copy networking | The copies you remove, `AF_PACKET` rings, XDP, `AF_XDP`, DPDK, transmit-side zero-copy | Exists, rewrite due | 14 |
+| 07 | [`07_zero_copy_networking.md`](07_zero_copy_networking.md) | Zero-copy networking | The copies you remove, `AF_PACKET` rings, XDP, `AF_XDP`, DPDK, transmit-side zero-copy | Written (Nov 2026) | 14 |
 | 08 | `08_application_protocols_dns_http_tls.md` | Application protocols: DNS, HTTP and TLS | DNS resolution and caching, HTTP/1.1 (keep-alive, head-of-line blocking), HTTP/2 (streams, HPACK), HTTP/3 over QUIC, TLS 1.3 handshake, certificates and chains of trust, gRPC, WebSockets, MQTT for IoT, DHCP, NTP and PTP at a glance, SNMP and gNMI/streaming telemetry for network devices | To write | 14 |
 | 09 | `09_network_security_firewalls_ips_dpi.md` | Network security: firewalls, IPS and DPI | Stateless vs stateful firewalls, connection tracking and session tables, NAT in a firewall, application identification, IDS vs IPS, signature matching (Aho-Corasick, regex engines), TLS decryption and its trade-offs, IPsec and VPNs, DDoS defences, SYN cookies, rate limiting and policing of control-plane traffic | To write | 15 |
 | 10 | [`10_wifi/`](#10-the-wi-fi-sub-track-wf-01-to-wf-10) | Wi-Fi (802.11) sub-track, WF 01 to WF 10 | Expanded Nov 2026 after comparing with the Candela Wi-Fi Technology Fundamentals course: see section 10. Your home turf, so read for gaps and for the interview framing | Stretch (do WF 01 to 04 first if a target team is wireless) | after 15 |
@@ -66,8 +64,8 @@ There are no separate lab folders. Each tutorial carries its own small runnable 
 | 03 | The handshake and teardown in `tcpdump`; `ss -ti` showing the congestion window; loss and delay with `tc netem` where the kernel has it (the sandbox VM does not, so the tutorial says which numbers were measured and which need your own Linux machine) |
 | 04 | A blocking echo server, then one that survives partial I/O and `SIGPIPE`; a length-prefixed framing exercise |
 | 05 | An `epoll` server in both trigger modes, then a raw `io_uring` ring and echo server; system call counts and round trips measured for both |
-| 07 | The existing note, to be rewritten with measured output |
 | 06 | Kernel stacks for the receive and transmit paths with `bpftrace`; offloads on and off with skb counts; NAPI work per poll; `nft monitor trace` through the hooks; six drops found by `kfree_skb` reason and counter; RPS, socket buffers and qdisc queueing measured |
+| 07 | A receive ladder (`recvfrom`, `recvmmsg`, AF_PACKET ring, AF_XDP copy mode) measured by thread and machine CPU; XDP drop against `nft` drop with `perf`; a verifier rejection; file senders (`read`+`write`, `sendfile`, `splice`); `MSG_ZEROCOPY` cost by send size. DPDK, real-NIC XDP and AF_XDP zero-copy are from memory |
 | 08 | `dig +trace`, `curl -v` showing the TLS handshake, `openssl s_client` and a certificate chain |
 | 09 | A stateful ruleset with `conntrack -L`; a SYN flood against a listening socket and the SYN-cookie counters |
 | 11 | An ECMP hash experiment across several equal-cost paths; link failure and reconvergence timing in namespaces |
@@ -156,7 +154,7 @@ Every NET tutorial follows these rules, so the track is something you run and lo
 
 | # | Topic | Status |
 |---|---|---|
-| 01–09 | Core topics | NET 01 to 06 written (Nov 2026), 07 is next (week 13); it is rewritten when reached |
+| 01–09 | Core topics | NET 01 to 07 written (Nov 2026), 08 is next (week 14) |
 | 10 | Wi-Fi sub-track (WF 01 to WF 10) | Stretch; planned in section 10 |
 | 11–14 | Fabrics, RDMA, load balancing, queueing | To write (added after the November 2026 audit) |
 | 15 | Question bank | To write (week 24) |
