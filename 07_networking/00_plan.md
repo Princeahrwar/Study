@@ -42,7 +42,7 @@ Topic 07 is an older, Staff-level note; it is rewritten in the same detailed sty
 | 03 | [`03_tcp_udp_and_transport.md`](03_tcp_udp_and_transport.md) | TCP, UDP and the transport layer | Ports and demultiplexing, UDP, TCP handshake and teardown, the state machine, sequence numbers, retransmission and RTO, flow control, congestion control (Reno, CUBIC, BBR), Nagle and delayed ACK, TIME_WAIT, keepalives, timeouts, retries and exponential backoff with jitter, `ss -ti` and `TCP_INFO`, QUIC | Written | 12 |
 | 04 | [`04_socket_programming_in_c.md`](04_socket_programming_in_c.md) | Socket programming in C | The socket API end to end, a TCP echo server and client, UDP, byte order, partial reads and writes, framing a message stream, non-blocking sockets, `select` and `poll`, `SIGPIPE` and `SO_REUSEADDR`, deadlines and timeouts on sockets, raw and `AF_PACKET` sockets, a concurrent chat server | Written | 12 |
 | 05 | [`05_epoll_and_io_uring.md`](05_epoll_and_io_uring.md) | `epoll` and `io_uring` | Readiness vs completion, level- vs edge-triggered `epoll`, `EPOLLONESHOT` and `EPOLLEXCLUSIVE`, `io_uring` submission and completion rings, choosing, measuring | Written | 13 |
-| 06 | `06_linux_network_stack.md` | The Linux network stack | RX path: NIC → DMA ring → interrupt → NAPI poll → GRO → netfilter → routing → TCP → socket queue; TX path; `sk_buff`; offloads (checksum, TSO, GSO, GRO, RSS, RPS); qdiscs; conntrack and netfilter hooks; where packets are dropped and how to see it (`nstat`, `ethtool -S`, `/proc/net/softnet_stat`, `dropwatch`); the socket buffers and `rmem`/`wmem` tuning | To write | 13 |
+| 06 | `06_linux_network_stack.md` | The Linux network stack | RX path: NIC → DMA ring → interrupt → NAPI poll → GRO → netfilter → routing → TCP → socket queue; TX path; `sk_buff`; offloads (checksum, TSO, GSO, GRO, RSS, RPS); qdiscs; conntrack and netfilter hooks; where packets are dropped and how to see it (`nstat`, `ethtool -S`, `/proc/net/softnet_stat`, `dropwatch`); the socket buffers and `rmem`/`wmem` tuning | Written | 13 |
 | 07 | [`07_zero_copy_networking.md`](07_zero_copy_networking.md) | Zero-copy networking | The copies you remove, `AF_PACKET` rings, XDP, `AF_XDP`, DPDK, transmit-side zero-copy | Exists, rewrite due | 14 |
 | 08 | `08_application_protocols_dns_http_tls.md` | Application protocols: DNS, HTTP and TLS | DNS resolution and caching, HTTP/1.1 (keep-alive, head-of-line blocking), HTTP/2 (streams, HPACK), HTTP/3 over QUIC, TLS 1.3 handshake, certificates and chains of trust, gRPC, WebSockets, MQTT for IoT, DHCP, NTP and PTP at a glance, SNMP and gNMI/streaming telemetry for network devices | To write | 14 |
 | 09 | `09_network_security_firewalls_ips_dpi.md` | Network security: firewalls, IPS and DPI | Stateless vs stateful firewalls, connection tracking and session tables, NAT in a firewall, application identification, IDS vs IPS, signature matching (Aho-Corasick, regex engines), TLS decryption and its trade-offs, IPsec and VPNs, DDoS defences, SYN cookies, rate limiting and policing of control-plane traffic | To write | 15 |
@@ -67,7 +67,7 @@ There are no separate lab folders. Each tutorial carries its own small runnable 
 | 04 | A blocking echo server, then one that survives partial I/O and `SIGPIPE`; a length-prefixed framing exercise |
 | 05 | An `epoll` server in both trigger modes, then a raw `io_uring` ring and echo server; system call counts and round trips measured for both |
 | 07 | The existing note, to be rewritten with measured output |
-| 06 | `nft monitor trace` through the hooks; reading `nstat` and `softnet_stat` while dropping packets |
+| 06 | Kernel stacks for the receive and transmit paths with `bpftrace`; offloads on and off with skb counts; NAPI work per poll; `nft monitor trace` through the hooks; six drops found by `kfree_skb` reason and counter; RPS, socket buffers and qdisc queueing measured |
 | 08 | `dig +trace`, `curl -v` showing the TLS handshake, `openssl s_client` and a certificate chain |
 | 09 | A stateful ruleset with `conntrack -L`; a SYN flood against a listening socket and the SYN-cookie counters |
 | 11 | An ECMP hash experiment across several equal-cost paths; link failure and reconvergence timing in namespaces |
@@ -156,7 +156,7 @@ Every NET tutorial follows these rules, so the track is something you run and lo
 
 | # | Topic | Status |
 |---|---|---|
-| 01–09 | Core topics | NET 01 to 05 written (Nov 2026), 06 is next (week 13); 07 is rewritten when reached |
+| 01–09 | Core topics | NET 01 to 06 written (Nov 2026), 07 is next (week 13); it is rewritten when reached |
 | 10 | Wi-Fi sub-track (WF 01 to WF 10) | Stretch; planned in section 10 |
 | 11–14 | Fabrics, RDMA, load balancing, queueing | To write (added after the November 2026 audit) |
 | 15 | Question bank | To write (week 24) |

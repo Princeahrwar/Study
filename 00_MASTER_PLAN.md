@@ -150,7 +150,7 @@ Each week is about 25 hours: roughly 8 h DSA, 8 h systems, 6 h design, and 3 h f
 | 10 | 14 Dec | Trees 12, 15, 16 (heaps) | OS 10 (done), OS 11 (done); NET 01 (done); LX 06 (done); DBG 04 | LLD-P 01, 06, 02 | C 10; CPP 02 |
 | 11 | 21 Dec | Trees 17–18 (tries); graphs I | OS 12 (done), OS 13 (done), OS 14 (done); NET 02 (done); DBG 05 | LLD-P 03, 07, 04; HLD 01, 02 | C 11; CPP 03 (holiday week: use as buffer if needed) |
 | 12 | 28 Dec | Graphs II; Trees 28 (union-find) | OS 15 (done), OS 16 (done), OS 17 (done); NET 03 (done), NET 04 (done); LX 07 (done); DBG 06 | LLD-P 05, 08; HLD 03, 04 | CPP 04; **rkv M1** |
-| 13 | 4 Jan | Greedy & intervals; DP I | OS 18 (done), OS 19 (done); NET 05 (done), NET 06; DBG 07 | LLD-P 09, 10; HLD 05, 06, 07 | CPP 05; rkv M2–M3; resume rewrite |
+| 13 | 4 Jan | Greedy & intervals; DP I | OS 18 (done), OS 19 (done); NET 05 (done), NET 06 (done); DBG 07 | LLD-P 09, 10; HLD 05, 06, 07 | CPP 05; rkv M2–M3; resume rewrite |
 | 14 | 11 Jan | DP II | OS 20 (done), OS 21 (done); NET 07, NET 08; K 01; DBG 08 (stretch) | LLD 18, 20, 21; HLD 08, 09, 10 | CPP 06; rkv M4; first mock loop; **Milestone: apply-ready** |
 
 ### Phase C — Systems depth and design breadth (weeks 15–20)
