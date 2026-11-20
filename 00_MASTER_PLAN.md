@@ -157,7 +157,7 @@ Each week is about 25 hours: roughly 8 h DSA, 8 h systems, 6 h design, and 3 h f
 
 | Week | Starts | DSA | Systems | Design | C/C++ · projects · interviews |
 |---|---|---|---|---|---|
-| 15 | 18 Jan | DP III; bits & math | NET 09; LX 08 (done), LX 09 (done); K 02; DRV 01 | HLD 11, 12; HLD-P 01 | CPP 07; rkv M5; **rkdma M1** |
+| 15 | 18 Jan | DP III; bits & math | NET 09 (done); LX 08 (done), LX 09 (done); K 02; DRV 01 | HLD 11, 12; HLD-P 01 | CPP 07; rkv M5; **rkdma M1** |
 | 16 | 25 Jan | String algorithms; Trees 13 (kernel rbtree) | K 03; LX 10 (done); NET 11; DRV 02, DRV 03 | HLD 13, 14, 15; HLD-P 02 | CPP 08; rkdma M2 |
 | 17 | 1 Feb | Trees 19–21 (range queries) | K 04, K 05; LX 11 (done); NET 12; DRV 04, DRV 05; DBG 09 | HLD 16, 17; HLD-P 03, 04 | rkdma M3 |
 | 18 | 8 Feb | Trees 24, 25, 29; mixed medium–hard set | K 06; LX 12 (done); NET 13; DRV 06, DRV 07 | HLD-P 05, 06, 07 | rkdma M4 |
