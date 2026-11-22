@@ -49,7 +49,7 @@ Networking questions arrive from several directions: "what happens when you type
 | 12 | [`12_rdma_roce_and_lossless_fabrics.md`](12_rdma_roce_and_lossless_fabrics.md) | RDMA, RoCE and lossless fabrics | Why RDMA (kernel bypass, zero-copy, offloaded transport), verbs (QP, CQ, MR, send, write, read), InfiniBand against RoCEv2, PFC and head-of-line blocking, ECN and DCQCN, PFC storms and deadlock, incast, packet spraying and adaptive routing, collectives and how NCCL ring and tree traffic loads a fabric. Cross-reference CO 29 for the topology maths | Written (Nov 2026) | 17 |
 | 13 | [`13_load_balancing_proxies_and_anycast.md`](13_load_balancing_proxies_and_anycast.md) | Load balancing, proxies and anycast | L4 against L7, NAT mode against DSR, consistent hashing and Maglev hashing, connection tracking and the problem of backend changes, health checks, IPVS and `nftables` load balancing, XDP load balancers (Katran-style), anycast and BGP, reverse proxies and connection pooling, TLS termination. Cross-reference the load-balancing design problem in `11_hld` | Written (Nov 2026) | 18 |
 | 14 | [`14_queueing_qos_and_traffic_management.md`](14_queueing_qos_and_traffic_management.md) | Queueing, QoS and traffic management | Queueing delay and Little's law applied to a link, buffer sizing and bufferbloat, tail drop, RED and ECN marking, CoDel and FQ-CoDel, token bucket and leaky bucket, policing against shaping, strict priority, DRR and WFQ, DSCP and 802.1p, `tc` qdiscs on Linux (`tbf`, `htb`, `fq_codel`, `cake`) | Written (Nov 2026) | 19 |
-| 15 | `15_networking_interview_question_bank.md` | Networking interview question bank | Questions with answers across the track, a "network is slow" and "connection fails" triage tree, 10 to 15 troubleshooting scenarios reproduced in network namespaces (as in LX 14), design-style questions (load balancer, firewall data path, packet router), a one-page cheat sheet | To write | 24 |
+| 15 | [`15_networking_interview_question_bank.md`](15_networking_interview_question_bank.md) | Networking interview question bank | Questions with answers across the track, a "network is slow" and "connection fails" triage tree, 10 to 15 troubleshooting scenarios reproduced in network namespaces (as in LX 14), design-style questions (load balancer, firewall data path, packet router), a one-page cheat sheet | Written (Nov 2026) | 24 |
 
 ---
 
@@ -72,6 +72,7 @@ There are no separate lab folders. Each tutorial carries its own small runnable 
 | 12 | Software RoCE (`rdma_rxe`) if the kernel has it, otherwise the verbs flow is explained from the API and marked as not run here |
 | 13 | A small consistent-hashing table in C or Python, measuring disruption when a backend is removed |
 | 14 | M/D/1 delay against load with Poisson traffic and a sampled backlog; a token bucket after idle and the burst a 100 Mbit bucket needs; a shaper against nftables and ingress policers and an `ifb` shaper under TCP; bufferbloat at four buffer sizes for cubic, reno and BBR; HTB sharing, strict priority and starvation; DSCP, TOS, 802.1Q priority and an ingress remark; a three class uplink design. `fq_codel`, `codel`, `red`, `drr`, `prio`, `netem` and `act_police` are missing from the sandbox kernel, so RED, CoDel, FQ-CoDel, DRR and WFQ run in a small packet level model that is checked against the kernel in one case only (Reno through tail drop) |
+| 15 | Eleven troubleshooting scenarios reproduced in namespaces (refused against rejected against dropped with the SYN schedule, a path MTU black hole and its two fixes, reverse path filtering, the 40 ms Nagle and delayed ACK stall, an overflowing accept queue, ephemeral port exhaustion, resolver timeouts, a slow reader, loss against throughput, a full conntrack table, dead peer detection) plus computed answers for windows, Mathis, subnetting, the checksum, port and conntrack sizing and timeout arithmetic. Four more scenarios point at NET 06, 11 and 14 or are from memory; no `netem`, so no propagation delay |
 
 Experiments that need hardware or kernel options the sandbox lacks are marked "from memory" or "needs your machine", never presented as measured.
 
@@ -154,10 +155,10 @@ Every NET tutorial follows these rules, so the track is something you run and lo
 
 | # | Topic | Status |
 |---|---|---|
-| 01–09, 11–14 | Core topics | NET 01 to 09 and 11 to 14 written (Nov 2026), 15 is next (week 24; NET 10 is the Wi-Fi stretch sub-track) |
+| 01–09, 11–15 | Core topics | NET 01 to 09 and 11 to 15 written (Nov 2026; NET 10 is the Wi-Fi stretch sub-track) |
 | 10 | Wi-Fi sub-track (WF 01 to WF 10) | Stretch; planned in section 10 |
 | 14 | Queueing | Written (Nov 2026, added after the audit) |
-| 15 | Question bank | To write (week 24) |
+| 15 | Question bank | Written (Nov 2026) |
 
 Cross-track view: [`../00_MASTER_PLAN.md`](../00_MASTER_PLAN.md).
 

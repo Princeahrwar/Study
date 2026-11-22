@@ -70,7 +70,7 @@ Each track has a `00_plan.md` with its topics, status, week, labs, interview que
 | 04 | [Computer organization](04_computer_organization/00_plan.md) | CO | 31 (all written) | 1–6 | ~70 core, ~83 all |
 | 05 | [Operating systems](05_operating_systems/00_plan.md) | OS | 21 (OS 01 to 21 written, 2 older notes) | 5–14 | ~50 |
 | 06 | [Linux](06_linux/00_plan.md) | LX | 14 (all written) | 3–19, 24 | ~42 |
-| 07 | [Networking](07_networking/00_plan.md) | NET | 14 core (2 exist); NET 11 to 15 added Nov 2026 (NET 11 to 14 written); Wi-Fi sub-track WF 01 to 10 (stretch, from the Candela course) | 10–19, 24 | ~40 core, +20 stretch |
+| 07 | [Networking](07_networking/00_plan.md) | NET | 14 core (2 exist); NET 11 to 15 added Nov 2026 (NET 11 to 15 written); Wi-Fi sub-track WF 01 to 10 (stretch, from the Candela course) | 10–19, 24 | ~40 core, +20 stretch |
 | 08 | [Kernel internals](08_kernel/00_plan.md) | K | 8 (1 exists) | 14–20 | ~30 |
 | 09 | [Device drivers](09_drivers/00_plan.md) | DRV | 10 (5 exist) | 15–20 | ~30 |
 | 10 | [LLD](10_lld/00_plan.md) | LLD | 21 foundations + 33 problems (written) + 6 systems notes (exist) | 1–14, 19–22, 24 | ~85 |
@@ -176,7 +176,7 @@ Each week is about 25 hours: roughly 8 h DSA, 8 h systems, 6 h design, and 3 h f
 
 | Week | Starts | Focus |
 |---|---|---|
-| 24 | 22 Mar | Mock loops (two or three this week); six extended LLD problems cold; LX 14 (done), NET 15, C 12 and DBG 10 question banks; concept flashcards |
+| 24 | 22 Mar | Mock loops (two or three this week); six extended LLD problems cold; LX 14 (done), NET 15 (done), C 12 and DBG 10 question banks; concept flashcards |
 | 25 | 29 Mar | More mock loops with different interviewers; behavioural polish; notes for any company you are interviewing with |
 | 26 | 5 Apr | Buffer and revision: flashcards, your own summary files, weak areas |
 
