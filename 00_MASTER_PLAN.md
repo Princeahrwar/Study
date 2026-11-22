@@ -70,7 +70,7 @@ Each track has a `00_plan.md` with its topics, status, week, labs, interview que
 | 04 | [Computer organization](04_computer_organization/00_plan.md) | CO | 31 (all written) | 1–6 | ~70 core, ~83 all |
 | 05 | [Operating systems](05_operating_systems/00_plan.md) | OS | 21 (OS 01 to 21 written, 2 older notes) | 5–14 | ~50 |
 | 06 | [Linux](06_linux/00_plan.md) | LX | 14 (all written) | 3–19, 24 | ~42 |
-| 07 | [Networking](07_networking/00_plan.md) | NET | 14 core (2 exist); NET 11 to 15 added Nov 2026 (NET 11 to 15 written); Wi-Fi sub-track WF 01 to 11 (priority raised 23 Nov 2026: complete networking before debugging; WF 01 and WF 11 written) | 10–19, 24 | ~40 core, +70 Wi-Fi |
+| 07 | [Networking](07_networking/00_plan.md) | NET | 14 core (2 exist); NET 11 to 15 added Nov 2026 (NET 11 to 15 written); Wi-Fi sub-track WF 01 to 11 (priority raised 23 Nov 2026: complete networking before debugging; WF 01, WF 02 and WF 11 written) | 10–19, 24 | ~40 core, +70 Wi-Fi |
 | 08 | [Kernel internals](08_kernel/00_plan.md) | K | 8 (1 exists) | 14–20 | ~30 |
 | 09 | [Device drivers](09_drivers/00_plan.md) | DRV | 10 (5 exist) | 15–20 | ~30 |
 | 10 | [LLD](10_lld/00_plan.md) | LLD | 21 foundations + 33 problems (written) + 6 systems notes (exist) | 1–14, 19–22, 24 | ~85 |
