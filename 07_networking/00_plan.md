@@ -44,7 +44,7 @@ Networking questions arrive from several directions: "what happens when you type
 | 07 | [`07_zero_copy_networking.md`](07_zero_copy_networking.md) | Zero-copy networking | The copies you remove, `AF_PACKET` rings, XDP, `AF_XDP`, DPDK, transmit-side zero-copy | Written (Nov 2026) | 14 |
 | 08 | [`08_application_protocols_dns_http_tls.md`](08_application_protocols_dns_http_tls.md) | Application protocols: DNS, HTTP and TLS | DNS resolution and caching, HTTP/1.1 (keep-alive, head-of-line blocking), HTTP/2 (streams, HPACK), HTTP/3 over QUIC, TLS 1.3 handshake, certificates and chains of trust, gRPC, WebSockets, MQTT for IoT, DHCP, NTP and PTP at a glance, SNMP and gNMI/streaming telemetry for network devices | Written (Nov 2026) | 14 |
 | 09 | [`09_network_security_firewalls_ips_dpi.md`](09_network_security_firewalls_ips_dpi.md) | Network security: firewalls, IPS and DPI | Stateless vs stateful firewalls, connection tracking and session tables, NAT in a firewall, application identification, IDS vs IPS, signature matching (Aho-Corasick, regex engines), TLS decryption and its trade-offs, IPsec and VPNs, DDoS defences, SYN cookies, rate limiting and policing of control-plane traffic | Written (Nov 2026) | 15 |
-| 10 | [`10_wifi/`](#10-the-wi-fi-sub-track-wf-01-to-wf-10) | Wi-Fi (802.11) sub-track, WF 01 to WF 10 | Expanded Nov 2026 after comparing with the Candela Wi-Fi Technology Fundamentals course: see section 10. Your home turf, so read for gaps and for the interview framing | Stretch (do WF 01 to 04 first if a target team is wireless) | after 15 |
+| 10 | [`10_wifi/`](#10-the-wi-fi-sub-track-wf-01-to-wf-11) | Wi-Fi (802.11) sub-track, WF 01 to WF 11 | Every Candela session plus gap topics, in detail: see section 10 | Priority raised 23 Nov 2026; WF 01 written | after 15 |
 | 11 | [`11_routing_protocols_and_datacenter_fabrics.md`](11_routing_protocols_and_datacenter_fabrics.md) | Routing protocols and datacenter fabrics | Link-state against distance-vector, OSPF (areas, LSA flooding, SPF), BGP (sessions, path attributes, best-path selection, eBGP and iBGP, route reflectors, update processing), BGP as the datacenter IGP, leaf-spine and Clos topologies, oversubscription, ECMP and hash polarisation, flowlets, VXLAN and EVPN, BFD, convergence after a link failure, how a route reaches the hardware (FIB, SONiC at a glance) | Written (Nov 2026) | 15 |
 | 12 | [`12_rdma_roce_and_lossless_fabrics.md`](12_rdma_roce_and_lossless_fabrics.md) | RDMA, RoCE and lossless fabrics | Why RDMA (kernel bypass, zero-copy, offloaded transport), verbs (QP, CQ, MR, send, write, read), InfiniBand against RoCEv2, PFC and head-of-line blocking, ECN and DCQCN, PFC storms and deadlock, incast, packet spraying and adaptive routing, collectives and how NCCL ring and tree traffic loads a fabric. Cross-reference CO 29 for the topology maths | Written (Nov 2026) | 17 |
 | 13 | [`13_load_balancing_proxies_and_anycast.md`](13_load_balancing_proxies_and_anycast.md) | Load balancing, proxies and anycast | L4 against L7, NAT mode against DSR, consistent hashing and Maglev hashing, connection tracking and the problem of backend changes, health checks, IPVS and `nftables` load balancing, XDP load balancers (Katran-style), anycast and BGP, reverse proxies and connection pooling, TLS termination. Cross-reference the load-balancing design problem in `11_hld` | Written (Nov 2026) | 18 |
@@ -73,6 +73,7 @@ There are no separate lab folders. Each tutorial carries its own small runnable 
 | 13 | A small consistent-hashing table in C or Python, measuring disruption when a backend is removed |
 | 14 | M/D/1 delay against load with Poisson traffic and a sampled backlog; a token bucket after idle and the burst a 100 Mbit bucket needs; a shaper against nftables and ingress policers and an `ifb` shaper under TCP; bufferbloat at four buffer sizes for cubic, reno and BBR; HTB sharing, strict priority and starvation; DSCP, TOS, 802.1Q priority and an ingress remark; a three class uplink design. `fq_codel`, `codel`, `red`, `drr`, `prio`, `netem` and `act_police` are missing from the sandbox kernel, so RED, CoDel, FQ-CoDel, DRR and WFQ run in a small packet level model that is checked against the kernel in one case only (Reno through tail drop) |
 | 15 | Eleven troubleshooting scenarios reproduced in namespaces (refused against rejected against dropped with the SYN schedule, a path MTU black hole and its two fixes, reverse path filtering, the 40 ms Nagle and delayed ACK stall, an overflowing accept queue, ephemeral port exhaustion, resolver timeouts, a slow reader, loss against throughput, a full conntrack table, dead peer detection) plus computed answers for windows, Mathis, subnetting, the checksum, port and conntrack sizing and timeout arithmetic. Four more scenarios point at NET 06, 11 and 14 or are from memory; no `netem`, so no propagation delay |
+| WF 01 | Seven 802.11 frames built with scapy and dissected with `tshark` (beacons with ESS, IBSS and Mesh ID; ToDS, FromDS, ad hoc and four address data frames); beacon information elements for each generation; the peak-rate formula for six generations and a factor-by-factor decomposition; a repeater, dedicated-radio and wired hop model; a home router in four namespaces (bridge, `dnsmasq` DHCP captured, NAT with a port collision in `conntrack`); a wake-up latency measurement against the 16 us SIFS. No wireless stack in the kernel, so all frames are hand built |
 
 Experiments that need hardware or kernel options the sandbox lacks are marked "from memory" or "needs your machine", never presented as measured.
 
@@ -156,7 +157,7 @@ Every NET tutorial follows these rules, so the track is something you run and lo
 | # | Topic | Status |
 |---|---|---|
 | 01–09, 11–15 | Core topics | NET 01 to 09 and 11 to 15 written (Nov 2026; NET 10 is the Wi-Fi stretch sub-track) |
-| 10 | Wi-Fi sub-track (WF 01 to WF 10) | Stretch; planned in section 10 |
+| 10 | Wi-Fi sub-track (WF 01 to WF 11) | In progress (priority raised 23 Nov 2026): WF 01 written; WF 02 to WF 11 to write, in order |
 | 14 | Queueing | Written (Nov 2026, added after the audit) |
 | 15 | Question bank | Written (Nov 2026) |
 
@@ -191,15 +192,15 @@ The plan was compared with: Stanford CS144 and its lab list, Berkeley CS168's sy
 
 ---
 
-## 10. The Wi-Fi sub-track (WF 01 to WF 10)
+## 10. The Wi-Fi sub-track (WF 01 to WF 11)
 
 Source compared: the Candela Technologies *Wi-Fi Technology Fundamentals* course page (Part 1 basics, Modules 1 to 4, sessions 1a to 4d; Part 2 advanced, Modules 5 to 8, sessions 5a to 8d). I read the page's outline; I did not open the slide decks or videos, so the tutorials will be written from the topic lists plus the standards and your platform knowledge, and will say where they rely on memory. The course targets junior and mid-level engineers, so these tutorials go deeper than its sessions where a Senior or Staff interview does (frame formats, 4-way handshake keys, airtime and rate maths, roaming timings, driver interfaces).
 
-Priority: stretch, after NET 15. Do WF 01 to 04 and WF 10 first if a target team is wireless (Cisco, Ruckus-like AP and controller roles, Meta and Google device connectivity teams); the rest are read for gaps. About 20 hours in total.
+Priority: **raised on 23 Nov 2026**. You asked for networking to be completed, every Candela topic in great detail plus any gaps, before the debugging track continues, so WF 01 to WF 11 are written one after another now. About 70 hours in total at the depth of the earlier tutorials (6 to 8 hours each).
 
 | # | File (in `10_wifi/`) | Topic | Candela sessions covered | Key subtopics beyond the session titles |
 |---|---|---|---|---|
-| WF 01 | `01_wifi_landscape_and_ap_anatomy.md` | Landscape, topologies, standards, AP anatomy | 1a, 1b, 1c, 1d | Generations and what each changed; infrastructure, mesh, bridge and ad hoc; backhaul; IEEE against Wi-Fi Alliance; PHY, baseband, lower and upper MAC split in an AP and where the CPU, the radio and the offload engine sit |
+| WF 01 | [`01_wifi_landscape_and_ap_anatomy.md`](10_wifi/01_wifi_landscape_and_ap_anatomy.md) (**written**, Nov 2026) | Landscape, topologies, standards, AP anatomy | 1a, 1b, 1c, 1d | Generations and what each changed; infrastructure, mesh, bridge and ad hoc; backhaul; IEEE against Wi-Fi Alliance; PHY, baseband, lower and upper MAC split in an AP and where the CPU, the radio and the offload engine sit |
 | WF 02 | `02_wifi_phy.md` | The PHY | 2a, 2b, 2c, 2d | ISM and UNII bands, channels and widths, DFS; modulation, coding, multipath, MIMO, OFDM and OFDMA; the MCS table and a worked data-rate calculation (subcarriers, bits per symbol, coding rate, guard interval); PLCP and PMD, preamble and headers |
 | WF 03 | `03_wifi_mac.md` | The MAC | 3a, 3b, 3c, 3d | Beacons, BSSID, scanning, probe and association; management, control and data frames and the four-address header; carrier sense, NAV, DCF, backoff, IFS, EDCA access categories; aggregation (A-MPDU, A-MSDU), block ack, rate adaptation; airtime fairness and why one slow client hurts everyone |
 | WF 04 | `04_wifi_security.md` | Security | 4a, 4b, 4c, 4d | WEP to WPA3 (SAE); personal against enterprise; 802.1X, EAP methods, RADIUS; TKIP, CCMP, GCMP; the PMK, PTK and GTK key hierarchy and the 4-way handshake message by message; deauthentication and DoS, evil twin, KRACK-class and dictionary attacks, PMF; captive portal, WPS, OpenRoaming and EAP-SIM/AKA |
@@ -208,8 +209,26 @@ Priority: stretch, after NET 15. Do WF 01 to 04 and WF 10 first if a target team
 | WF 07 | `07_wifi_architectures_mesh_and_services.md` | Controller architectures, mesh and services | 6a, 6b, 6c, 6d | Thick against thin AP, physical and cloud controllers, CAPWAP and tunnelling, the control plane against data plane split (links to `11_hld/03_systems_domain/01_data_plane_vs_control_plane.md`); traffic shaping and policing (links to NET 14), parental controls, analytics, telemetry at fleet scale (links to Project 05 `telemetrix`); mesh access, backhaul and roaming; sensing, location and IT-to-OT |
 | WF 08 | `08_wifi_capture_tools_and_debug.md` | Capture, tools and debug | 7a, 7b, 7c | Monitor mode, radiotap headers, Wireshark WLAN filters, information elements, I/O graphs; `iw`, `iperf3`, site survey and heatmap ideas; supplicant and AP logs, serial, Telnet and REST management, reading a failed association from the log |
 | WF 09 | `09_wifi_testing.md` | Testing | 8a, 8b, 8c, 8d | Lab against field and automated against manual testing, benchmarking, scale and stress, repeatability, test houses, writing and running a test plan; throughput, roaming and latency metrics |
-| WF 10 | `10_linux_wireless_stack_and_openwrt.md` | Linux wireless stack and OpenWRT | 7d (and beyond) | nl80211, cfg80211, mac80211, the driver and firmware split, `hostapd` and `wpa_supplicant`, `iw` and `iwconfig`, virtual interfaces, OpenWRT building blocks (`netifd`, UCI, `procd`), where the data path leaves the kernel for offload; `mac80211_hwsim` for a software radio |
+| WF 10 | `10_linux_wireless_stack_and_openwrt.md` | Linux wireless stack and OpenWRT | 7d (and beyond) | nl80211, cfg80211, mac80211, the driver and firmware split (FullMAC, SoftMAC, `ath11k`, `mt76`), `hostapd` and `wpa_supplicant`, `iw` and `iwconfig`, virtual interfaces, OpenWRT building blocks (`netifd`, UCI, `procd`), where the data path leaves the kernel for offload; `mac80211_hwsim` for a software radio |
+| WF 11 | `11_rf_fundamentals_and_link_budget.md` | RF fundamentals and link budget (a gap, not in Candela) | none | dB and dBm arithmetic, path loss and the link budget, RSSI against SNR against the rate that SNR allows, fading and multipath, antennas and gain, channel planning and reuse, noise, interference and co-channel against adjacent channel, coexistence with Bluetooth and microwaves. Read between WF 01 and WF 02; the Candela course assumes it |
 
 **Practical and graphical for Wi-Fi:** the sandbox has no radio, but the Linux `mac80211_hwsim` module gives virtual radios, so `hostapd` and `wpa_supplicant` can run an association and a 4-way handshake in this environment if the kernel has the module; otherwise the tutorials use captured example frames and mark them. Each tutorial has a frame or handshake sequence diagram, an airtime or data-rate calculation done in a short script, and a channel and band chart as a table or drawing.
+
+**Gap analysis (23 Nov 2026), what Candela leaves thin and where each piece goes.** The Candela notes are class notes, one short page per session. Beyond them these tutorials add:
+
+| Gap | Goes into | Resource used to fill it |
+|---|---|---|
+| RF basics, link budget, antennas, noise | **WF 11** (new) | Standard texts and the MathWorks "WLAN (Wi-Fi) Explained" series |
+| Power save: PS-Poll, DTIM, U-APSD, TWT | WF 03 and WF 06 | IEEE 802.11 power management clauses (from memory) |
+| Beamforming, sounding, MU-MIMO in detail | WF 02 and WF 06 | MathWorks series, vendor white papers |
+| Regulatory limits: EIRP, TPC, DFS timing, AFC | WF 02, WF 06, WF 11 | FCC and ETSI rules (from memory; verify before use) |
+| Passpoint, Hotspot 2.0, ANQP, 802.11u | WF 04 | Wi-Fi Alliance Passpoint documents |
+| WPA3-SAE and OWE message detail | WF 04 | RFC 7664 (Dragonfly) and the 802.11 clauses |
+| Wi-Fi Direct, P2P, Wi-Fi Aware | WF 07 | Wi-Fi Alliance documents |
+| EasyMesh and multi-AP | WF 07 | Wi-Fi Alliance and prplMesh documents |
+| WMM and EDCA parameters | WF 03 | 802.11e |
+| Coexistence with Bluetooth and others | WF 11 | Texts on the 2.4 GHz band |
+| ath11k and mt76 drivers, `mac80211_hwsim` | WF 10 | `docs.kernel.org` Linux 802.11 driver guide, `wireless.docs.kernel.org` |
+| An operator's view (CWNA style: surveys, planning) | WF 08, WF 09, WF 11 | CWNA study material, the PTR Group and O'Reilly "Wi-Fi Fundamentals" lessons |
 
 **Coverage check against Candela:** every one of the 32 listed sessions (1a to 4d, 5a to 8d) maps to a row above. Candela session 7d (OpenWRT basics) maps to WF 10. Nothing in the course is left out; items I added are the key hierarchy and handshake detail, airtime fairness, 802.1X re-authentication cost, `mac80211_hwsim`, and the Linux driver and firmware interfaces.
