@@ -71,7 +71,7 @@ There are no separate lab folders. Each tutorial carries its own small runnable 
 | 11 | Real FRR daemons in network namespaces on a three leaf, two spine fabric: OSPF adjacencies, database and SPF; eBGP sessions captured and decoded, best path steered by local preference and prepending, iBGP with and without a route reflector; a datacenter AS plan and the valley path after a failure (OSPF against BGP); an ECMP hash across three tiers (addresses against 5-tuple, hash polarisation and per-tier seeds); ordinary against resilient next hop groups; VXLAN overhead, MTU and outer source port entropy; EVPN type 2 and 3 routes; convergence after carrier loss and silent failure with hold timers and BFD; distance vector counting to infinity; fabric sizing arithmetic. No MPLS in the sandbox kernel, no `netem`, and hardware FIBs, SONiC and flowlets are marked "from memory" |
 | 12 | Software RoCE (`rdma_rxe`) if the kernel has it, otherwise the verbs flow is explained from the API and marked as not run here |
 | 13 | A small consistent-hashing table in C or Python, measuring disruption when a backend is removed |
-| 14 | `tbf` and `fq_codel` against a loaded link, measuring latency under load |
+| 14 | M/D/1 delay against load with Poisson traffic and a sampled backlog; a token bucket after idle and the burst a 100 Mbit bucket needs; a shaper against nftables and ingress policers and an `ifb` shaper under TCP; bufferbloat at four buffer sizes for cubic, reno and BBR; HTB sharing, strict priority and starvation; DSCP, TOS, 802.1Q priority and an ingress remark; a three class uplink design. `fq_codel`, `codel`, `red`, `drr`, `prio`, `netem` and `act_police` are missing from the sandbox kernel, so RED, CoDel, FQ-CoDel, DRR and WFQ run in a small packet level model that is checked against the kernel in one case only (Reno through tail drop) |
 
 Experiments that need hardware or kernel options the sandbox lacks are marked "from memory" or "needs your machine", never presented as measured.
 
@@ -154,9 +154,9 @@ Every NET tutorial follows these rules, so the track is something you run and lo
 
 | # | Topic | Status |
 |---|---|---|
-| 01–09, 11–13 | Core topics | NET 01 to 09 and 11 to 13 written (Nov 2026), 14 is next (week 19; NET 10 is the Wi-Fi stretch sub-track) |
+| 01–09, 11–14 | Core topics | NET 01 to 09 and 11 to 14 written (Nov 2026), 15 is next (week 24; NET 10 is the Wi-Fi stretch sub-track) |
 | 10 | Wi-Fi sub-track (WF 01 to WF 10) | Stretch; planned in section 10 |
-| 14 | Queueing | To write (added after the November 2026 audit) |
+| 14 | Queueing | Written (Nov 2026, added after the audit) |
 | 15 | Question bank | To write (week 24) |
 
 Cross-track view: [`../00_MASTER_PLAN.md`](../00_MASTER_PLAN.md).
