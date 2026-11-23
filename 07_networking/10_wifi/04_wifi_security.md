@@ -168,16 +168,16 @@ The handshake has two jobs: **prove** that both sides hold the same PMK without 
 
 ```mermaid
 sequenceDiagram
-    participant S as Station (supplicant)
-    participant A as Access point (authenticator)
+    participant S as Station - supplicant
+    participant A as Access point - authenticator
     Note over S,A: both hold the PMK
-    A->>S: 1: ANonce
-    Note over S: SNonce, derives the PTK
-    S->>A: 2: SNonce, RSN element, MIC
-    Note over A: derives the PTK, checks the MIC
-    A->>S: 3: ANonce, RSN element, wrapped GTK, MIC, Install
-    S->>A: 4: MIC, Secure
-    Note over S,A: install the TK; encrypted data starts
+    A->>S: Msg 1 - ANonce
+    Note over S: picks SNonce and derives the PTK
+    S->>A: Msg 2 - SNonce, RSN element, MIC
+    Note over A: derives the PTK and checks the MIC
+    A->>S: Msg 3 - ANonce, RSN element, wrapped GTK, MIC, Install
+    S->>A: Msg 4 - MIC, Secure
+    Note over S,A: TK installed and encrypted data starts
 ```
 
 The script builds the four EAPOL-Key frames and reads the key information field bit by bit.
