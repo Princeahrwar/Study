@@ -604,88 +604,80 @@ The omnidirectional antenna has a null straight down. A step to the side often g
 
 ---
 
-## 15. Problems
+## 15. Scenarios and design questions
 
-Each problem says where to solve it and how to approach it. Answers are in section 16.
+These are the shapes real interviews take for a Wi-Fi platform role: a symptom to debug, a system to design, a trade-off to defend, a piece of code to reason about. Each one says where to practise it (whiteboard, a capture in Wireshark, your own AP or Linux box, or a short talk-through) and how to approach it. Strong answers are in section 16.
 
-**P1. HaLow range** (pen and paper, 10 minutes)
-A 2.4 GHz link works at 30 m with a path loss exponent of 3. Estimate the range of a 1 MHz HaLow link at 900 MHz with the same transmit power and the same receiver noise figure. *Approach:* the budget changes by the frequency effect on loss and by the noise bandwidth. Convert the sum into a distance ratio with the exponent.
+**S1. Thousands of sensors, one AP** (whiteboard, 15 minutes)
+A utility wants 3,000 water meters reporting a few times a day through one outdoor AP. Which technology do you pick and how do you make it work? *Approach:* start from the requirement (range, count, battery, tiny payloads), name the amendment, then walk through what has to be configured so that thousands of stations do not collide: addressing, sleep, scheduling, relays. Finish with what you would test.
 
-**P2. TIM addressing** (pen and paper)
-Split AID 4,500 into page, block, subblock and bit using the 2, 5, 3, 3 layout. *Approach:* write 4,500 in binary with 13 bits and read the fields from the top.
+**S2. The 60 GHz link that works in the lab and fails in the meeting room** (talk-through)
+A wireless dock using 60 GHz works on the bench and drops constantly in a customer's office. List what you would check, in order. *Approach:* separate the physical causes (blockage, reflections, distance, orientation) from the protocol causes (beam training, tracking, fallback). Say what you would capture and what you expect to see.
 
-**P3. RAW benefit** (pen and paper, then a short discussion)
-1,000 stations all wake after a power cut and try to report. Explain why RAW with groups of 10 helps, and what stops the improvement from being 100 times. *Approach:* think about who collides with whom inside a slot, and about the slot overhead.
+**S3. Collision avoidance without association** (whiteboard)
+Explain how a connected-vehicle radio can send a safety message with no AP, no association and no acknowledgement, and what that costs. Then explain what changes when the road has two hundred cars. *Approach:* describe the mode first, then the failure modes (no retry, no security from the MAC, a busy channel) and the application-level answer (repetition, congestion control, rate and power adaptation).
 
-**P4. 60 GHz budget** (pen and paper)
-A 60 GHz link has 40 dBm EIRP. A person stands in the path and adds 25 dB. Describe qualitatively what happens to range and rate, and what the device should do. *Approach:* each dB removed from the budget lowers the usable MCS or shortens the range; compare the margin with the lowest MCS and decide whether a fallback is needed.
+**S4. Why does indoor positioning drift by metres?** (talk-through, then optionally a Wireshark capture of FTM frames)
+A customer uses FTM for indoor positioning and complains that the positions are noisy and sometimes consistently wrong in one corner. Diagnose. *Approach:* split random error (multipath, bandwidth, too few samples) from systematic error (calibration, clock handling, geometry of the APs). Say what you would change in the firmware and what in the deployment.
 
-**P5. Doppler** (pen and paper)
-At 5.9 GHz and 250 km/h, find the maximum Doppler shift and the coherence time (use 0.4 divided by the Doppler). Compare it with a 300-byte frame at 3 Mbit/s. *Approach:* shift = speed x frequency / c; frame time = bits / rate.
+**S5. Design the wake-up path for a battery camera** (whiteboard)
+A door camera must react within a fraction of a second when the app asks for a snapshot but must last a year on batteries. Compare beacon-based power save, TWT and a wake-up radio. *Approach:* make the latency requirement and the traffic pattern explicit, then compare on listening cost, wake cost, latency and complexity. Say which parameter would change your answer.
 
-**P6. FTM arithmetic** (pen and paper)
-t1 = 0, t2 = 40 ns, t3 = 340 ns, t4 = 380 ns (all in the respective clocks). Compute the round trip and the distance. *Approach:* use the formula in section 4.1 and be careful which differences use which clock.
+**S6. Is presence sensing ready to ship?** (talk-through)
+Marketing wants "detect if someone is in the room" from existing APs. What can go wrong, technically and otherwise? *Approach:* think about what the signal really measures, why a single position or a single subcarrier can fail, what else moves in a room, and the privacy and consent side.
 
-**P7. FTM clock error** (pen and paper)
-A responder takes 200 us to send the next frame, and the two clocks differ by 20 ppm. What is the distance error? *Approach:* error in time = turnaround x ppm, then convert to distance with the speed of light, remembering to divide by two for the round trip.
+**S7. Video to forty phones in a lecture hall** (whiteboard)
+An access point multicasts a lecture stream and students report glitches. Why, and what are the options? *Approach:* start from why multicast is unreliable and slow in Wi-Fi, then compare the fixes (higher rate, conversion to unicast, groupcast with retries, application-level FEC), and say what decides between them.
 
-**P8. Wake-up break-even** (pen and paper, optionally a spreadsheet)
-Wake energy 0.3 mJ, WUR power 0.6 mW. At what beacon interval does listening to beacons cost the same as the WUR? *Approach:* equal average power: wake energy divided by the interval, against the WUR power.
+**S8. Two laptops, one AP, huge file copy** (talk-through)
+Someone suggests enabling TDLS to speed up file sharing between two laptops. What do you check, and what could make it worse? *Approach:* explain what it changes on the air, what must be true for it to help, and the interactions with power save, channel switching and AP policy.
 
-**P9. Sensing sampling** (pen and paper)
-A person breathes at 20 breaths per minute. What is the lowest sampling rate that shows it, and what rate would you choose in practice? *Approach:* convert to hertz, apply the sampling limit, and add margin for noise.
+**S9. Dead spot under the ceiling AP** (talk-through)
+A user sitting right under an AP has worse signal than a colleague three metres away. Explain, and say what you would change for the next deployment. *Approach:* radiation pattern, mounting height and orientation, polarisation, and then survey practice.
 
-**P10. Multicast reliability** (pen and paper, optionally a calculator)
-Loss per receiver is 5 percent, 20 receivers. What is the chance that one multicast transmission reaches all of them, and how many blind copies give 99 percent? *Approach:* chance of all = (1 minus loss) to the power N. For k copies a receiver fails only if all k fail.
+**S10. Reading a capture** (Wireshark, 20 minutes, using any sample capture or a frame you build in scapy)
+Find a tunnelled TDLS setup frame, or an FTM exchange, and explain every field that matters. *Approach:* filter by the frame type or ethertype, expand the action and element details, and write down which side sent which timestamp. If your capture has none, build one frame in scapy and decode it with `tshark` to see how the fields are laid out.
 
-**P11. TDLS decision** (pen and paper)
-Both clients get 200 Mbit/s to the AP. The direct link between them would run at 150 Mbit/s. Is TDLS worth it? What if channel switching costs 10 percent? *Approach:* via the AP the effective rate is half; compare with the direct rate after the time penalty.
+**S11. Small piece of code: the S1G TIM** (pen and paper or a few lines in any language)
+Given a set of station identifiers, show how you would turn them into the page, block, subblock and bit structure, and say why this encoding is smaller than the legacy bitmap when only a few stations have data. *Approach:* describe the data structure and the loop in words first; the arithmetic is bit shifting. Talk about the sparse case and the dense case.
 
-**P12. Decode TDLS** (tshark, 15 minutes, needs a capture or a frame you build yourself)
-Open any capture with a TDLS setup (or build one in a short scapy session), and find the ethertype, the payload type, the action code and the link identifier. *Approach:* filter on `wlan` data frames with ethertype 0x890d, and expand the tunnelled frame in the packet details.
+**S12. Choosing among the amendments** (discussion, 20 minutes)
+A customer wants positioning to about a metre, a battery sensor network of a few thousand devices, and a wireless video wall in one room. Which amendment helps each, and what do you check before promising it? *Approach:* use the table at the start of the chapter, especially the "what it gives up" column, and list the checks: device support, regulation, deployment, fallback.
 
-**P13. Antenna choice** (pen and paper)
-Pick an antenna type for each case: a hallway 40 m long, a lecture hall with 300 seats, a point-to-point link of 2 km between two roofs. *Approach:* match the beamwidth to the shape of the area, and check the return link.
-
-**P14. EIRP check** (pen and paper)
-A radio sends 23 dBm, with 2 dB cable loss and a 9 dBi antenna. The rule is 30 dBm EIRP. Compliant? If not, how much must the power be reduced? *Approach:* EIRP = power minus cable loss plus gain.
-
-**P15. Design review** (discussion, 20 minutes)
-A customer wants indoor positioning to one metre, a battery sensor network of 2,000 devices, and a video wall wirelessly fed from a laptop in the same room. Which amendment from this chapter helps each, and what do you check before promising it? *Approach:* use the table at the start of the chapter and the "what it gives up" column.
+**S13. How would you test a Wi-Fi driver change that touches power save or multicast?** (talk-through)
+*Approach:* list what must be verified (state machine, buffering, interaction with beacons and TIM, sleeping peers), what a sniffer capture should show, what stress and soak tests you would run, and how you would make a failure reproducible.
 
 ---
 
-## 16. Answers
+## 16. Strong answers
 
-**P1.** Free-space loss difference: 20 log10(2400/900) is about 8.5 dB in favour of 900 MHz. Noise: 20 MHz to 1 MHz is 13 dB less. Total about 21.5 dB. With an exponent of 3, distance ratio = 10 to the power (21.5 / 30) = about 5.2. So about 30 m x 5.2 = 156 m (this assumes the HaLow rate is low enough to use the extra sensitivity).
+These are outlines of what a strong answer covers, not scripts. Use your own words and your own experience with real products.
 
-**P2.** 4,500 = 4096 + 256 + 128 + 16 + 4, so the set bits are 12, 8, 7, 4 and 2. As 13 bits: 1 0001 1001 0100. Page = top 2 bits = 10 = 2. Block = next 5 bits = 00110 = 6. Subblock = next 3 bits = 010 = 2. Bit = last 3 bits = 100 = 4. So page 2, block 6, subblock 2, bit 4.
+**S1.** Pick 802.11ah, because the need is range, count and battery with tiny payloads. The point is making 3,000 stations manageable: the 13-bit AID space and page-based TIM keep addressing and beacons workable; TWT lets each meter sleep for long periods and wake at its own schedule; RAW gives groups of stations their own slots so a power-cut recovery does not become a collision storm; a relay or sectorised antennas extend coverage where one hop is not enough. Mention the regional band and channel limits, the low rate and why it is acceptable, and security. Test with thousands of simulated stations, a mass-wake event, and long-term clock drift against the TWT schedule.
 
-**P3.** Inside a slot only 10 stations contend, so collisions fall sharply, and the airtime that would be wasted becomes useful. The gain is not 100 times because each slot has overhead, because stations still wait for their turn (latency is higher), and because the total airtime is shared: if all 1,000 must send, the best you can do is use the air fully, not more than fully. The modelled gain was about three times.
+**S2.** Check line of sight first: at 60 GHz a person, a monitor or a hand can block the link. Then distance and orientation, because the beams are narrow. Then reflections: an office with glass and metal can help or confuse beam selection. On the protocol side, look at how often beam training runs, whether tracking keeps up when the device or user moves, how long recovery takes after a block, and whether the session transfers to a lower band. A good answer also mentions capturing the beacon interval structure and the retraining events, and testing with a controlled blocker to measure recovery time.
 
-**P4.** The 25 dB reduces the budget so the highest MCS is lost first, then the range shrinks (by a large factor in line of sight, to a few metres). If the margin falls below the lowest MCS the link drops, so the device should retrain a beam around the person (a reflection off a wall can work) or use fast session transfer to a lower band.
+**S3.** The mode is OCB: no BSSID join, no authentication, no association, broadcast data frames. The benefit is zero setup time, which is what a moving car needs. The cost is that broadcasts have no acknowledgement or retry, there is no link-layer protection beyond upper-layer security, and the channel is shared by everyone in range. At two hundred cars the channel load becomes the problem: collisions rise, so you need congestion control (lower message rate, lower power, adapted rate), and the application must tolerate loss because messages are repeated frequently anyway. Mention 802.11bd's improvements for high speed (midambles, better coding, adaptive retransmissions).
 
-**P5.** Shift = (250 / 3.6 m/s) x 5.9 GHz / 3e8 = 69.4 x 19.67 = about 1,366 Hz. Coherence time is about 0.4 / 1366 = 293 us (section 3.5 quotes about 310 us, which uses a slightly different constant). Frame time = 2,400 bits / 3 Mbit/s = 800 us for the payload alone, so the frame lasts more than two coherence times: the channel changes during the frame, which is why 802.11bd adds midambles.
+**S4.** Random noise points to multipath and small bandwidth: use more bursts and average, use wider channels, discard outliers. A constant error in one corner points to calibration (a fixed internal delay per device model) or to a geometry problem: APs that are nearly in a line, or too few in range, or a reflecting wall near that corner. Check the clock handling (turnaround time and ratio estimation). On the deployment side, spread the APs around the area rather than along a corridor. Mention that 802.11az with wider channels and secure ranging is the real fix, and that RSSI-based position is worse, not better.
 
-**P6.** Round trip = (t4 - t1) - (t3 - t2) = 380 - 300 = 80 ns. One way = 40 ns. Distance = 3e8 x 40e-9 = 12 m.
+**S5.** Beacon-based power save wakes the radio at every interval, so latency is tied to the interval and energy grows as the interval shrinks. TWT agrees wake times so the device sleeps through beacons, but a snapshot request at an arbitrary time still waits for the next agreed slot. A wake-up radio listens with a tiny receiver, so latency can be a fraction of a second at low average power. The deciding factor is how often the camera is woken and how low the wake-up receiver's real power is: if requests are rare and latency matters, the wake-up radio wins; if the device can tolerate seconds, TWT is simpler and widely supported. Mention ecosystem support, because the AP must also support the feature.
 
-**P7.** Time error = 200 us x 20e-6 = 4 ns. Distance error = c x 4 ns / 2 = 0.6 m.
+**S6.** What it measures: changes in the channel caused by anything that moves, not people specifically. Risks: blind spots depending on position and phase, fans, curtains, pets and neighbours moving behind walls causing false positives, and changes in interference or gain that look like motion. Mitigation: use many subcarriers and antennas, calibrate per room, and apply temporal filtering. Non-technical: consent, data retention, what is stored (raw channel data can reveal activity), and local regulations. A sound answer says it can ship as a "motion or occupancy hint", not as a safety-critical sensor.
 
-**P8.** Interval = wake energy / WUR power = 0.3 mJ / 0.6 mW = 0.5 s. For beacon intervals longer than 0.5 s, beacon listening is cheaper on average; shorter, the WUR is cheaper.
+**S7.** Multicast in Wi-Fi has no acknowledgement and no retry, and it is sent at a low basic rate so that everyone can hear it, so some phones miss frames and the rest waste airtime. Options: raise the multicast rate (risky for far clients), convert to unicast with DMS (reliable, cost grows with the number of receivers), use GCR with block ack (reliable, cost grows slowly), or add forward error correction at the application. For forty receivers GCR or application-level FEC is usually better than forty unicast copies; for five, unicast is fine. Also check IGMP snooping and the buffering of multicast for sleeping clients.
 
-**P9.** 20 per minute = 0.33 Hz. Sampling must exceed twice that, 0.67 Hz. In practice use at least 5 to 10 Hz so that the second harmonic and noise can be handled and the waveform is clear.
+**S8.** TDLS moves the data path from client-AP-client to client-client, so it saves airtime only if the direct link is better than half the AP rate, at the clients' actual locations. It may also use another channel, which means the clients leave the AP's channel periodically and can miss traffic. Check the AP's policy (it can prohibit TDLS), the clients' power save, security (the peer key), and what happens when the direct link degrades (it should tear down and fall back). The honest answer is often "measure first".
 
-**P10.** One transmission reaching all 20: 0.95 to the power 20 = 0.358, about 36 percent. For k copies, a receiver fails if all copies fail: 0.05 to the power k. For all 20 to succeed: (1 - 0.05^k) to the power 20. k = 2: 0.0025 failure, (0.9975)^20 = 0.951. k = 3: 0.000125, (0.999875)^20 = 0.9975. So 3 copies reach more than 99 percent (2 copies give 95 percent).
+**S9.** An omnidirectional antenna on a ceiling has a null straight down, so someone directly below is in a weak part of the pattern. The person three metres away is inside the main lobe. For the next deployment: consider mounting height, use downtilted or patch antennas designed for ceiling use, survey at real client height, and place APs so the null falls where people do not sit. Mention polarisation as a secondary factor and that surveys should be done with the real client device.
 
-**P11.** Via the AP the effective rate is 200 / 2 = 100 Mbit/s. A direct 150 Mbit/s is better. After a 10 percent channel switching loss it is 135 Mbit/s, still better, so TDLS is worth it. At a direct rate of 100 Mbit/s or less it would not be.
+**S10.** For TDLS: LLC/SNAP with ethertype 89-0d, payload type 2, category 12, an action code, then elements including the link identifier. For FTM: action frames (request and measurement), dialog token and follow-up dialog token, the time of departure and arrival fields, and the ACKs in between. Describe which timestamp is taken at which end and why the follow-up token is needed (the timestamp of a frame is only known after it has been sent).
 
-**P12.** Ethertype 0x890d (shown as 89-0d), payload type 2 (TDLS), category 12, followed by an action code that tells discovery, setup request, response, confirm and the other frames apart, and the link identifier element (ID 101) with the BSSID and the two MAC addresses. In Wireshark the filter `llc.type == 0x890d` finds the frames, or `wlan.tdls`.
+**S11.** Take each station identifier and split it into page, block, subblock and bit. Mark only the blocks that contain at least one station with buffered data, and encode only those, so the size grows with the number of occupied blocks, not with the number of stations in the BSS. In the sparse case (a few meters out of thousands) this is far smaller than a legacy bitmap that must cover the whole range; in a dense case with most stations active the saving disappears. Mention that the segmentation also lets the AP spread the TIM over several beacons.
 
-**P13.** Hallway: patch or sector pointing along it, or an omni at one end for a short corridor. Lecture hall: several sector or patch antennas, each covering a bank of seats, to split the load and limit interference. Two-kilometre roof link: a Yagi or dish at each end, aligned, with the return link budget checked because both ends need the gain.
+**S12.** Positioning: 802.11az, with wide channels and secure ranging; check client and AP support, the number of APs in range and calibration. Sensor network: HaLow with TWT and RAW, plus the wake-up radio for latency-sensitive ones; check the regional band and the schedule. Video wall: 60 GHz in the same room with fallback to 5 GHz; check line of sight and the number of devices. For each, say what you would validate in the real environment before committing.
 
-**P14.** EIRP = 23 - 2 + 9 = 30 dBm. Exactly at the limit, so compliant, with no margin. A 1 dB tolerance in the cable would put it over, so many installers reduce the power by 1 to 2 dB.
-
-**P15.** Positioning to one metre: 802.11az (wider channels, secure ranging); check that the clients and APs support it, how many APs are in range, and calibration. 2,000 battery sensors: HaLow with TWT and RAW (or 802.11ba for latency-sensitive ones); check the regional band and the sleeping schedule. The video wall: 60 GHz (802.11ad or ay) in the same room; check line of sight, the number of devices, and fallback to 5 GHz when blocked. Always verify device support, regulations, and test in the real room.
+**S13.** Cover: the unit-level state machine (sleep and wake transitions, TIM and DTIM handling, buffering and release), capture-based checks (the right bits in beacons, frames sent after a poll, no frames lost during transitions), multicast-specific checks (DTIM alignment, sleeping and awake clients together), stress (many stations, mass reconnect), soak (long runs for clock drift and leaks), and how you would make a rare failure reproducible (fixed seeds, logging at the driver and firmware boundary, a capture running next to the device).
 
 ---
 
