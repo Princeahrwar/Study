@@ -111,7 +111,7 @@ flowchart LR
 
 ### 2.2 The topology is in the frame
 
-Two bits in the frame control field, **ToDS** and **FromDS**, and two capability bits in the beacon, **ESS** and **IBSS**, tell a receiver which topology it is looking at. The beacons are easy to tell apart:
+Two bits in the frame control field, **ToDS** and **FromDS**, and two capability bits in the beacon, **ESS** and **IBSS**, tell a receiver which topology it is looking at. The three beacon types differ in these bits:
 
 | Beacon from | ESS bit | IBSS bit | Extra |
 |---|---|---|---|
@@ -220,7 +220,7 @@ Two rules save confusion. A lower-case letter is an amendment; an upper-case let
 
 ### 3.4 Wi-Fi Alliance programmes worth knowing
 
-Besides the generation certifications (n, ac, 6, 6E, 7): **WPA2 and WPA3** (Personal and Enterprise) and **Enhanced Open** (OWE, encryption for open networks), **WMM** and **WMM Power Save**, **WPS** (push button and PIN pairing, with known weaknesses, WF 04), **Easy Connect / DPP** (provisioning by QR code), **Passpoint** (automatic secure hotspot joining, built on 802.11u), **Agile Multiband** (the 802.11k, v and r behaviours for steering and roaming, WF 05), **Wi-Fi Direct and Aware**, and **EasyMesh** (interoperable multi-AP systems, WF 07).
+Besides the generation certifications (n, ac, 6, 6E, 7): **WPA2 and WPA3** (Personal and Enterprise) and **Enhanced Open** (OWE, encryption for open networks), **WMM** and **WMM Power Save**, **WPS** (push button and PIN pairing, with known weaknesses, WF 04), **DPP** (Device Provisioning Protocol, provisioning by QR code), **Passpoint** (automatic secure hotspot joining, built on 802.11u), **Agile Multiband** (the 802.11k, v and r behaviours for steering and roaming, WF 05), **Wi-Fi Direct and Aware**, and **EasyMesh** (interoperable multi-AP systems, WF 07).
 
 ### 3.5 The letters on the air
 
