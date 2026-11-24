@@ -89,7 +89,7 @@ The selection compares candidates, mostly by RSSI, with a bonus for 5 GHz and 6 
 ### 3.1 The two failure modes
 
 - **Sticky client.** A client that waits too long (-80 dBm or worse) sits at a low rate on a far access point while a nearby one is much louder. It is slow itself, and by the airtime anomaly of [WF 03](03_wifi_mac.md) it slows everyone in the cell. The first line of defence is a network that makes the far access point **less attractive**: lower transmit power, a higher minimum basic rate so that the far cell edge disappears, and a minimum RSSI to stay associated.
-- **Ping-pong.** A client that roams as soon as another access point looks better flips back and forth near the midpoint, because shadowing makes the two RSSI values wobble by several dB. Each flip is a roam, and each roam costs an outage. The cure is **hysteresis**: a margin of about 8 to 12 dB between the serving and the target access point. It is the reason Apple's margin is 8 to 12 dB.
+- **Ping-pong.** A client that roams as soon as another access point looks better flips back and forth near the midpoint, because shadowing makes the two RSSI values wobble by several dB. Each flip is a roam, and each roam costs an outage. The cure is **hysteresis**: a margin of about 8 to 12 dB between the serving and the target access point. Apple's documented 8 to 12 dB margins are in the same range.
 
 A quick way to see why the margin has that size: the difference of two noisy RSSI values is noisier than either. With shadowing of about 4 dB on each, the difference wobbles by about 5.7 dB, so with no margin the "better" access point flips about half the time near the midpoint, and a margin of 8 to 12 dB brings spurious flips down to a few percent.
 
