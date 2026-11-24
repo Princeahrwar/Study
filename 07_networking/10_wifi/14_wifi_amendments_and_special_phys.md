@@ -1,666 +1,427 @@
-# WF 14: Amendments and special-purpose Wi-Fi: HaLow, 60 GHz, V2X, ranging, wake-up radio, sensing, groupcast and direct links
+# WF 14: Special-purpose Wi-Fi: HaLow, 60 GHz, V2X, ranging, wake-up radio, sensing, groupcast and direct links
 
-*Part of the [networking plan](../00_plan.md), Wi-Fi sub-track · not in the Candela course; added after the 24 Nov 2026 coverage audit, which found these amendments only named in WF 01, 06 and 07. Builds on [WF 02](02_wifi_phy.md) (OFDM and rate formulas), [WF 03](03_wifi_mac.md) (DCF, TIM, scanning, power save), [WF 06](06_wifi6_6e_7_features.md) (TWT) and [WF 11](11_rf_fundamentals_and_link_budget.md) (link budget).*
+*Part of the [networking plan](../00_plan.md), Wi-Fi sub-track. Builds on [WF 02](02_wifi_phy.md) (OFDM), [WF 03](03_wifi_mac.md) (DCF, TIM, power save), [WF 06](06_wifi6_6e_7_features.md) (TWT) and [WF 11](11_rf_fundamentals_and_link_budget.md) (link budget).*
 
-Most of 802.11 is one design stretched over eight PHY generations. A handful of amendments break away from it because the use case demands a different radio: **802.11ah (HaLow)** trades rate for range and thousands of sensors below 1 GHz, **802.11ad and ay** trade range for gigabits at 60 GHz, **802.11p and bd** drop the association because a car cannot wait for one, **802.11ba** adds a second, almost passive receiver, **802.11mc and az** turn the frame exchange into a tape measure, **802.11bf** turns the channel into a motion sensor, **802.11aa** makes multicast reliable and **TDLS** lets two clients skip the AP. Each is a different answer to "what if the medium access, the rate or the radio itself were designed for this one job?", and each fails in a characteristic way that a platform engineer is expected to know.
+Most of 802.11 is one design stretched over many generations: same contention-based access, same association, same assumption that the device is a laptop or a phone a few metres from an AP. A few amendments break that assumption because the use case demands something different. Each one is a different answer to the question "what would Wi-Fi look like if it were built for this one job?"
 
-**Eight honest limits, stated first.**
-
-1. **Nothing here was run on a radio.** The sandbox has no wireless stack. Every number is arithmetic from the numerology, a model, or a simulation, and each is marked **computed**, **modelled** or **simulated**. Four frames were built byte by byte and decoded by `tshark` 4.2: an FTM request and two FTM frames, and a TDLS setup request. Nothing else was captured.
-2. **I checked key facts against sources this session, but not every one.** I fetched the Wikipedia pages for 802.11ah and 802.11ay and three arXiv papers (802.11ba, an 802.11mc and az survey, and an 802.11bd and NR V2X comparison). Pages for 802.11bd and 802.11az on Wikipedia could not be fetched. Anything not in those is **from memory** of the amendments and is marked that way. I did not read the standard itself.
-3. **A source disagrees with my arithmetic, and I do not settle it.** The 802.11ah page gives a maximum of "433.3 Mbit/s" (four streams, 16 MHz) and a table ending at 325.0 Mbit/s (three streams). My formula gives **346.67 Mbit/s** for four streams at MCS 9 with the short guard interval, which is the figure I remember from the standard. I use 346.67 and flag the gap.
-4. **802.11ay sources disagree on streams.** The page says "MIMO up to 8 streams" in its introduction and four in its body. I give 4 channels bonded (8.64 GHz) and leave the stream count open.
-5. **The wake-up radio power figure is my assumption.** The 802.11ba paper I read says "consumes thousands of times less than the Primary Communication Radio" and gives **no** power target; the "1 mW" it mentions belongs to earlier low-power radios. My battery model uses 0.5 mW for WUR listening as a stand-in, and the conclusion (below) depends on it.
-6. **Beam training timings, the sensing channel and the TIM block layout are modelled or from memory.** The 17 us per sector-sweep frame, the S1G TIM block byte layout and the WUR frame sizes are from memory, flagged where used.
-7. **Regulation is from memory.** Band edges, power limits and the 5.9 GHz V2X band differ by country and have changed; verify before use.
-8. **Several amendments get a paragraph, not a section.** 802.11ak (general link), 802.11ai (FILS, covered in WF 06), the 60 GHz MAC details beyond the access periods, and 802.11bk are summarised, not modelled.
+| Amendment | The job | What it gives up |
+|---|---|---|
+| 802.11ah (HaLow) | Thousands of battery sensors, up to a kilometre away | Speed: a few Mbit/s at best |
+| 802.11ad and ay | Multi-gigabit links over a few metres | Range, and any ability to go through a wall or a person |
+| 802.11p and bd | Cars talking to cars and roadside units at highway speed | Association, acknowledgements, security at the MAC |
+| 802.11ba | Wake a sleeping device on demand with almost no power | A second receiver, and some latency tuning |
+| 802.11mc, az, bk | Measure distance with the Wi-Fi frames you already send | Accuracy depends on bandwidth and the room |
+| 802.11bf | Use Wi-Fi as a motion and presence sensor | Reliability at some positions |
+| 802.11aa | Reliable multicast for video and groups | More airtime |
+| TDLS | Two clients talking directly, not through the AP | Needs a good direct path |
 
 By the end you can:
 
-- **derive the HaLow rate table** from 24, 52, 108, 234 and 468 data subcarriers and a 40 us symbol (**0.30 Mbit/s** at 1 MHz MCS0 to **346.67 Mbit/s** at 16 MHz, four streams), and explain why the range is about **5.2 times** that of 2.4 GHz in the model (1.19 km against 229 m) and why the real constraint is contention, not rate.
-- **size a TIM** for sparse traffic (about **38 bytes** for 10 sleeping stations in the S1G encoding against about **212** in the legacy bitmap, from memory of the layout) and say what **RAW** buys (x2.9 in the model for 1,000 saturated stations).
-- **compute the 60 GHz rates** (**385** to **4,620 Mbit/s** single carrier, **6,756.75** OFDM) and the **range** at 40 dBm EIRP (**410 m** at MCS 1, **120 m** at MCS 12), and show why a 25 dB body block cuts it to **43 m** and **8 m**.
-- **say what beam training costs** (sector sweep **1.1 ms** for 32 sectors per side; **14 percent** of a 31 ms sector crossing for 128).
-- **explain OCB mode**: no association, 10 MHz half-clocked OFDM at **3 to 27 Mbit/s**, a Doppler of **1,366 Hz** at 250 km/h that changes the channel **2.7 times** within a 300 byte frame at 3 Mbit/s, and about **111 vehicles** at 50 percent load.
-- **read an FTM exchange**, compute the distance from four timestamps, and bound the error: **0.6 m** per 100 us of turnaround at a 40 ppm clock difference, and a multipath error of **1.0 to 2.1 m** at 20 MHz that falls to **0.1 to 0.3 m** at 160 MHz in the simulation.
-- **say when a wake-up radio pays**: only for latencies below the break-even interval (**0.40 s** in the model), because beacon listening at 1 s costs less than the WUR receiver itself.
-- **explain why Wi-Fi sensing has blind spots** (the breathing frequency doubles when the static phase puts the reflection in phase or antiphase with the direct path: **0 percent** success at phases 0 and pi, **100 percent** elsewhere in the simulation).
-- **choose between multicast, GCR and unicast copies** (blind multicast reaches all of 10 receivers only **34 percent** of the time at 10 percent loss; GCR with block ack is **100 percent** at **3,550 us** against **3,103 us** for unicast copies, and cheaper from about 14 receivers by interpolation; at 30 percent loss unicast copies stay cheaper up to 30 receivers) and say when a **TDLS** direct link pays (above half the AP rate).
-
-## Where the numbers come from
-
-Each experiment is a script `sN_*.py` in `prog/`, its output frozen in `v/` and shown verbatim below, run by `run.sh`. The six experiments are `s1_halow` (rates, range, TIM, RAW), `s2_dmg` (60 GHz rates, budget, training), `s3_ocb` (V2X numerology, Doppler, load), `s4_ranging` (FTM frames, clock error, bandwidth against accuracy), `s5_wur_sense` (battery model, CSI sensing) and `s6_gcr_tdls` (groupcast, TDLS). The five problem scripts are `ans_a` to `ans_e`.
-
-Every number in the text is copied from `v/*.out` or computed from a printed figure with the arithmetic shown. A number that is neither is marked **from memory** or **from the source**. **Assumed** means I chose it to make a model run and it is not a property of any device.
-
-## Data and timing
-
-| What | Size or time |
-|---|---|
-| HaLow rates, range, TIM and Bianchi (`s1_halow.py`) | closed form plus 1,400 random AID sets, under 2 s |
-| 60 GHz (`s2_dmg.py`) | closed form, under 1 s |
-| OCB (`s3_ocb.py`) | closed form, under 1 s |
-| Ranging (`s4_ranging.py`) | 3 frames through `tshark`, 20 multipath cells of 200 trials, about 10 s |
-| WUR and sensing (`s5_wur_sense.py`) | 24 cells of 300 trials plus 900 phase trials, about 20 s |
-| Groupcast and TDLS (`s6_gcr_tdls.py`) | 3,000 trials for each of 32 cells, about 10 s |
-| Problems (`ans_a` to `ans_e`) | each under 1 s |
-
-## Mapping to the Candela course
-
-The Candela course names none of these amendments. They come from the plan's WF 14 audit row and from the 802.11-2020 and later amendment list.
+- explain why HaLow reaches so much farther than 2.4 GHz, why it is slow, and why its real bottleneck is thousands of stations contending, not rate;
+- explain how the S1G TIM, RAW and TWT let an AP serve thousands of mostly sleeping stations;
+- explain why 60 GHz needs beam training, what a beacon interval looks like there, and why a hand can cut a link;
+- explain OCB mode, why Doppler is the enemy of 802.11p, and what 802.11bd changed;
+- walk through a fine timing measurement, compute a distance, and name what limits its accuracy;
+- explain how a wake-up radio works and when it does and does not save energy;
+- explain how Wi-Fi sensing detects breathing and why it sometimes cannot;
+- compare multicast, GCR and unicast conversion, and say when a TDLS link is worth setting up.
 
 ---
 
+## 1. 802.11ah, HaLow: Wi-Fi for sensors
 
-## 1. 802.11ah (HaLow): sub-1 GHz, thousands of sensors
+### 1.1 The problem
 
-### 1.1 What it is for
+Picture a farm with two thousand soil sensors, or a building with thousands of meters. Each sends a few dozen bytes every few minutes, runs on a coin cell for years, and sits 300 m or more from the nearest gateway, often behind a wall. Ordinary Wi-Fi fails this in three ways: the range is too short at 2.4 or 5 GHz, the radio uses too much power to wake often, and an AP cannot even address that many stations (the legacy limit is 2,007 association IDs).
 
-HaLow is the S1G PHY and MAC of 802.11ah, aimed at sensors, meters and wearables that need a kilometre of reach and a battery that lasts years, not a gigabit. It runs in licence-exempt bands below 1 GHz: **902 to 928 MHz** in North America (26 channels of 1 MHz) and **863 to 868 MHz** in Europe, with other regions in between (**from the source** for the first two; the others, such as Japan, Korea and China, are from memory and differ by country). The Wikipedia page says the protocol aims at connecting thousands of devices under one access point and covering a radius near one kilometre.
+HaLow is the answer. It uses the **sub-1 GHz** licence-exempt bands (902 to 928 MHz in North America, 863 to 868 MHz in Europe; other regions differ), and changes the PHY, the power-save machinery and the way access is arbitrated.
 
-The design decisions follow from three needs, and the rest of this section takes them in order: a **PHY** that reaches far at low rate, a **TIM** that can address thousands of sleeping stations, and a **MAC** that does not collapse when a thousand of them wake at once.
+### 1.2 Why it reaches far
 
-### 1.2 The PHY: 802.11ac clocked down by ten
+Two separate effects add up, and it helps to know both.
 
-The S1G PHY is the 802.11ac OFDM design with the clock divided by ten: 20, 40, 80 and 160 MHz become **2, 4, 8 and 16 MHz**, the symbol grows from 4 us to **40 us** (short guard 36 us), and a new **1 MHz** mode uses a 32-point FFT with 24 data subcarriers. The Wikipedia page confirms the 2 MHz case: a 64-point FFT, 31.25 kHz spacing, 52 data and 4 pilot subcarriers, symbol 36 or 40 us. The rate is then the WF 02 formula with different numbers:
+**Lower frequency loses less in the air.** Free-space loss grows with frequency: at 900 MHz it is about 8.5 dB lower than at 2.4 GHz, and walls absorb less too.
 
-rate = data subcarriers x bits per subcarrier x code rate x streams / symbol time
+**A narrow channel hears fainter signals.** A receiver's noise floor depends on how much bandwidth it listens to. A 1 MHz channel collects 13 dB less noise than a 20 MHz channel, so it can decode a signal 13 dB weaker at the same modulation.
 
-```
---- S1G data rate in Mbit/s = data subcarriers x bits x code rate x streams / symbol time (40 us, 36 us short GI)
-MHz  sub  MCS0   MCS2   MCS4   MCS7   MCS9   MCS10
-  1   24   0.30   0.90   1.80   3.00   4.00  0.15
-  2   52   0.65   1.95   3.90   6.50   8.67  -
-  4  108   1.35   4.05   8.10  13.50  18.00  -
-  8  234   2.92   8.78  17.55  29.25  39.00  -
- 16  468   5.85  17.55  35.10  58.50  78.00  -
-top rate 16 MHz, 4 streams, MCS9, short GI: 346.67 Mbit/s; 1 MHz MCS0 long GI: 0.30; 1 MHz MCS10: 0.15
-```
+Together that is about 21 dB, which at a typical indoor path-loss exponent of 3 means roughly **five times the range** of 2.4 GHz at the lowest rate. HaLow even has a mode (MCS 10) that sends every bit twice for another 3 dB. The cost is the data rate.
 
-Three observations. **First**, the bottom of the table is very low: 1 MHz MCS0 moves a 1500 byte frame in 40 ms and MCS2 in 13.3 ms (problem A), before the preamble. **Second**, MCS10 (BPSK 1/2 with every bit sent twice) halves the rate to **0.15 Mbit/s** and exists only at 1 MHz, to buy another 3 dB. **Third**, MCS9 at 1 MHz is not a valid single-stream combination in the standard (from memory), so the 4.00 in the first row is the formula's value, not a usable rate. The peak, **346.67 Mbit/s** (16 MHz, 4 streams, MCS9, short guard), disagrees with the 433.3 the Wikipedia page prints; I do not know which count it used.
+### 1.3 The PHY: 802.11ac with the clock divided by ten
 
-### 1.3 Why the range is long
+The S1G PHY is the 802.11ac OFDM design run ten times slower. A 20 MHz channel becomes 2 MHz, 40 becomes 4, 80 becomes 8 and 160 becomes 16. The OFDM symbol, 4 microseconds in 802.11ac, becomes **40 microseconds**. A new **1 MHz** mode with fewer subcarriers is added.
 
-Two effects add. **Noise falls with bandwidth**: 1 MHz instead of 20 MHz lowers the noise floor by 13.0 dB, and the lowest rate (BPSK 1/2) needs the same SNR. **Path loss falls with frequency**: free space loss at 900 MHz is 8.5 dB lower than at 2.4 GHz and 15.2 dB lower than at 5.2 GHz. In the model (20 dBm, exponent 3, noise figure 6 dB, 8 dB implementation gap, no walls):
+The data rate comes from the same formula you used in WF 02: data subcarriers, times bits per subcarrier, times the code rate, times streams, divided by the symbol time.
 
-```
---- range: where the received power falls to the sensitivity of the lowest rate (modelled: 20 dBm, exponent 3, no walls, noise figure 6 dB)
-2.4 GHz, 20 MHz, MCS0 (BPSK 1/2)       sensitivity   -90.8 dBm   range  228.6 m   x1.00 of the 2.4 GHz case
-5 GHz, 20 MHz, MCS0                    sensitivity   -90.8 dBm   range  136.5 m   x0.60 of the 2.4 GHz case
-900 MHz, 1 MHz, MCS0                   sensitivity  -103.8 dBm   range 1193.2 m   x5.22 of the 2.4 GHz case
-900 MHz, 1 MHz, MCS10 (repetition)     sensitivity  -107.2 dBm   range 1549.3 m   x6.78 of the 2.4 GHz case
-```
+| Channel | Data subcarriers | Lowest rate (MCS 0) | A mid rate (MCS 4) | Top rate (MCS 9) |
+|---|---|---|---|---|
+| 1 MHz | 24 | 0.3 Mbit/s | 1.8 Mbit/s | not valid for one stream |
+| 2 MHz | 52 | 0.65 Mbit/s | 3.9 Mbit/s | 8.7 Mbit/s |
+| 4 MHz | 108 | 1.35 Mbit/s | 8.1 Mbit/s | 18 Mbit/s |
+| 16 MHz | 468 | 5.9 Mbit/s | 35 Mbit/s | 78 Mbit/s per stream |
 
-The 21.5 dB total (13.0 + 8.5) is a factor of 10 to the power 21.5/30, which is the **x5.22** in the table, and the repetition mode adds 3.4 dB for **x6.78**. Two cautions: walls attenuate sub-GHz less than 5 GHz but not zero, and **the received signal is only half the story**: a 1 MHz channel at 0.30 Mbit/s still shares the air with a thousand stations.
+The headline peak is about **347 Mbit/s** (16 MHz, four streams, MCS 9, short guard), though Wikipedia prints 433.3 Mbit/s and I do not know which assumptions it used. In practice a sensor sits at 1 or 2 MHz and a few hundred kbit/s. At the 1 MHz bottom, one 1500 byte frame takes 40 ms of airtime.
 
-### 1.4 The TIM for 8,191 stations
+### 1.4 Addressing thousands of sleeping stations: the S1G TIM
 
-Legacy power save (WF 03) announces buffered frames in the **partial virtual bitmap** of the TIM element, a bitmap over AIDs 1 to 2,007 of which only the span from the first to the last set octet is sent. With 10 sleeping stations holding traffic, that span is nearly the whole bitmap. S1G raises the limit to **AID 8,191** and organises it hierarchically: **4 pages x 32 blocks x 8 subblocks x 8 bits = 8,192**, so an AP sends only the blocks and subblocks that have a set bit. Each page can be sent in a different beacon (**page slicing**), and stations that know their page wake only for it.
+In legacy power save (WF 03) the AP announces buffered frames in the **TIM**, a bitmap with one bit per association ID. Two problems appear at scale. The bitmap tops out at 2,007 stations. And the AP must send the bitmap span from the first to the last set bit, so ten sleeping stations scattered across the range cost hundreds of bytes in every beacon.
+
+S1G fixes both with a **hierarchy**:
 
 ```
---- TIM: legacy partial virtual bitmap against the S1G page, block and subblock encoding for k stations with buffered frames among AIDs 1 to 2007
-  k    legacy bytes (mean of 200)   S1G bytes (mean of 200)
-   1         6.5                        6.0
-   5       173.3                       21.1
-  10       211.7                       37.8
-  25       239.1                       78.8
-  50       247.4                      124.1
- 100       252.3                      177.7
- 200       254.7                      240.4
-addressable AIDs: legacy 2007, S1G 8191 = 4 pages x 32 blocks x 8 subblocks x 8 bits = 8192
+page  (4 pages)
+ └─ block  (32 per page)
+     └─ subblock  (8 per block)
+         └─ 8 stations (one bit each)      4 x 32 x 8 x 8 = 8,192 AIDs
 ```
 
-The legacy column is the span from the first to the last octet holding a set bit plus 5 bytes of header, averaged over random AIDs. The S1G column assumes **3 bytes of block overhead plus one byte per non-empty subblock** (from memory of the layout; I did not read the clause). The ratio is the point: 10 stations cost about 212 bytes in the legacy form and about 38 in the S1G form, and the legacy form cannot address more than 2,007. For 200 stations the encodings converge, because everything is set anyway.
+The AP encodes only the blocks and subblocks that have a bit set, so a sparse set of sleeping stations costs a few dozen bytes. **Page slicing** goes further: each page can be announced in a different beacon, so a station knows which beacon to wake for and ignores the rest. A station that wakes for one beacon in four spends a quarter of the listening energy.
 
-### 1.5 The MAC additions
+The point to remember is that HaLow made addressing cheap in both bytes and wake-ups. The exact byte layout of the encoded blocks is something to look up in the clause if you need it.
 
-- **Restricted Access Window (RAW).** The AP divides stations into groups and assigns each group a **slot** inside a RAW; stations outside the slot may not contend. The source describes its purpose as reducing contention and avoiding simultaneous transmissions from many mutually hidden stations.
-- **Target Wake Time (TWT).** The same mechanism as in WF 06 (the Wikipedia page describes it for 802.11ah): a station negotiates with the AP to wake only at agreed times, and it can doze for very long periods. The **maximum idle period** is extended so that a station can stay associated while silent for a very long time (from memory; I recall months to years).
-- **Short frames.** A **null data packet (NDP)** carries control information in the PHY header alone, and the acknowledgement can be an NDP. At 1 MHz the preamble is long compared with a 14 byte ACK, so cutting the frame matters (the model below assumes a 640 us preamble, which is **assumed**).
-- **Relay.** The page says an AP logically consists of a relay plus a station, bidirectional and "limited to two hops only", which lets a far sensor use a higher MCS to a nearby relay.
-- **Sectorisation.** Coverage is split into sectors by antennas or beams, with stations contending only within their sector, which cuts contention and allows spatial sharing among overlapping BSSs.
+### 1.5 Controlling the stampede: RAW, TWT and friends
 
-### 1.6 Why contention, not rate, is the HaLow bottleneck
+Addressing thousands of stations is not the same as serving them. If a thousand sensors wake at once, they contend with DCF and almost every attempt collides. HaLow uses several tools:
 
-The Bianchi model of WF 03 applied to S1G timings (slot 52 us, SIFS 160 us, 640 us preamble, a 100 byte payload at 1.2 Mbit/s and a 14 byte ACK at 0.3 Mbit/s, all **assumed**) shows what a thousand stations do:
+**Restricted Access Window (RAW).** The AP divides stations into groups and gives each group a time slot inside a window. Only the stations of a slot may contend during it. Instead of one thousand-station contention, the AP runs a hundred ten-station contentions in sequence.
 
-```
---- contention of N saturated stations (Bianchi fixed point; modelled with assumed S1G timings: slot 52 us, SIFS 160 us, preamble 640 us, 100 byte payload at 1.2 Mbit/s, ACK 14 bytes at 0.3 Mbit/s)
-  N   DCF Mbit/s  collision prob   share of 1.2 Mbit/s
-   1     0.255       0.000           21.3 %
-   2     0.262       0.105           21.8 %
-   5     0.254       0.272           21.2 %
-  10     0.243       0.384           20.2 %
-  20     0.230       0.481           19.2 %
-  50     0.211       0.595           17.6 %
- 100     0.193       0.678           16.1 %
- 300     0.154       0.806           12.9 %
-1000     0.085       0.935            7.1 %
-RAW: 1000 stations split into 100 groups of 10, one slot each (the slots share the time, so the aggregate is the single-slot rate): 0.243 Mbit/s against 0.085 without RAW, x2.9
+```mermaid
+flowchart LR
+    B["Beacon: assigns groups to slots"] --> S1["Slot 1: group A only"]
+    S1 --> S2["Slot 2: group B only"]
+    S2 --> S3["Slot 3: group C only"]
+    S3 --> O["Open contention"]
 ```
 
-Even **one** station achieves only 21 percent of the 1.2 Mbit/s, because the preambles and the slow ACK dominate a 100 byte frame. A thousand saturated stations collide on 93.5 percent of attempts and the aggregate falls to **0.085 Mbit/s**. RAW with groups of ten gives **0.243 Mbit/s**, x2.9, at the cost of idling slots for stations that have nothing to send. The model is saturated and ignores the RAW boundary cost; a real deployment of mostly idle sensors is easier on the MAC and harder on the TIM and the wake schedule.
+**Target Wake Time (TWT).** The station and AP agree on exact wake times, so the station can sleep through everything else, potentially for very long periods. The **maximum idle period** is extended so an AP does not drop a station that stays silent for a very long time. TWT is covered in WF 06; HaLow was one of its first users.
 
-## 2. 802.11ad and ay: 60 GHz
+**Short frames.** At 1 MHz the preamble alone is hundreds of microseconds. HaLow adds the **null data packet (NDP)**, a frame that carries its information in the PHY header with no payload, and NDP acknowledgements, so short exchanges stay short.
 
-### 2.1 The DMG PHY
+**Relay.** A far sensor can send to a nearby relay at a high rate instead of to a distant AP at the lowest rate. The relay logically is a station plus an AP, limited to two hops.
 
-The directional multi-gigabit (DMG) PHY of **802.11ad** works in the 60 GHz band over **2.16 GHz** channels (the sources I read give the channel table as about 57.24 to 74.52 GHz for ay; band edges differ by region, from memory). It has three PHYs: a **control PHY** (very low rate, for beacons and training, **from memory** 27.5 Mbit/s), a **single carrier** PHY (up to 4.62 Gbit/s) and an **OFDM** PHY (up to 6.76 Gbit/s), plus a low-power single carrier PHY. The single carrier rate follows from the symbol rate of 1.76 Gsym/s and a 512-symbol block of which 448 carry data:
+**Sectorisation.** The AP covers the area in sectors (by antennas or beams), and only stations in the active sector contend.
 
-```
---- single carrier rate = 1.76 Gsym/s x 448/512 (data per 512 symbol block, 64 symbol guard) x bits per symbol x code rate (repetition counts in the rate)
-MCS  1  pi/2-BPSK   code rate 0.25     385.0 Mbit/s
-MCS  4  pi/2-BPSK   code rate 0.75    1155.0 Mbit/s
-MCS  8  pi/2-QPSK   code rate 0.75    2310.0 Mbit/s
-MCS 12  pi/2-16QAM  code rate 0.75    4620.0 Mbit/s
-OFDM (MCS 13 to 24): 336 data subcarriers, symbol 640 samples at 2.64 GSa/s = 242.42 ns (including a 48.4 ns guard): 64-QAM at 13/16: 6756.75 Mbit/s, QPSK at 1/2: 1386.00 Mbit/s
-```
+### 1.6 What a model shows about contention
 
-The OFDM peak comes out at **6,756.75 Mbit/s**, the figure I remember from the standard: 336 data subcarriers, 6 bits, code rate 13/16, one symbol of 640 samples at 2.64 GSa/s, **242.42 ns**.
+I modelled a thousand saturated stations (every one always has a frame) with plausible HaLow timings. A single station is limited by the slow preamble and ACK to about a fifth of the raw rate. With a thousand stations contending freely, 93 percent of attempts collide and the aggregate throughput drops to about a third of the single-station figure. Splitting them into groups of ten with RAW recovers nearly the single-station performance, about three times better than free contention. The exact numbers depend on assumed timings, so treat the shape as the lesson: **a large HaLow network is limited by contention, and RAW is what keeps it usable.**
 
-### 2.2 The link budget is the whole story
+---
 
-At 60 GHz the free space loss at 1 m is **68.0 dB** (20 log of 4 pi f over c), 20 dB worse than at 6 GHz for the same distance, and oxygen absorbs about 15 dB per km (**from memory**). Wavelength is 5 mm, so a small array has large gain, and the standard relies on it. The model:
+## 2. 802.11ad and 802.11ay: 60 GHz
 
-```
---- link budget (modelled: EIRP 40 dBm, receive gain 15 dBi, noise figure 10 dB, free space exponent 2, 1.76 GHz noise bandwidth; oxygen absorption 15 dB per km from memory)
-noise -71.5 dBm; free space loss at 1 m 68.0 dB; at 10 m 88.0 dB
-MCS  eta (bit/s/Hz)  SNR needed dB   range LOS m   with 25 dB body block m   (a 1.76 GHz channel carries eta x 1.76 Gbit/s before overhead)
-  1     0.219            0.14          409.8          43.39
-  4     0.656            5.60          275.5          23.93
-  8     1.312            9.71          196.7          15.13
- 12     2.625           15.13          120.3           8.21
-```
+### 2.1 Why 60 GHz
 
-With 40 dBm EIRP and 15 dBi of receive gain the line-of-sight reach is **410 m** at MCS 1 and **120 m** at MCS 12. The pair of columns on the right is the reason 60 GHz is not a coverage technology: a human body in the beam costs 20 to 30 dB (from memory), and 25 dB cuts the range to **43 m** and **8 m**. Each 6.02 dB is a factor of two in free space range, so every dB of transmit power is worth about 12 percent of distance and every dB of blockage loses the same. Problem B tabulates this for three EIRP values and three extra losses.
+There is a very wide unlicensed slice around 60 GHz. A channel there is **2.16 GHz** wide, a hundred times wider than a 20 MHz Wi-Fi channel, so even simple modulation gives gigabits. The price is the physics.
 
-### 2.3 Beam training and the beacon interval
+### 2.2 What 60 GHz does to the signal
 
-A 60 GHz link works only when both ends point beams at each other, so the MAC has a training phase and a beacon interval built around it (from memory of the structure):
+- **Loss at the start is 20 dB worse than at 6 GHz.** The wavelength is 5 mm, so a receiving antenna of fixed size captures much less energy. Free-space loss at 1 m is already 68 dB.
+- **Oxygen absorbs it.** About 15 dB per kilometre (from memory), negligible indoors but part of why outdoor links are short.
+- **Almost nothing passes through anything.** A wall stops it, and **a human body in the path costs 20 to 30 dB** (from memory). In my link budget model, a 40 dBm EIRP link that reaches about 120 m at the highest single-carrier rate drops to about 8 m with 25 dB of body block.
 
-- **BTI** (beacon transmission interval): the PCP or AP sweeps its beacon over all transmit sectors.
-- **A-BFT** (association beamforming training): stations answer with their own sweeps in a few slots.
-- **ATI** (announcement transmission interval): request and response management exchange.
-- **DTI** (data transfer interval): **service periods** (scheduled, contention free) and **CBAPs** (contention based access periods, using EDCA).
+The way to win back the lost signal is **gain**. At 5 mm wavelength a tiny phased array focuses energy into a narrow beam. Both ends point beams at each other, which gives tens of dB of gain, but only if the beams are aimed correctly. That is why everything about 802.11ad's MAC is about **beam training**.
 
-The beamforming itself has two stages: **SLS** (sector level sweep: the initiator sends a frame in every sector, the responder in every sector, then feedback and acknowledgement) and **BRP** (beam refinement, with training fields appended to data frames so beams can be refined without a new sweep). The sweep cost is a count of frames:
+### 2.3 The PHY
 
-```
---- beam training: sector level sweep, M sectors each side (one SSW frame about 16 us plus 1 us spacing, from memory), then feedback
-M sectors  sweep time ms  sector width deg   time to leave the sector at 90 deg/s ms   retrain overhead if retrained once per sector crossing
-     8        0.332         45.00               500.0                                0.07 %
-    16        0.604         22.50               250.0                                0.24 %
-    32        1.148         11.25               125.0                                0.92 %
-    64        2.236          5.62                62.5                                3.58 %
-   128        4.412          2.81                31.2                               14.12 %
+802.11ad defines three: a very low rate **control PHY** (used for beacons and training so that devices can find each other before they have beams), a **single carrier** PHY (up to about 4.6 Gbit/s, simple and low power), and an **OFDM** PHY (up to about 6.76 Gbit/s). The single carrier rates follow from the symbol rate of 1.76 Gsym/s: 385 Mbit/s for the robust BPSK modes, 1.2 Gbit/s at BPSK 3/4, 2.3 Gbit/s with QPSK and 4.6 Gbit/s with 16-QAM.
+
+### 2.4 The beacon interval: time is divided by purpose
+
+A 60 GHz network (a PCP or AP and its stations) divides each beacon interval into four periods:
+
+```mermaid
+flowchart LR
+    BTI["BTI: beacons swept over all sectors"] --> ABFT["A-BFT: stations answer with their own sweeps"]
+    ABFT --> ATI["ATI: management exchange"]
+    ATI --> DTI["DTI: data, service periods and contention periods"]
 ```
 
-The 17 us per frame is **from memory**. At 32 sectors a side the sweep is **1.1 ms**; at 128 it is **4.4 ms**. The last column assumes a device that turns at 90 degrees per second (my choice) and retrains once for every sector it crosses: at 128 sectors the beam width is 2.8 degrees, the sector lasts 31 ms and training eats **14 percent** of the air. Finer beams give more gain and cost more to keep. This is also why 60 GHz client devices are rarely rotated quickly.
+- **BTI**: the AP sends its beacon in every direction, one sector at a time, so any station can hear it from some sector.
+- **A-BFT**: stations that heard a beacon use short slots to respond with their own sweep.
+- **ATI**: request and response management traffic.
+- **DTI**: the actual data. It contains **service periods** (scheduled, contention-free, reserved for a pair) and **contention-based access periods** (EDCA, like ordinary Wi-Fi).
 
-### 2.4 802.11ay
+### 2.5 Beam training
 
-802.11ay (approved March 2021, from the source) is the next generation: it **bonds up to four 2.16 GHz channels** (8.64 GHz, from the source), adds **channel aggregation**, **MIMO** (the source gives 8 and 4 streams in different places) including multi-user, and higher-order constellations. The page quotes 20 to 40 Gbit/s transmission rates, a link rate of 44 Gbit/s per stream, 176 Gbit/s with four streams, and ranges of 300 to 500 m. Those are marketing-scale peaks; my budget above shows why range at the highest MCS is a fraction of that. It is a PHY and training evolution of 802.11ad, not a new access design.
+Training has two stages. **Sector level sweep (SLS)**: the initiator sends a frame in every one of its sectors while the responder listens in a quasi-omnidirectional pattern; the responder reports which sector it heard best; then the roles swap. This finds a coarse beam. **Beam refinement (BRP)** then tunes it using training fields appended to ordinary packets, so refinement does not need a new sweep.
 
-## 3. 802.11p and bd: Outside the Context of a BSS
+The cost grows with the number of sectors. In my model (a sweep frame is about 17 microseconds, from memory), 32 sectors a side takes about a millisecond and 128 sectors takes four. Finer beams give more gain but must be re-aimed more often when the device rotates. At 128 sectors a device turning at 90 degrees per second would spend an estimated 14 percent of its air time retraining. That is the real trade: **gain against training overhead**, and why a fast-rotating phone at 60 GHz suffers.
 
-### 3.1 No association, by design
+### 2.6 802.11ay
 
-A car passes a roadside unit in seconds, so there is no time for scan, authentication and association. **802.11p** (merged into the base standard) defines **OCB**, "outside the context of a BSS" (the flag is `dot11OCBActivated`, from memory): a station transmits data frames immediately using the **wildcard BSSID** (all ones), with ToDS and FromDS both zero, with no beacon, no authentication, no association and no MAC-layer security exchange (from memory). Priority comes from EDCA. Safety messages (cooperative awareness messages and basic safety messages) are sent as **broadcast at about 10 per second**, with no acknowledgement and no retransmission.
+802.11ay builds on 802.11ad: it **bonds up to four 2.16 GHz channels** (8.64 GHz), supports **MIMO** including multi-user, and adds higher-order modulation. Sources quote peak link rates up to tens of Gbit/s, and range up to a few hundred metres in ideal conditions. The same physics applies: the peaks are line of sight with good beams.
 
-The cost of joining is what the design avoids. A vehicle crossing a 300 m cell at 100 km/h has 10.8 s in range:
+---
 
-```
---- a vehicle crossing a 300 m cell at 100 km/h has 10.8 s in range; a join through scan, authentication and association (WF 03: 4.1 to 8.6 s scans, plus the exchange) against none in OCB
-a 4.1 s scan leaves 6.7 s of the pass and an 8.6 s scan leaves 2.2 s, before authentication, association, DHCP and the first useful frame
-```
+## 3. 802.11p and 802.11bd: V2X
 
-A scan of 4.1 s (the WF 03 figure with preferred channels) leaves 6.7 s, and 8.6 s leaves 2.2 s, **before** authentication, association, DHCP and the first useful frame.
+### 3.1 The problem: a car cannot wait to associate
 
-### 3.2 The PHY: half the clock
+A vehicle passing a roadside unit at 100 km/h through a 300 m cell has under 11 seconds in range. Ordinary Wi-Fi spends several seconds scanning, then authenticates, associates, and gets an address before one useful frame flows. In vehicle-to-everything (V2X) communication there is no time for that, and the messages are mostly broadcast anyway: a car announcing its position and speed ten times a second.
 
-OCB uses a **10 MHz** channel: the 20 MHz OFDM design clocked at half the speed, so every duration doubles (symbol **8 us**, guard **1.6 us**, subcarrier spacing **156.25 kHz**), and rates halve to 3 to 27 Mbit/s:
+### 3.2 OCB mode: no BSS at all
 
-```
---- 10 MHz channel: the 20 MHz OFDM numerology at half the clock (symbol 8.0 us with a 1.6 us guard, 48 data subcarriers, 156.25 kHz spacing)
-rates Mbit/s: 3.0  4.5  6.0  9.0  12.0  18.0  24.0  27.0
-```
+802.11p defines **OCB** ("outside the context of a BSS"). A station just transmits. It uses the **wildcard BSSID** (all ones), there are no beacons, no authentication, no association, and (from memory) no MAC-layer security exchange; applications sign their own messages. Broadcast safety messages are sent without acknowledgement and without retry; priority between traffic classes comes from EDCA.
 
-The doubled guard (1.6 us) tolerates a path difference of **480 m**, against 240 m for the 20 MHz guard, which suits outdoor multipath with delays of microseconds.
+### 3.3 The PHY: half the clock
 
-### 3.3 Doppler is the problem
+OCB uses a **10 MHz** channel: the 20 MHz OFDM design run at half speed, so every time doubles (symbol 8 us, guard interval 1.6 us) and rates halve to **3 to 27 Mbit/s**. The longer guard interval tolerates delays from reflections 480 m longer than the direct path, which suits outdoor multipath.
 
-At 5.9 GHz the Doppler shift is the carrier frequency times the closing speed over c:
+### 3.4 Doppler: the real enemy
 
-```
---- Doppler at 5.9 GHz (the 5.855 to 5.925 GHz band)
-closing speed km/h   Doppler Hz   coherence time us (0.423/fd)   share of the 156.25 kHz spacing
-      50                 273          1549                     0.17 %
-     120                 656           645                     0.42 %
-     250                1366           310                     0.87 %
-     500                2731           155                     1.75 %
-```
+A moving transmitter shifts the received frequency (Doppler). At 5.9 GHz and 250 km/h closing speed the shift is about 1.4 kHz. That is small against the 156 kHz subcarrier spacing, so subcarriers do not collide. The damage is **in time**: the channel itself changes every few hundred microseconds (the coherence time, about 310 us at 250 km/h).
 
-At 250 km/h the shift is **1,366 Hz**, 0.87 percent of the subcarrier spacing, which is small enough that subcarriers do not collide with one another. The damage is in time: the channel changes after about **310 us**, while a 300 byte frame at 3 Mbit/s lasts 848 us, **2.74 coherence times**. The receiver estimated the channel on the preamble at the start and the channel has changed by the end of the frame. In 802.11p there is no mid-frame tracking, so long frames at high speed decode badly, and lower rates (longer frames) do worse than higher ones.
+An 802.11p receiver estimates the channel once, from the preamble at the start of the frame, and assumes it stays constant. A 300-byte frame at the lowest rate lasts 850 microseconds, almost three coherence times, so by the end of the frame the estimate is stale and the symbols decode badly. The counter-intuitive consequence: **at high speed, slower rates are worse**, because the frame is longer.
 
-```
---- airtime of one 300 byte safety message (preamble 32 us, signal 8 us, symbols 8 us each, service and tail 22 bits)
-rate  3 Mbit/s:    848 us   frame at 250 km/h spans 2.74 coherence times
-rate  6 Mbit/s:    448 us   frame at 250 km/h spans 1.45 coherence times
-rate 12 Mbit/s:    248 us   frame at 250 km/h spans 0.80 coherence times
-```
+### 3.5 Channel load
 
-### 3.4 Channel load
+Safety messages are broadcast, so nobody backs off in a crowd. The real limit is airtime. One vehicle sending 300 bytes ten times a second at 6 Mbit/s uses about 0.45 percent of the air, so about 110 vehicles in carrier-sense range load the channel to half. Carrier-sense range is much bigger than the range at which a message is useful, so V2X standards add congestion control: lower rate, lower power, or fewer messages as the channel fills.
 
-Broadcast safety messages never back off in a crowd, so the limit is airtime:
+### 3.6 802.11bd
 
-```
---- how many vehicles in radio range fill the channel (everyone sends 10 messages a second; 6 Mbit/s, 300 bytes; ignoring collisions and the guard and backoff)
-channel load  10 %:   22 vehicles   (one vehicle uses 0.45 % of the air)
-channel load  25 %:   55 vehicles   (one vehicle uses 0.45 % of the air)
-channel load  50 %:  111 vehicles   (one vehicle uses 0.45 % of the air)
-```
+802.11bd (also called NGV) keeps compatibility with 802.11p and fixes its weaknesses. From the paper I read:
 
-At 6 Mbit/s and 300 bytes one vehicle uses 0.45 percent of the air, so **111 vehicles in carrier sense range** fill half the channel and 224 fill it (problem C tabulates sizes and rates). Carrier sense range is larger than the range at which a message is useful, so congestion control (lower rate, lower power, fewer messages) is part of the V2X standards (from memory).
+- **LDPC** coding replaces the older convolutional code, a large coding gain;
+- **midambles**, extra training symbols inserted in the middle of the frame, let the receiver re-estimate the channel and track the Doppler change, which is exactly the problem above;
+- **dual carrier modulation** repeats symbols on two widely separated subcarriers for diversity;
+- **retransmissions** that depend on congestion, giving a combining gain of several dB;
+- **20 MHz** channels and a **mmWave** mode built on 802.11ad and ay;
+- a target of **twice the throughput at relative speeds up to 500 km/h** and twice the range.
 
-### 3.5 802.11bd
+It must **coexist** with 802.11p: detect its transmissions, defer to them, and share the channel fairly. The doubled throughput appears only at high SNR, so it is a short-range benefit. A cellular alternative (C-V2X) competes with all of this, and the 5.9 GHz band allocation has changed in some countries.
 
-**802.11bd** (NGV) is the evolution. From the 802.11bd and NR V2X paper I read: coding changes from **BCC to LDPC**; **midambles** inserted between data symbols re-estimate the channel and counter Doppler; **dual carrier modulation** repeats symbols on two widely separated subcarriers for diversity (the paper cites 802.11ax gains of 4, 0.6 and 2 dB at MCS 0, 1 and 2, not 802.11bd measurements); **retransmissions** depend on congestion, giving a combining gain of **3 to 8 dB** against 0.5 to 1.7 dB for 802.11p at 10 percent BLER; and the design targets twice the MAC throughput at relative speeds up to **500 km/h** and twice the range. The paper lists 802.11p at 252 km/h in a table and 200 km/h in the text. 802.11bd can use 10 or 20 MHz channels and, per the paper, a **mmWave** mode based on 802.11ad and ay. It must be **interoperable and coexistent with 802.11p**: it must detect and defer to 802.11p transmissions and give them equal access. The doubled throughput appears "only at large SNR values (> 20 dB)", so it is a short-range benefit. The 5.9 GHz allocation has itself changed in some countries (from memory, check) and a cellular alternative (C-V2X, 5G NR V2X) competes with it.
+---
 
+## 4. 802.11mc, az and bk: measuring distance with Wi-Fi
 
-## 4. 802.11mc and az: fine timing measurement
+### 4.1 The idea
 
-### 4.1 The exchange
+Radio travels at the speed of light, so measuring the time of flight gives distance. A phone cannot measure one-way time because it does not share a clock with the AP. **Fine Timing Measurement (FTM)** gets around this with a round trip: each side measures only an interval on its own clock, so the clocks need not agree.
 
-**Fine Timing Measurement (FTM)** measures distance as time of flight. The initiator sends an **FTM request** (a public action frame, action code 32); the responder answers with FTM frames (action code 33) that carry the times its radio sent the previous frame and received its acknowledgement. Four timestamps give a round trip time, because the two clocks only have to be stable over the short interval each one measures:
-
-RTT = (t4 - t1) - (t3 - t2), distance = c x RTT / 2
-
-From the survey I read: a burst starts with the request; with n exchanges there are n - 1 round trips, so n is at least 2; the burst duration can be set from **250 us to 128 ms**, the minimum delta between FTM frames is in **100 us** units, the burst period in **100 ms** units, the **ASAP** flag lets the first FTM frame double as a measurement, and the recommended burst period is **10 ms or less**. Three frames built byte by byte and read by `tshark` 4.2:
-
-```
---- three public action frames (request, measurement, final) built by hand; tshark 4.2 summary line per frame
-  1 | 46 | FTM Request, Trigger=1 (Start or continue sending FTM frames)
-  2 | 63 | FTM, Dialog Token=1
-  3 | 52 | FTM, Dialog Token=0 (Termination)
-  frame 2: Category code: Public Action (4)
-  frame 2: Public Action: FTM (0x21)
-  frame 2: Dialog token: 0x01
-  frame 2: Followup Dialog token: 0x00
-  frame 2: FTM TOD: 1000000
-  frame 2: FTM TOA: 1000900
-  frame 2: FTM TOD Error: 256
-  frame 2: FTM TOA Error: 256
-  frame 2: FTM Params (Subset 1 of 3): 0x0001
-  frame 2: FTM Params (Subset 2 of 3): 0x190a0200
-  frame 2: .... .... .... .... .... .... 0000 0000 = Min Delta FTM: 0x00
-  frame 2: 0001 1... .... .... .... .... .... .... = FTM per burst: 0x03
-  frame 2: FTM Params (Subset 3 of 3): 0x000000
+```mermaid
+sequenceDiagram
+    participant I as Initiator (phone)
+    participant R as Responder (AP)
+    I->>R: FTM request
+    R->>I: ACK
+    Note over R: t1 = time the FTM frame leaves
+    R->>I: FTM frame
+    Note over I: t2 = time it arrives
+    I->>R: ACK
+    Note over I: t3 = ACK leaves
+    Note over R: t4 = ACK arrives
+    R->>I: next FTM frame carries t1 and t4
 ```
 
-`tshark` reads the action codes, dialog tokens and the time of departure and arrival, which I set to 1,000,000 and 1,000,900 (units of 0.1 ns, from memory). The parameters element is **not right**: I wrote a hand-set 9-byte body and `tshark` shows a minimum delta FTM of 0, not the 10 I intended, so my layout of that element is wrong and the element is only evidence that the dissector reads it.
-
-### 4.2 The clock is the first error
-
-Each side measures an interval on its own clock, so a frequency difference of ppm parts per million between the two devices turns the **turnaround time** (t3 - t2, the responder's delay between receiving and answering) into a distance error:
+The initiator now knows all four times and computes
 
 ```
---- the round trip time: RTT = (t4 - t1) - (t3 - t2); the one way delay is RTT/2 and the distance c times that
-true 10.0 m; turnaround and clock error in the two devices -> computed distance error in m
-turnaround us   0 ppm both   20 ppm and -20 ppm   40 ppm and -40 ppm
-        10        -0.000           0.060                0.120
-       100         0.000           0.600                1.200
-      1000        -0.000           5.996               11.992
-     10000         0.000          59.959              119.917
+round trip time = (t4 - t1) - (t3 - t2)
+distance = speed of light x round trip time / 2
 ```
 
-At 40 ppm of difference a turnaround of 100 us costs **0.60 m**, of 1 ms **6.0 m**. This is why the responder answers with a short, fixed turnaround and why a long burst should be avoided without a clock ratio estimate. The numbers are exact arithmetic, c / 2 x turnaround x difference (problem D).
+The first bracket is the total time on the responder's clock; the second is how long the initiator took to turn the frame around, on its own clock. The difference is time spent in the air both ways.
 
-### 4.3 Bandwidth and multipath set the floor
+A measurement burst sends several of these (the survey I read gives burst durations from 250 microseconds to 128 ms, and recommends a burst period of 10 ms or less), and the results are averaged. The request and FTM frames are ordinary public action frames, and `tshark` decodes them.
 
-Timing noise alone falls with bandwidth: the standard deviation of a time of arrival estimate is c over (2 pi beta sqrt(2 SNR)), with beta the RMS bandwidth, about B over the square root of 12 for a flat spectrum (the Cramer-Rao bound, which the survey cites in words).
+### 4.2 What limits the accuracy
 
-```
---- timing noise: the standard deviation of a time of arrival estimate is c / (2 pi beta sqrt(2 SNR)), beta the RMS bandwidth (about B / sqrt 12 for a flat spectrum); one measurement, no multipath
-MHz   SNR 10 dB   SNR 20 dB   SNR 30 dB   (metres)
- 20      1.848      0.584      0.185
- 40      0.924      0.292      0.092
- 80      0.462      0.146      0.046
-160      0.231      0.073      0.023
-```
+**1. Clock difference.** Each side measures its interval on a crystal that is a few parts per million off. A turnaround of 100 microseconds with a 40 ppm clock difference produces about 0.6 m of error; a turnaround of 1 ms gives 6 m. So the responder must answer with a short, fixed delay, and good implementations estimate the clock ratio from consecutive frames.
 
-Noise is not the limit indoors. **Multipath** is: a reflection arriving within 1/B of the direct path merges with it and moves the leading edge. The simulation puts a reflection of half the amplitude, with random phase, after the direct path and takes the first peak of the channel estimate:
+**2. Bandwidth.** The receiver decides when a frame "arrived" from the preamble. The sharper the signal, the better it can pinpoint arrival, and sharpness is bandwidth. A 20 MHz signal resolves only to about 50 ns (15 m of path); 160 MHz resolves to 6 ns (2 m).
 
-```
---- multipath: line of sight plus one reflection (50 percent of the amplitude), the first peak of the channel estimate taken as the arrival; error of the direct path against reflection delay (simulated, 200 trials with random phase, SNR 25 dB)
-delay ns     20 MHz     40 MHz     80 MHz    160 MHz      (RMS error in metres)
-      5       1.12       0.72       0.53       0.28
-     10       1.45       1.04       0.59       0.12
-     20       2.06       1.11       0.24       0.11
-     50       1.91       0.58       0.23       0.10
-    100       1.01       0.44       0.22       0.09
-one nanosecond is 0.300 m; 1 / B is 50.0 ns at 20 MHz and 6.25 ns at 160 MHz
-```
+**3. Multipath.** This is the dominant error indoors. The receiver sees the direct path plus reflections and must pick the first. If a reflection arrives within the resolution of the signal, the two merge and the apparent arrival moves later, adding metres of error. In my simulation (one reflection with half the amplitude) the RMS error was 1 to 2 m at 20 MHz and about 0.1 to 0.3 m at 160 MHz. Real rooms have many reflections.
 
-At 20 MHz the RMS error is **1.0 to 2.1 m** for every reflection delay in the table, the "1 to 2 m" the survey reports for current FTM accuracy; at 160 MHz it is **0.1 to 0.3 m**. One nanosecond is 0.3 m, so the 50 ns resolution of 20 MHz is 15 m of path. The simulation is one random two-path channel with an assumed peak threshold; a room has many reflections.
+**4. Calibration.** Every device has a fixed internal delay between the antenna and the timestamp point. A constant error of a metre or two is usually calibration, not noise.
 
-### 4.4 802.11az and bk
+### 4.3 802.11az and 802.11bk
 
-From the survey: **802.11az** improves accuracy to below 1 m, extends to **160 MHz**, adds **trigger-based and non-trigger-based ranging** from one station to many using the 802.11ax multi-user machinery, adds **passive ranging** (the AP broadcasts, nearby stations time the frames), repeats the HE-LTF to improve accuracy, exchanges FTM data within one TXOP using NDP frames, and adds a **secure LTF** (a randomised training sequence that protects against time-advance attacks) and protected FTM frames. **802.11bk** adds **320 MHz** channels in 6 GHz with accuracy below 0.1 m and two static puncturing modes. Both fit the table: more bandwidth, less error.
+From the survey: **802.11az** pushes accuracy below one metre by using up to 160 MHz, repeated training fields, and several mechanisms: ranging with many stations at once (using the multi-user machinery of Wi-Fi 6), **passive ranging** (the AP broadcasts and stations just listen and time it), and **secure ranging**: a randomised training sequence and protected frames so an attacker cannot spoof an earlier arrival. **802.11bk** adds 320 MHz in 6 GHz for accuracy below 0.1 m. The pattern is the table above: more bandwidth, less error.
+
+---
 
 ## 5. 802.11ba: the wake-up radio
 
-### 5.1 The mechanism
+### 5.1 The problem
 
-A station's main radio is the expensive part. 802.11ba adds a second receiver, the **wake-up radio (WUR)**, that does almost nothing but listen for one pattern; when it hears its address it wakes the main radio. From the 802.11ba paper I read:
+The expensive part of a Wi-Fi client is its main radio. Even in power save it must wake regularly to read beacons, and each wake costs energy. A sensor that gets one command a day still wakes hundreds of times for nothing.
 
-- The WUR part occupies **4 MHz** and uses **on-off keying**, so the receiver can be a simple envelope detector.
-- The frame begins with a **legacy preamble** (L-STF, L-LTF, L-SIG) so ordinary stations defer, then a BPSK-Mark, the **WUR-Sync** (a 32-bit sequence that also tells low from high rate) and the **WUR-Data**.
-- Data rates are **62.5 kbit/s** (4 us symbols, bit 1 as 1010 and bit 0 as 0101) and **250 kbit/s** (2 us symbols, 10 and 01), Manchester coded.
-- The MAC frame has an 8-bit frame control, a **12-bit shortened address**, 12 bits of type-dependent control, an optional body and a **16-bit checksum**. The four frame types are wake-up, WUR beacon, WUR discovery and vendor specific. WUR frames are not acknowledged.
-- The AP and station agree on **duty cycles**: the WUR listens only in agreed periods, and "the price for this is the increased delay for downlink transmission". WUR beacons carry a partial timestamp because clocks drift: **0.36 s per hour at 100 ppm**.
-- Multi-user WUR sends one frame per 20 MHz subchannel (FDMA).
+### 5.2 The mechanism
 
-In the paper's ns-3 run (20 MHz, MCS0, 10 ordinary and 10 sensor stations) the data frame lasted 1,480 us and the WUR frame 920 us, channel time was 50 percent higher than for TWT without a guard interval, and WUR gave the smallest energy only "provided that the clock drift is not too high".
+802.11ba adds a second, extremely simple receiver, the **wake-up radio (WUR)**. It is a basic envelope detector that listens for a pattern and nothing else. When the pattern matches its address, it wakes the main radio.
 
-### 5.2 When does it pay? A model with assumed powers
+From the 802.11ba paper:
 
-The paper gives no power target for 802.11ba. My model assumes 0.5 mW for a listening WUR, 100 mW for the main receiver, 0.05 mW for a sleeping main radio, 0.2 mJ for waking the main radio to read a beacon, and one 0.6 mJ downlink event per minute, on a 2,430 J coin cell. **All are assumed.**
+- The WUR signal occupies **4 MHz** and uses **on-off keying**, which a simple detector can decode without a mixer or oscillator;
+- It is preceded by an ordinary Wi-Fi preamble so other stations know to defer;
+- Data goes at **62.5 or 250 kbit/s**, a few dozen bits for a frame: a short address and a checksum, with no acknowledgement;
+- The AP and the station agree on **duty cycles** so the WUR can sleep too, at the price of more downlink delay.
 
-```
---- 802.11ba wake-up radio against beacon listening on a 2430 J coin cell (modelled; every power below is an assumption, WUR listening 0.5 mW is a stand-in for 'under 1 mW' from memory)
-one downlink event a minute (0.6 mJ), main radio asleep at 0.05 mW, a beacon wake costs 0.2 mJ
-method                       latency worst  average power mW   battery life days
-beacon listening every   0.1 s       0.1 s       2.0131                14
-beacon listening every   0.3 s       0.3 s       0.7110                40
-beacon listening every   1.0 s       1.0 s       0.2600               108
-beacon listening every   5.0 s       5.0 s       0.1000               281
-beacon listening every  30.0 s      30.0 s       0.0667               422
-wake-up radio (about 1 ms)       0.001 s       0.5617                50
-break-even interval: beacon listening matches WUR power at I = 0.2 mJ / (0.5 mW) = 0.40 s; slower than that, listening costs less than the wake-up receiver itself
+```mermaid
+sequenceDiagram
+    participant AP
+    participant W as Station WUR (always listening)
+    participant M as Station main radio (asleep)
+    AP->>W: Wake-up frame for this station
+    W->>M: Wake up
+    M->>AP: Normal Wi-Fi exchange
+    M->>M: Back to sleep
 ```
 
-```
---- WUR timing: the wake-up packet is on-off keyed at a few hundred kbit/s (62.5 and 250 kbit/s, from memory); airtime of a 20 byte wake-up frame
-   62.5 kbit/s:   2.56 ms
-  250.0 kbit/s:   0.64 ms
-```
+### 5.3 When it pays
 
-The result is not what the amendment's reputation suggests. A beacon listener waking every **1 s** averages 0.26 mW and lasts **108 days**; the WUR, at 0.56 mW, lasts **50 days** while offering a latency of about a millisecond. The break-even is the beacon wake energy over the WUR power: 0.2 mJ / 0.5 mW = **0.40 s**. If the application can wait more than 0.4 s, listening costs less than the wake-up receiver itself; if it needs a response in tens of milliseconds, listening every 0.1 s costs 2.0 mW and lasts **14 days**, and the WUR wins by a factor of 3.6. Problem E tabulates the break-even for other powers. The assumption that matters is the WUR power: the paper's "thousands of times less than the main radio" would be 0.05 mW against a 100 mW receiver, which is 10 times lower than I assumed and moves the break-even to 4 s. That figure is the one to measure on a real part.
+The WUR reduces wake cost but is not free: it listens continuously. The saving depends on how often the alternative would wake. A station using beacon listening wakes every interval; the wake energy divided by the interval is its average cost. The WUR costs its listening power all the time. Equating them gives a **break-even interval**: wake energy divided by WUR power.
 
-## 6. 802.11bf: WLAN sensing
+With an assumed wake energy of 0.2 mJ and an assumed WUR power of 0.5 mW, the break-even is 0.4 seconds. A device that must respond within 100 ms is better off with a WUR (about 4 times the battery life in my model). A device that can tolerate several seconds of latency is better off just listening to beacons, because the WUR's constant listening costs more than the occasional wake. The deciding number is the WUR power, which I do not have for a real chip: the paper says only that a WUR consumes thousands of times less than the main radio. **The lesson: a wake-up radio is a tool for low latency with low power, not simply a power saver.**
+
+---
+
+## 6. 802.11bf: Wi-Fi sensing
 
 ### 6.1 The idea
 
-Every received frame carries channel state information (CSI): amplitude and phase on every subcarrier. A person moving, even breathing, changes the reflections and so the CSI. **802.11bf** standardises how stations arrange sensing: setting up a measurement, sending sounding frames at an agreed rate, and reporting the result (from memory; I read no source on it), for sub-7 GHz and for 60 GHz (DMG) links.
+Every received frame carries **channel state information (CSI)**: for each subcarrier, the amplitude and phase after the channel. If a person moves in the room, the reflections change, so the CSI changes. Even breathing moves the chest several millimetres, which at 5 GHz (wavelength about 6 cm) is a measurable change in path length. 802.11bf standardises how stations set up a sensing session, exchange sounding frames at an agreed rate and report measurements (from memory; I read no source on it).
 
-### 6.2 What a simulation shows
+### 6.2 Why breathing is detectable
 
-One subcarrier, one reflector 3 m away whose path length changes by 5 mm at 0.25 Hz (a chest), direct path 1, reflection amplitude a, noise 0.02, sampled at fs for 20 s; the estimate is the FFT peak between 0.1 and 0.7 Hz; success means within 0.03 Hz of 0.25:
+The received signal is the direct path plus a reflection from the chest. As the chest moves, the reflection's phase rotates a little, and the sum's amplitude rises and falls once per breath. Sampling the amplitude a few times a second and looking at its frequency gives the breathing rate.
 
-```
---- CSI sensing (802.11bf style): a reflector 3 m away moves by chest motion of 5 mm at 0.25 Hz, 5.2 GHz (lambda 5.77 cm); amplitude of one subcarrier sampled at rate fs for 20 s; noise sigma 0.02 relative to a direct path of 1
-reflection amplitude relative to the direct path; success = the FFT peak within 0.03 Hz of 0.25 Hz in 300 trials
-sampling Hz   a=0.02   a=0.05   a=0.10   a=0.30      airtime of one 100 us sounding per sample
-      0.5       39 %     35 %     36 %     36 %         0.01 %
-      1.0       48 %     67 %     67 %     67 %         0.01 %
-      2.0       67 %     81 %     86 %     80 %         0.02 %
-      5.0       78 %     80 %     80 %     87 %         0.05 %
-     10.0       78 %     84 %     82 %     81 %         0.10 %
-    100.0       84 %     86 %     82 %     84 %         1.00 %
-phase swing of the chest: 2 x 5 mm path change = 1.09 rad at 5.2 GHz; at 60 GHz (lambda 5 mm) 12.6 rad, the reason 802.11ay sensing resolves small motion
-```
+### 6.3 Why it sometimes fails
 
-Three things stand out. **Sampling**: at 0.5 Hz the success rate is 35 to 39 percent because 0.25 Hz is the Nyquist limit; at 2 Hz it is 67 to 86 percent. **The plateau at 80 to 86 percent** does not improve with more samples or a stronger reflection, which points at something other than noise: the next table shows it.
+There are two clear limits.
 
-```
---- why the success rate stops near 80 percent: the amplitude is |1 + a exp(j phi)|, its slope with the path length is zero when the static phase puts the reflection in phase or in antiphase with the direct path, and then the breathing appears at twice the rate (blind spots)
-static phase (rad)   success at fs = 10 Hz, a = 0.10, 100 trials each; peak frequency of one trial
-      0.00              0 %        0.50 Hz
-      0.40            100 %        0.25 Hz
-      0.80            100 %        0.25 Hz
-      1.20            100 %        0.25 Hz
-      1.57            100 %        0.25 Hz
-      2.00            100 %        0.25 Hz
-      2.40            100 %        0.25 Hz
-      2.80             99 %        0.25 Hz
-      3.14              0 %        0.50 Hz
-```
+**Sampling.** Breathing is about 0.25 Hz, so you need to sample faster than twice that. At 0.5 Hz sampling a simple detector fails; at a few hertz it works.
 
-The amplitude is |1 + a exp(j phi(t))|, which is approximately 1 + a cos(phi), with phi(t) = phi0 + m sin(2 pi f t) and m = 1.09 rad here (the phase swing of a 5 mm motion at 5.2 GHz). Expanding in Bessel functions, the term at the breathing frequency is proportional to **sin(phi0) J1(m)** and the term at twice that frequency to **cos(phi0) J2(m)**. At phi0 = 0 or pi the fundamental vanishes and only the second harmonic remains, so the detector reports 0.50 Hz. These are **blind spots**: 0 percent success at phase 0 and pi, 100 percent at the other phases except 99 percent at 2.8. A real system averages over many subcarriers whose phases differ, which removes most blind spots; one antenna pair and one subcarrier does not. At 60 GHz the wavelength is 5 mm, so the same motion swings the phase by 12.6 rad and the signal resolves millimetre motion, the reason sensing is attractive there.
+**Blind spots.** This is the interesting one. Think of the direct path and the reflection as two arrows added together. The amplitude of the sum changes when the reflection arrow rotates *against* the direct one, but when the two arrows are lined up (in phase) or opposite (antiphase), a small rotation of the reflection changes the length of the sum only to second order. The result: the signal then rises and falls **twice per breath**, and a detector that looks for 0.25 Hz sees 0.5 Hz. In my simulation the correct rate was found at nearly every static phase, and failed completely at exactly those two phases. Real systems avoid the problem by combining many subcarriers and several antennas, whose phases differ, so they are never all blind at once.
 
-The airtime column is small: sounding every 10 ms uses 1 percent of the air at 100 us per sounding. The model has one reflector, no other motion and no interference.
+At 60 GHz the wavelength is 5 mm, so a 5 mm chest motion rotates the phase by many radians. That is why 60 GHz sensing can resolve very small motion.
+
+---
 
 ## 7. 802.11aa: reliable groupcast
 
-### 7.1 Why multicast is the weak case
+### 7.1 The problem with multicast
 
-A multicast or broadcast frame has no acknowledgement, no rate adaptation (it is sent at a basic rate so everyone hears it) and no retry, so a receiver that misses it never gets it. **GCR (groupcast with retries)** adds two ways to improve it (from memory): **unsolicited retries**, in which the AP sends each frame several times blind, and **GCR block ack**, in which the AP polls the group and resends only what receivers report missing. (**Directed multicast service, DMS**, which converts a group frame into unicast copies, is an 802.11v mechanism and is covered with multicast in WF 15.) The model sends a 1000 byte frame to N receivers, each missing a transmission independently with probability p, with 20 us preamble, 67 us backoff, a unicast ACK of 28 us and a block ack exchange of 60 us per receiver, all **assumed**:
+A multicast or broadcast frame goes to many receivers at once, so it has **no acknowledgement** (otherwise they would all reply), it uses a **basic rate** so everyone can hear it, and it is **never retried**. One receiver with a poor link silently misses frames. For video to a group, that is unacceptable.
 
-```
---- 1000 byte group frame to N receivers each missing a transmission with probability p (modelled; 20 us preamble, 67 us average backoff, unicast ack 28 us plus SIFS 16 us, block ack exchange 60 us per receiver)
-p = 0.1   N   multicast (us, all got it %)   3 blind copies          GCR block ack            N unicast copies
-           2       1420   81.4 %                 4261   99.8 %          1860  100.0 %            618  100.0 %
-           5       1420   58.8 %                 4261   99.4 %          2542  100.0 %           1543  100.0 %
-          10       1420   34.4 %                 4261   99.0 %          3550  100.0 %           3103  100.0 %
-          30       1420    4.6 %                 4261   97.4 %          7258  100.0 %           9289  100.0 %
-p = 0.3   N   multicast (us, all got it %)   3 blind copies          GCR block ack            N unicast copies
-           2       1420   49.0 %                 4261   95.1 %          2718  100.0 %            798  100.0 %
-           5       1420   17.4 %                 4261   87.4 %          4110   99.9 %           2001   99.7 %
-          10       1420    2.8 %                 4261   76.5 %          5852   99.9 %           3988   99.8 %
-          30       1420    0.0 %                 4261   43.2 %         12322   99.3 %          11954   99.3 %
-```
+### 7.2 What 802.11aa adds
 
-At 10 percent loss, plain multicast reaches **all** of 10 receivers only **34.4 percent** of the time and 30 receivers **4.6 percent**; three blind copies reach 99 percent at 10 receivers but cost **4,261 us** for any N. **GCR with block ack is 100 percent** and costs 3,550 us at N = 10 against **3,103 us** for ten unicast copies, and 7,258 us against 9,289 at N = 30, so GCR wins from about N = 14 by interpolation at p = 0.1. At p = 0.3 unicast stays cheaper through N = 30 (11,954 us against 12,322 us for GCR), because each retry round resends the full frame. This is the answer to "why not just use GCR everywhere": it saves air only when the group is large and the loss moderate, and unicast conversion wins for small groups.
+**GCR (groupcast with retries)** has two reliability modes (from memory):
 
-## 8. TDLS: a direct link between two clients
+- **Unsolicited retries**: the AP sends each group frame several times blind. Simple, costs the same extra air for any group size, and still not guaranteed.
+- **GCR block ack**: the AP polls the group, collects which frames each receiver missed, and resends only those.
 
-### 8.1 The mechanism
+The alternative, **directed multicast service** (an 802.11v feature, covered in WF 15), converts the group frame to unicast copies, each acknowledged and rate-adapted.
 
-Two clients in the same BSS normally send data through the AP, which transmits every bit twice. **Tunnelled Direct Link Setup (TDLS)** lets them set up a direct link. The setup frames are sent **through the AP as ordinary data frames** (LLC and SNAP with ethertype 89-0d, payload type 2, from memory), so they work even when the peers cannot hear each other yet; the request carries a **link identifier** with the BSSID and both addresses. After a setup request, response and confirm the peers can exchange data directly, optionally on an **off-channel** with a channel switch, and they stay associated to the AP. The older **DLS** of 802.11e is the earlier form (from memory). Built and decoded:
+### 7.3 Which to use
 
-```
---- a TDLS setup request built as the data frame it is (LLC and SNAP, ethertype 89-0d, payload type 2) and read by tshark
-  76 | TDLS | TDLS Setup Request, Dialog Token=1
-  Payload Type: TDLS (2)
-  Category code: TDLS (12)
-  Action code: TDLS Setup Request (0)
-  Dialog token: 0x01
-  Tag: Link Identifier
-  Tag Number: Link Identifier (101)
-  TDLS initiator STA Address: 02:00:00:00:00:02 (02:00:00:00:00:02)
-  TDLS responder STA Address: 02:00:00:00:00:03 (02:00:00:00:00:03)
-```
+In my model with 10 percent loss per receiver: a single multicast transmission reaches all ten receivers only about a third of the time, and with thirty receivers almost never. Three blind copies reach about 99 percent for ten receivers but always cost three times the air. GCR with block ack reaches every receiver at a cost that grows slowly with group size, and beats ten unicast copies somewhere above about fourteen receivers. At 30 percent loss, unicast copies stayed cheaper up to thirty receivers, because each GCR retry round resends the whole frame. **Use unicast for small groups, GCR for large groups with moderate loss.**
 
-The first attempt left out the category byte (12) and `tshark` read the action code wrongly; the version shown parses cleanly. The capability and supported rates fields are from memory and unchecked.
+---
 
-### 8.2 When it pays
+## 8. TDLS: direct links between clients
 
-```
---- TDLS: two clients at 120 Mbit/s to the AP either relay through it (two transmissions of every bit) or talk directly
-direct rate Mbit/s   relayed 120 + 120: 60.0 Mbit/s   direct goodput   gain
-        30                            60.0                30.0     x0.50
-        60                            60.0                60.0     x1.00
-       120                            60.0               120.0     x2.00
-       300                            60.0               300.0     x5.00
-       600                            60.0               600.0     x10.00
-a direct link must beat HALF of the AP rate to pay (here 60 Mbit/s); channel switching to an off-channel direct link costs the AP traffic the time away (50 ms away every 500 ms is 10 %)
-```
+### 8.1 The problem
 
-Relaying through the AP halves the rate: 1/(1/120 + 1/120) = **60 Mbit/s**. A direct link must therefore exceed **half the AP rate** to pay, x2 at 120 and x5 at 300 Mbit/s, and loses (x0.5) at 30. Off-channel operation costs the AP's traffic the time the clients are away: 50 ms every 500 ms is 10 percent.
+Two laptops in the same room, sharing a file through the AP, send every bit twice, once up and once down, using the AP's air time both ways. **Tunnelled Direct Link Setup** lets the two clients talk directly.
+
+### 8.2 How it works
+
+The setup frames travel **through the AP** as ordinary data frames, so it works even before the two clients can hear each other. The initiator sends a setup request (carrying a link identifier that names the BSSID and both stations), the peer answers, the initiator confirms, and the two exchange data directly while remaining associated to the AP. Optionally, they switch to a different channel for the direct link. The peers derive their own key for the direct link, protected by the AP's security. TDLS replaced the older 802.11e DLS, which required the AP to take part.
+
+### 8.3 When it pays
+
+The relay through the AP halves the usable rate (two transmissions per bit). A direct link must therefore be **faster than half the AP rate** to be worth it. If both clients get 120 Mbit/s to the AP, relaying gives 60 Mbit/s, and a direct link at 120 doubles that, at 300 it is five times better, but one at only 30 Mbit/s loses. Off-channel operation also costs the AP traffic the time the clients are away: spending 50 ms of every 500 ms away is a 10 percent loss.
+
+---
 
 ## 9. Briefly: the rest of the list
 
-- **802.11ak (general link)** extends the bridged-network model so that a non-AP station can act as a bridge to a wired network behind it (from memory, unread).
-- **802.11ai (FILS)** speeds up the initial link setup to tens of milliseconds and is covered in [WF 06](06_wifi6_6e_7_features.md).
-- **802.11bk** (see section 4) is the 320 MHz ranging extension.
-- **Wi-Fi Aware (NAN)** and **Wi-Fi Direct** are in [WF 07](07_wifi_architectures_mesh_and_services.md); multicast, MAC randomisation and onboarding are in WF 15.
+- **802.11ak (general link)** lets a non-AP station act as a bridge to a wired network behind it (from memory, not read).
+- **802.11ai (FILS)** cuts initial link setup to tens of milliseconds and is covered in [WF 06](06_wifi6_6e_7_features.md).
+- **Wi-Fi Aware (NAN)** and **Wi-Fi Direct** are in [WF 07](07_wifi_architectures_mesh_and_services.md).
+- Multicast handling, MAC randomisation and onboarding are in WF 15.
 
 ## 10. Testing and debugging these radios
 
-- **HaLow**: count the TIM bytes at your station count, check the page and block of each AID, and measure how long a sensor takes to join when 1,000 wake together; RAW slot assignments should match the sleep schedule.
-- **60 GHz**: measure throughput against angle and blockage, and the time to retrain after rotation. A drop to zero when a hand moves in front is normal, not a fault.
-- **V2X**: emulate Doppler with a channel emulator at 250 to 500 km/h, load the channel with 100 or more stations, and test 802.11p and bd interoperation in both directions.
-- **FTM**: calibrate the antenna and processing delay per device model, and measure at known distances in an open space and in a room; a systematic offset of a metre is the calibration, not noise.
-- **WUR**: measure the real WUR current and the sleep current of the main radio before believing any battery life, and measure the wake latency end to end.
-- **Sensing**: record a baseline of the empty room, test at several positions because of blind spots, and combine subcarriers or antennas.
-- **GCR**: measure the per-receiver loss before choosing; unsolicited retries are blind and cost the same air for any group size.
-- **TDLS**: confirm that the direct rate beats half the AP rate in the position the clients will actually be in.
+- **HaLow**: test with thousands of simulated stations, since the failure appears only at scale; check that RAW slot assignment matches the sleep schedule; measure how long a sensor takes to join when many wake together.
+- **60 GHz**: measure throughput against angle and against a body in the path, and the time to recover after a turn. A drop to zero when someone's hand blocks the beam is normal.
+- **V2X**: emulate the Doppler of 250 to 500 km/h with a channel emulator, load the channel with 100 or more stations, and test 802.11p and bd devices together.
+- **FTM**: calibrate each device model against known distances; do not trust the first measurement indoors.
+- **Wake-up radio**: measure the real current of the WUR and the sleeping main radio before believing any battery life estimate.
+- **Sensing**: test an empty room first, then several positions, because of blind spots.
+- **GCR and multicast**: measure per-receiver loss before choosing a mode.
+- **TDLS**: confirm the direct rate really exceeds half the AP rate at the clients' real positions.
 
 ## 11. Common mistakes
 
-1. **Quoting HaLow's range without its rate.** 1.19 km in the model is at 0.30 Mbit/s; at 4 Mbit/s (MCS9 at 1 MHz, if it were valid) the sensitivity is much worse.
-2. **Thinking a thousand stations works because the TIM can address them.** Addressing is not access: contention drops the aggregate to 0.085 Mbit/s without RAW.
-3. **Reading 60 GHz range as free space.** Blockage costs 20 to 30 dB (from memory); 25 dB in the model reduces 120 m to 8 m.
-4. **Counting only the data rate.** Beam training at 128 sectors takes 14 percent of the air in the model.
-5. **Treating OCB as a Wi-Fi network.** There is no association, no ACK for broadcast and no security exchange at the MAC.
-6. **Ignoring Doppler inside a frame.** A 300 byte frame at 3 Mbit/s spans 2.74 coherence times at 250 km/h; the lowest rate is the worst.
-7. **Trusting FTM to the nanosecond.** 100 us of turnaround at 40 ppm is 0.60 m before multipath.
-8. **Using 20 MHz for indoor ranging and expecting 1 m.** The model gives 1.0 to 2.1 m RMS.
-9. **Assuming a wake-up radio always saves power.** Below break-even latency yes; above 0.40 s in the model, no.
-10. **Detecting breathing from one subcarrier.** Blind spots at two phases give a doubled frequency.
-11. **Using GCR for a small group.** Unicast copies are cheaper below about 14 receivers.
-12. **Setting up TDLS without checking rates.** A direct link at half the AP rate gains nothing.
+1. Quoting HaLow's range without its rate. The kilometre is at the lowest rate.
+2. Assuming a large TIM means a large network works. Addressing is not access; contention is the limit.
+3. Treating 60 GHz range as free-space range. A body costs 20 to 30 dB.
+4. Counting only the 60 GHz data rate and ignoring the time spent on beam training.
+5. Treating OCB as a Wi-Fi network. There is no association, and broadcast safety messages are not acknowledged.
+6. Ignoring Doppler inside a frame: slower rates mean longer frames and a staler channel estimate.
+7. Trusting FTM to a metre or better indoors at 20 MHz.
+8. Assuming a wake-up radio always saves energy; it only pays when latency matters.
+9. Reading breathing from one subcarrier of one antenna; blind spots will fool it.
+10. Using GCR for a small group; unicast copies are cheaper there.
+11. Setting up TDLS without checking that the direct rate is above half the AP rate.
 
 ## 12. Interview questions
 
-1. **Why does HaLow reach farther than 2.4 GHz?** 13.0 dB less noise bandwidth and 8.5 dB less path loss in the model, 21.5 dB total, a factor of 5.2 at exponent 3.
-2. **How does S1G address 8,191 stations?** Four pages of 32 blocks of 8 subblocks of 8 bits, only non-empty parts sent, page slicing across beacons.
-3. **What does RAW do and what does it not do?** It limits contention to a slot per group; it does not change the rate or the wake schedule.
-4. **Why is 60 GHz a line-of-sight technology?** Free space loss of 68 dB at 1 m, body blockage of 20 to 30 dB, and beams that need training.
-5. **Explain sector level sweep.** Each side sends a frame in every sector, feedback picks the best, and beam refinement then tunes it; cost grows with the number of sectors.
-6. **What changes in OCB mode?** No BSS, wildcard BSSID, no association, 10 MHz numerology, broadcast without ACK.
-7. **Why does Doppler hurt 802.11p and how does 802.11bd fix it?** The channel changes within a frame; midambles re-estimate it, with LDPC and retransmission.
-8. **How does FTM compute distance and what limits it?** (t4 - t1) - (t3 - t2); clock difference times turnaround, bandwidth and multipath.
-9. **When does a wake-up radio save power?** When the latency needed is shorter than the beacon wake energy over the WUR power.
-10. **Why might Wi-Fi sensing miss a breathing person?** A blind spot at a static phase of 0 or pi doubles the frequency; combine subcarriers.
+1. **Why does HaLow reach farther than 2.4 GHz?** Lower frequency loses less in free space and through walls, and a 1 MHz channel has far less noise than 20 MHz, so weaker signals decode. About 21 dB combined, roughly five times the range, at the cost of rate.
+2. **How does the S1G TIM address thousands of stations?** A hierarchy of pages, blocks and subblocks (8,192 AIDs), with only non-empty parts sent, and page slicing across beacons so stations wake only for their page.
+3. **What problem does RAW solve?** Thousands of stations waking together collide under DCF; RAW gives each group its own time slot, so only a few contend at once.
+4. **Why is 60 GHz line of sight and what does the MAC do about it?** High loss at the antenna, no penetration, and a body blocks 20 to 30 dB; arrays form narrow beams, and a sector sweep followed by refinement aims them.
+5. **What is the beacon interval at 60 GHz?** Beacon sweep, association beam training, announcement, then data in scheduled service periods and contention periods.
+6. **What changes in OCB mode?** No BSS: wildcard BSSID, no beacons or association, 10 MHz numerology, unacknowledged broadcast.
+7. **Why does Doppler hurt 802.11p, and what did 802.11bd change?** The channel changes within a frame while the channel estimate is taken once at the start; bd inserts midambles, uses LDPC and adds retransmissions.
+8. **How does FTM compute distance, and what limits it?** Round trip with four timestamps, so no shared clock is needed; limited by clock difference times turnaround, bandwidth, multipath and calibration.
+9. **When does a wake-up radio save energy?** When the latency required is shorter than the beacon-listening break-even, because the WUR listens all the time.
+10. **Why might sensing miss a breathing person?** At some static phases the amplitude responds at twice the breathing rate; combine subcarriers and antennas.
 11. **GCR or unicast conversion?** Unicast for small groups, GCR with block ack for large groups at moderate loss.
-12. **When is TDLS worth it?** When the direct rate is above half the AP rate.
-
+12. **When is TDLS worth it?** When the direct rate exceeds half the AP rate and the clients are close.
 
 ## 13. Problems
 
-Work each one before reading section 14.
+**Problem A. S1G rate.** Compute the rate of 2 MHz MCS 7 with two streams and the short guard interval (52 subcarriers, 64-QAM at 5/6, 36 us symbol).
 
-**Problem A. S1G rates.** Compute the data rate of 2 MHz MCS7 with 2 streams and the short guard; 4 MHz MCS4 with 1 stream and the long guard; 8 MHz MCS9 with 2 streams, short guard; 16 MHz MCS9 with 4 streams, short guard; 1 MHz MCS2 and 2 MHz MCS0, one stream, long guard. Compare each with the 65 Mbit/s of one stream of 802.11n at 20 MHz MCS7, and give the time to send a 1500 byte frame at 1 MHz MCS0 and MCS2 before the preamble.
+**Problem B. 60 GHz blockage.** A link reaches 120 m. A body adds 25 dB of loss. Roughly how far does it reach now (ignoring oxygen)?
 
-**Problem B. 60 GHz range.** For EIRP of 30, 40 and 43 dBm, extra loss of 0, 10 and 25 dB, receive gain 15 dBi, noise figure 10 dB, an 8 dB gap and oxygen at 15 dB per km, find the line-of-sight range at MCS 1, 4, 8 and 12 (spectral efficiencies 0.219, 0.656, 1.312 and 2.625 bit/s/Hz).
+**Problem C. V2X load.** A message takes 450 us of airtime and each vehicle sends 10 a second. How many vehicles fill half the channel?
 
-**Problem C. V2X channel load.** How many vehicles in carrier sense range load a 10 MHz channel to 50 percent, each sending 10 messages a second of 200, 300, 500 and 800 bytes at 3, 6 and 12 Mbit/s?
+**Problem D. FTM clock error.** Two devices differ by 40 ppm and the responder takes 200 us to answer. What distance error results?
 
-**Problem D. FTM clock error.** The distance error from a clock difference of 1, 10, 40 and 80 ppm and a turnaround of 16 us, 100 us, 500 us, 2 ms and 10 ms, and the longest turnaround that keeps the error under 0.5 m at 10, 40 and 80 ppm.
-
-**Problem E. Wake-up radio break-even.** For a beacon wake energy of 0.1, 0.2 and 0.5 mJ and a WUR listening power of 0.1, 0.5, 1 and 2 mW, the break-even listening interval, and the battery life of a 2,430 J cell for beacon listening at 1 s and for the WUR, with one 0.6 mJ downlink event a minute.
+**Problem E. Wake-up radio.** Waking the main radio costs 0.2 mJ; a WUR listens at 1 mW. Below what interval is beacon listening more expensive than the WUR?
 
 ## 14. Answers
 
-**Answer A.** Multiply subcarriers (24, 52, 108, 234, 468 for 1, 2, 4, 8, 16 MHz) by bits per subcarrier, code rate and streams, and divide by 36 or 40 us. 2 MHz MCS7 with 2 streams and the short guard is 52 x 6 x 5/6 x 2 / 36 us = 14.44 Mbit/s.
+**A.** 52 x 6 bits x 5/6 x 2 streams = 520 bits per symbol, divided by 36 us is about **14.4 Mbit/s**. About a fifth of one 802.11n stream at 20 MHz, which is the sacrifice for range.
 
-```
---- S1G data rate: subcarriers x bits x code rate x streams / (36 or 40 us)
-bandwidth MHz  MCS  streams  short GI   rate Mbit/s   against 802.11n 20 MHz MCS7 (65.0)
-       2         7       2        yes        14.44      x0.222
-       4         4       1         no         8.10      x0.125
-       8         9       2        yes        86.67      x1.333
-      16         9       4        yes       346.67      x5.333
-       1         2       1         no         0.90      x0.014
-       2         0       1         no         0.65      x0.010
-a 1 MHz channel moves one 1500 byte frame (12,000 bits) in 40.0 ms at MCS0 and 13.3 ms at MCS2, before the preamble
-```
+**B.** Each 6 dB of loss halves free-space range, and 25 dB is a factor of 18 in distance (10 to the power 25/20), so about 120 / 18, roughly **7 m**. That is why a body kills a 60 GHz link.
 
-**Answer B.** Range comes from the budget EIRP + receive gain - noise - needed SNR - loss at 1 m - extra loss, solved against 20 log10(d) + 0.015 d (the 0.015 dB per metre is oxygen). Doubling the range costs 6.02 dB, so each 10 dB of extra loss shrinks the range by a factor 3.16 where oxygen is negligible; the table shows that 10 dB of blockage is worth 10 dB of EIRP.
+**C.** Half the channel is 0.5 seconds of air per second; each vehicle uses 10 x 450 us = 4.5 ms per second, so 0.5 / 0.0045 is about **111 vehicles**.
 
-```
---- 60 GHz range in metres (free space exponent 2, oxygen 15 dB per km, receive gain 15 dBi, noise figure 10 dB, 8 dB implementation gap)
-EIRP dBm, extra loss dB   MCS 1 (385 Mbit/s)    MCS 4 (1155)    MCS 8 (2310)   MCS 12 (4620)
-30 dBm, 0 dB                         189.5           115.0            76.6            43.4
-30 dBm, 10 dB                         73.2            41.3            26.4            14.4
-30 dBm, 25 dB                         14.4             7.8             4.9             2.6
-40 dBm, 0 dB                         409.7           275.6           196.7           120.3
-40 dBm, 10 dB                        189.5           115.0            76.6            43.4
-40 dBm, 25 dB                         43.4            23.9            15.1             8.2
-43 dBm, 0 dB                         497.4           345.2           252.4           158.9
-43 dBm, 10 dB                        243.7           152.3           103.3            59.6
-43 dBm, 25 dB                         59.6            33.3            21.2            11.5
-each 6.02 dB of EIRP or loss changes the free space range by a factor 2; with 10 dB extra loss the range is x0.316 of the loss free one
-```
+**D.** Error is half the speed of light times turnaround times the clock difference: 1.5 x 10^8 m/s x 200 us x 40 x 10^-6 is about **1.2 m**.
 
-**Answer C.** The airtime per message is 32 us of preamble, 8 us of signal and 8 us per symbol, with 16 service bits and 6 tail bits added to the payload; the vehicle count is 0.5 over 10 times the airtime. At 6 Mbit/s and 300 bytes it is 111.
-
-```
---- vehicles in range that load a 10 MHz channel to 50 percent, 10 messages per second each (no backoff or collisions counted)
-bytes   3 Mbit/s    6 Mbit/s   12 Mbit/s    (airtime us at each rate)
-  200        85         160         284         584    312    176
-  300        58         111         201         848    448    248
-  500        36          70         132        1384    712    376
-  800        22          44          86        2184   1112    576
-the channel is shared by every vehicle in carrier sense range, which is much larger than a data range: at 6 Mbit/s and 300 bytes a vehicle counts as 0.45 % of the air
-```
-
-**Answer D.** Error is c/2 x turnaround x difference. The responder's turnaround is the lever: at 16 us even 80 ppm is 0.19 m, at 10 ms it is 120 m.
-
-```
---- distance error in metres = c / 2 x turnaround x (clock difference in ppm) (the time of flight itself adds about the same ppm of 2 x d / c and is negligible)
-turnaround   1 ppm      10 ppm     40 ppm     80 ppm
-      16 us    0.002     0.024     0.096     0.192
-     100 us    0.015     0.150     0.600     1.199
-     500 us    0.075     0.749     2.998     5.996
-    2000 us    0.300     2.998    11.992    23.983
-   10000 us    1.499    14.990    59.958   119.917
-longest turnaround for 0.5 m of error: 10 ppm: 334 us, 40 ppm: 83 us, 80 ppm: 42 us
-a correction by the measured clock ratio (from two FTM frames in a burst) removes most of it; the residual is the error of the ratio estimate, not the clock offset
-```
-
-**Answer E.** Break-even is wake energy over WUR power. The last two columns compare the lives: a WUR beats 1 s beacon listening only when its power is below the wake energy per second. At 0.2 mJ a WUR at 0.1 mW lasts 174 days against 108 for listening, and at 0.5 mW only 50.
-
-```
---- listening every I seconds costs (wake energy) / I; a wake-up receiver costs its listening power all the time (modelled, assumed numbers)
-wake energy mJ  WUR power mW   break-even interval s   battery life of a 2430 J cell at I = 1 s (days), WUR (days), one event a minute at 0.6 mJ
-       0.1          0.1              1.00                     176                 174
-       0.1          0.5              0.20                     176                  50
-       0.1          1.0              0.10                     176                  26
-       0.1          2.0              0.05                     176                  14
-       0.2          0.1              2.00                     108                 174
-       0.2          0.5              0.40                     108                  50
-       0.2          1.0              0.20                     108                  26
-       0.2          2.0              0.10                     108                  14
-       0.5          0.1              5.00                      50                 174
-       0.5          0.5              1.00                      50                  50
-       0.5          1.0              0.50                      50                  26
-       0.5          2.0              0.25                      50                  14
-a wake-up receiver pays only if the latency needed is below the break-even interval, and the tighter the latency the more it pays
-```
+**E.** Break-even is energy over power: 0.2 mJ / 1 mW = **0.2 s**. Listening more often than every 0.2 s costs more than the WUR; listening less often costs less.
 
 ## 15. Cheat sheet
 
-| Item | Value or rule |
+| Topic | Key points |
 |---|---|
-| HaLow bands | 902 to 928 MHz (North America), 863 to 868 MHz (Europe), source; others from memory |
-| S1G numerology | 1, 2, 4, 8, 16 MHz; 24, 52, 108, 234, 468 data subcarriers; 40 us symbol (36 us short GI) |
-| S1G rates | 0.15 (MCS10) to 346.67 Mbit/s (16 MHz, 4 streams, MCS9, computed; page says 433.3) |
-| S1G range model | 1,193 m at 900 MHz 1 MHz MCS0 against 229 m at 2.4 GHz (x5.22); contention dominates |
-| TIM | legacy 2,007 AIDs; S1G 8,191 = 4 pages x 32 blocks x 8 subblocks x 8 bits |
-| RAW (model) | 1,000 saturated stations: 0.085 Mbit/s without, 0.243 with groups of 10 |
-| 60 GHz rates | SC 385, 1,155, 2,310, 4,620 Mbit/s; OFDM 6,756.75; 802.11ay bonds 4 channels (8.64 GHz) |
-| 60 GHz budget | free space 68.0 dB at 1 m; 410 m at MCS 1 and 120 m at MCS 12 at 40 dBm; 25 dB block: 43 m and 8 m |
-| Beam training | 32 sectors per side: 1.1 ms; 128: 4.4 ms, 14 percent of the air if retrained per sector crossing |
-| OCB | 10 MHz, symbol 8 us, guard 1.6 us, 3 to 27 Mbit/s; no association; 1,366 Hz Doppler at 250 km/h; 111 vehicles at 50 percent load (300 B, 6 Mbit/s) |
-| 802.11bd | LDPC, midambles, DCM, retransmissions; target 500 km/h; 10 or 20 MHz; coexists with 802.11p |
-| FTM | RTT = (t4 - t1) - (t3 - t2); 0.60 m per 100 us of turnaround at 40 ppm; 1.0 to 2.1 m at 20 MHz and 0.1 to 0.3 m at 160 MHz (simulated); az below 1 m, bk below 0.1 m (source) |
-| WUR | 4 MHz OOK, 62.5 and 250 kbit/s, 12-bit address, 16-bit checksum; break-even 0.40 s at 0.2 mJ and 0.5 mW (assumed) |
-| Sensing | Nyquist for breathing is above 0.5 Hz; blind spots at phase 0 and pi double the frequency |
-| GCR | blind multicast reaches 10 receivers 34 percent at 10 percent loss; GCR-BA 100 percent, cheaper than unicast above about 14 receivers |
-| TDLS | setup tunnelled through the AP; direct rate must beat half the AP rate |
+| HaLow | Sub-1 GHz; 1, 2, 4, 8, 16 MHz; 802.11ac clocked down 10x; 40 us symbol; about 5x the range of 2.4 GHz at the lowest rate; TIM with 8,192 AIDs in pages, blocks and subblocks; RAW, TWT, NDP, relay, sectors |
+| 60 GHz | 2.16 GHz channels; control, single carrier and OFDM PHYs; about 4.6 and 6.76 Gbit/s; 68 dB loss at 1 m; body block 20 to 30 dB; beacon interval BTI, A-BFT, ATI, DTI; sector sweep then refinement; ay bonds four channels |
+| V2X | OCB: no association, wildcard BSSID; 10 MHz, 3 to 27 Mbit/s; Doppler breaks the one-shot channel estimate; bd adds LDPC, midambles, retransmission, coexists with p |
+| FTM | RTT = (t4 - t1) - (t3 - t2); errors from clock times turnaround, bandwidth, multipath, calibration; az below 1 m, bk below 0.1 m |
+| WUR | 4 MHz OOK, 62.5 and 250 kbit/s, main radio sleeps; pays for low latency, break-even is wake energy over WUR power |
+| Sensing | CSI changes with motion; sample above twice the rate; blind spots double the frequency |
+| GCR | Multicast has no ACK or retry; blind copies or block ack; unicast for small groups |
+| TDLS | Setup tunnelled via the AP; direct rate must beat half the AP rate |
 
-Next: [WF 15, multicast, privacy, onboarding and interworking](15_wifi_multicast_privacy_onboarding_and_interworking.md) (not yet written). Related: [WF 02](02_wifi_phy.md), [WF 03](03_wifi_mac.md), [WF 06](06_wifi6_6e_7_features.md), [WF 07](07_wifi_architectures_mesh_and_services.md), [WF 11](11_rf_fundamentals_and_link_budget.md).
+Next: WF 15 (multicast, privacy, onboarding and interworking), not yet written.
 
 ## Sources
 
-- Wikipedia, IEEE 802.11ah: https://en.wikipedia.org/wiki/IEEE_802.11ah (fetched; bands, channel widths, FFT numerology, RAW, TWT, relay, sectorisation, the 433.3 Mbit/s figure)
-- Wikipedia, IEEE 802.11ay: https://en.wikipedia.org/wiki/IEEE_802.11ay (fetched; channel bonding, rates, range, the conflicting stream counts)
-- "IEEE 802.11ba: Extremely Low Power Wi-Fi for Massive Internet of Things": https://arxiv.org/pdf/1909.00594 (fetched; WUR PHY, frame, duty cycle, ns-3 results)
-- "Indoor Positioning with Wi-Fi Location: A Survey of IEEE 802.11mc/az/bk Fine Timing Measurement Research": https://arxiv.org/pdf/2509.03901 (first 100,000 of 141,331 characters read)
-- "IEEE 802.11bd and 5G NR V2X: Evolution of Radio Access Technologies for V2X Communications": https://arxiv.org/pdf/1903.08391 (fetched)
-- Not fetched or not readable: the Wikipedia pages for 802.11bd and 802.11az (page not found), and the search results for 802.11bd patents and mmWave V2X
-- Not read at all: the IEEE 802.11-2020 and later standards; every clause-level detail marked from memory (S1G TIM layout, DMG beacon interval structure, sector sweep timing, OCB parameters, 802.11aa, TDLS fields, 802.11bf, 802.11ak) is exactly that
+I checked key facts against Wikipedia (IEEE 802.11ah and 802.11ay) and three arXiv papers: "IEEE 802.11ba: Extremely Low Power Wi-Fi for Massive Internet of Things" (arXiv 1909.00594), "Indoor Positioning with Wi-Fi Location: A Survey of IEEE 802.11mc/az/bk Fine Timing Measurement Research" (arXiv 2509.03901, first part read) and "IEEE 802.11bd and 5G NR V2X" (arXiv 1903.08391). Everything marked "from memory", and most mechanism details of 802.11aa, TDLS, 802.11bf, 802.11ak and the 60 GHz MAC, come from my recollection of the amendments, not from the standard, which I did not read.
 
-Numbers marked modelled, computed or simulated come from `s1_halow.py` to `s6_gcr_tdls.py` and the problem scripts; powers, timings and loss probabilities marked assumed are my choices, not device properties.
+**What is modelled.** The HaLow range and contention figures, the 60 GHz link budget and training cost, the V2X Doppler and channel load, the ranging error, the wake-up radio battery comparison, the sensing detector and the groupcast comparison are all computed or simulated from simple models with assumed parameters (no radio was used). Treat the numbers as showing the shape of each trade-off, not as measured device behaviour.
