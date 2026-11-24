@@ -1,806 +1,401 @@
-# WF 09: Testing, from one noisy number to a defensible verdict
+# WF 09: Wi-Fi testing: from one noisy number to a defensible verdict
 
-*Part of the [networking plan](../00_plan.md), Wi-Fi sub-track · Candela sessions 8a, 8b, 8c and 8d (testing fundamentals, testing in the lab, testing in test houses, test plan development), with the gaps the CWNA, CWAP and CCIE Wireless material covers (what a Wi-Fi throughput test must report, how roaming and latency are measured, attenuators and shielding, certification and regulatory testing) · Prerequisites: [WF 03](03_wifi_mac.md) (retries, aggregation, power save), [WF 05](05_wifi_roaming_and_radio_management.md) (roaming), [WF 08](08_wifi_capture_tools_and_debug.md) (iperf3, ping, capture) and [WF 11](11_rf_fundamentals_and_link_budget.md) (link budget, used for the isolation arithmetic) · Time: about 8 hours · Practice: six experiments and five problem scripts in `prog/`*
+*Part of the [networking plan](../00_plan.md), Wi-Fi sub-track · Candela session 8 (testing: throughput, roaming, latency, scale, test houses, automation, test plans) · You need: [WF 08](08_wifi_capture_tools_and_debug.md) (capture, iperf3, logs), [WF 05](05_wifi_roaming_and_radio_management.md) (roaming), [WF 02](02_wifi_phy.md) (rates and sensitivity)*
 
-A test result is a random variable. The senior skill in Wi-Fi testing is not running iperf3 but knowing **how many runs make a number mean something, what the environment did between run A and run B, and what the test cannot see**. Candela's session 8 lists the places a test can run (the lab, a test house, the field) and the process of writing a plan. This tutorial turns each choice into a measurement or a computation: how much one throughput number moves on a real path and on a modelled Wi-Fi link in a lab and in a house, how many runs a precision costs, why testing build A in the morning and build B in the afternoon flags a regression **23.8 percent** of the time when there is none, how 17,280 configurations shrink to 43 and what that loses, what a retry policy does to the false failure rate and to the bugs that escape, how long a real outage a 10 ms prober sees, and how long 100 real supplicants take to authenticate.
+Wi-Fi is the hardest kind of system to test, because the medium is shared, random and uncontrolled. The same build, the same client and the same chair can give a throughput that differs by a factor of two between two runs. A test engineer who reports "500 Mbit/s" and "it regressed by 4 percent" from single runs is not measuring the product, they are measuring the room.
 
-**Eight honest limits, stated first.**
-
-1. **There is no radio here, so no Wi-Fi throughput is measured.** The two Wi-Fi sets (lab and house) are a model of mine: an 80 MHz, 2 stream link whose per-run level is shadowing (1 dB standard deviation in the lab, 4 dB in the house), whose neighbour airtime share is uniform from 0 to 5 percent (lab) or 0 to 40 percent (house), and whose per-10 ms slot is a Rayleigh fade. The **real** measurements are on a shaped veth path (iperf3, a 20 Mbit/s token bucket), on a route that is removed and restored, and on 802.1X with real `hostapd` and `wpa_supplicant`.
-2. **The real path is far quieter than any radio.** Its relative spread is 0.11 percent because a token bucket is the bottleneck; that is a property of the shaper, not of the host, and it shows what a *wired reference leg* of a test bed costs you in noise (almost nothing), not what Wi-Fi does.
-3. **The 802.1X scale test uses N `hostapd` processes, not one authenticator with N stations.** A multi-BSS `hostapd` needs a BSSID block and refused to start on veth interfaces, and a Linux bridge dropped the PAE group address frames, so each client has its own veth and its own `hostapd`. It measures supplicant and EAP-MD5 server cost under CPU contention on 2 cores, not the capacity of one access point. The floor of about 2.05 s at N = 1 is present in every run and I did not isolate which timer sets it.
-4. **A removed route is not a roam.** The gap experiment shows how a prober measures an outage (what it reports, what the latency statistics hide, what a slow prober misses). A real roam also has a scan, authentication, reassociation and a key exchange whose durations are in [WF 05](05_wifi_roaming_and_radio_management.md).
-5. **The tool, vendor, standard and certification tables are from memory** (LANforge, Ixia and Keysight, Spirent, Octoscope and similar systems, the Wi-Fi Alliance programs, the RFC numbers of the benchmarking family, shield box and chamber figures). They were not checked here and are marked **from memory**.
-6. **The coverage and retry experiments are simulations** with independent runs and faults placed uniformly at random. Real faults cluster in the configurations nobody thought of, which is exactly where a pairwise suite is weakest.
-7. **The paired against sequential comparison uses a drift model I chose** (an AR(1) process, 15 percent standard deviation, correlation time 12 runs, 6 percent fast noise). The direction of the result is robust; the percentages are not a forecast for a building.
-8. **Not run here:** LANforge, Ixia or any commercial emulator, real clients, a shield box, an attenuator matrix, a chamber, a house, a regulatory or certification test. Those parts are described from memory and from the course.
+Interviewers ask about testing to find out whether you can turn "it feels slower" into an experiment with a verdict. The strong answer states the **question**, the **environment**, the **metric definition**, the **number of runs and the statistic**, and what result would change the decision. This tutorial is that method, applied to Wi-Fi: what to measure and exactly what the number means, how much a number moves, how to benchmark without fooling yourself, how to test scale and failure, how to cover a combination matrix, and how to automate it all.
 
 By the end you can:
 
-- **say how much one number moves and how many runs a claim needs** (measured and modelled: 25 real iperf3 runs on the shaped path have a relative spread of **0.11 percent** quiet and **0.12 percent** with three busy loops on 2 cores, the modelled Wi-Fi link has **2.89 percent** in the lab and **18.25 percent** in the house, so a 5 percent half width at 95 percent confidence needs **4 runs** in the lab and **54** in the house, and **323** for 2 percent).
-- **say why a single run cannot call a regression** (modelled: one run against one run flags a 2 percent drop rule as a regression **44.1 percent** of the time when nothing changed; five runs per build and a t test flag **2.5 percent**, but detect a true 5 percent drop only **4.8 percent** of the time in the house, and **10.9 percent** with 15 runs).
-- **design a comparison that survives a drifting environment** (modelled: 10 runs of A then 10 runs of B flag a non-existent regression **23.8 percent** of the time, randomising the order **2.2 percent**, interleaved pairs with a paired test **2.3 percent**, and for a true 5 percent drop with 30 runs per build the paired design finds it **74.8 percent** of the time against **31.4 percent** for randomised order).
-- **measure an outage and know what the prober hides** (measured: a 10 ms prober reports a gap of D + 10 ms for outages of 20, 50, 200 and 800 ms (**30.0, 60.0, 209.9 and 810.4 ms**) and loses D/10 packets, while the mean round trip stays at **0.22 to 0.24 ms** and the worst reply at **0.7 to 1.9 ms**; a 100 ms prober reports **300 ms** for a 200 ms outage and misses **70.7 percent** of 30 ms outages).
-- **size a scale test and read its numbers** (measured: 1, 10, 30, 60 and 100 real supplicants authenticate in a median of **2.06, 2.05, 2.11, 2.22 and 2.29 s**, all of them every time, the slowest of 100 at **2.52 s**).
-- **cut a test matrix and say what was lost** (computed and simulated: 7 factors give **17,280** cases, an all-pairs suite covers all **376** value pairs in **43** cases (**0.25 percent**), finds **100 percent** of single and double factor faults against **90.9 percent** for 43 random cases, but only **54.5 percent** of 3 factor and **16.2 percent** of 4 factor faults; **180 days** of rig time become **3.6 hours** at 5 minutes a case).
-- **choose a retry policy with the arithmetic in front of you** (computed and Monte Carlo checked: with 5 percent noise per run, retry up to 3 times blocks a healthy build **0.01 percent** of the time instead of **5.00**, and lets a bug that fails half the runs through **87.5 percent** of the time instead of **50.0**; 5 runs find a q = 0.5 bug with 95 percent confidence, **299** runs find a 1 percent one).
-- **write a test plan** that a colleague can execute: objective, topology, preconditions, procedure, measurements, pass criteria with a statistical rule, noise handling, cleanup and a rig-time budget (the 43 case suite is **6.81 hours** on one rig at 9.5 minutes a case, **19.7 hours** if the house noise forces 15 runs a case).
-
-## Where the numbers come from
-
-Each experiment is a script `sN_*.py` or `.sh` in `prog/` with its output frozen in `v/`, run with `run.sh`. `topo.sh` builds the client, router and server namespaces with the token bucket shaper. `s1_repeat.sh` and `s1_stats.py` are the repeatability study, `s2_scale.sh` the 802.1X scale test, `s3_gap.py` the outage prober, `s4_plan.py` the test matrix, `s5_flaky.py` the retry policies and `s6_paired.py` the build comparison designs. The five problem scripts `ans_a.py` to `ans_e.py` are in sections 13 and 14.
-
-Every number in the text is copied from `v/*.out` or computed from a printed figure with the arithmetic shown. A number that is not measured, simulated, modelled or computed here is marked **from memory**.
-
-## Data and timing
-
-| What | Size or time |
-|---|---|
-| Repeatability (`s1_repeat.sh`) | 75 real iperf3 runs of 3 s over the shaped path, about 5 minutes, plus 50 modelled Wi-Fi runs and the statistics |
-| Scale (`s2_scale.sh`) | 1, 10, 30, 60 and 100 real `wpa_supplicant` and `hostapd` pairs in network namespaces, about 1 minute |
-| Outage prober (`s3_gap.py`) | 75 trials of 1.3 to 2.1 s with a 10 ms prober, about 2 minutes |
-| Test matrix (`s4_plan.sh`) | 17,280 combinations, greedy all-pairs with 300 candidates a step, 8,000 faults, under 5 s |
-| Retry policies (`s5_flaky.sh`) | exact binomial plus 200,000 Monte Carlo trials a cell, under 3 s |
-| Build comparison (`s6_paired.sh`) | 3,000 and 1,500 trials a cell, 24 cells, about 20 s |
-
-## Mapping to the Candela course
-
-Candela session 8a (testing fundamentals: approaches, lab and field, automation and manual) is sections 1, 2, 3 and 8. Session 8b (testing in the lab: benchmarking, scale and stress, repeatability and automation) is sections 4, 5, 6 and 8. Session 8c (testing in test houses: real houses and enterprise environments, challenges and solutions) is section 7. Session 8d (testplan development: develop and execute test plans, engineering tools) is sections 9 and 10. This tutorial adds the numbers behind each topic, and, at CWNA and CWAP level and **from memory** (the mrncciew pages were not re-read for this tutorial): what the certification and regulatory programs test, attenuator and shielding arithmetic, and the metric definitions behind throughput, roaming and latency claims.
+- write a test as a question with an oracle, and place it on the test pyramid;
+- choose between a conducted lab, an over-the-air chamber, a test house and the field, and say what each cannot tell you;
+- define throughput, latency, jitter, loss, roaming time and capacity so two labs get the same number;
+- explain why a single run cannot call a regression, and compute the runs needed and the smallest effect you can detect;
+- run a benchmark with a golden reference, a calibrated bed and recorded configuration;
+- test rate against range, roaming and channel switching in a repeatable way;
+- design scale, stress, soak and fault-injection tests;
+- describe conformance, interoperability, certification and regulatory testing and who does each;
+- automate tests, handle flaky tests honestly, and build a test plan with all-pairs coverage;
+- report results so a manager can act on them.
 
 ---
 
+## 1. What a test is for
 
-## 1. Testing fundamentals
+A test answers a question with evidence. Write the question first, because it fixes the environment, the metric and the number of runs.
 
-### 1.1 What a test is for
-
-A test answers a question with evidence. Before choosing a tool, write the question, because the question fixes the environment, the metric and the number of runs.
-
-| Question | Kind of test | Typical environment | Typical output |
+| Question | Kind of test | Typical environment | Output |
 |---|---|---|---|
 | Does the code do what the author meant? | unit, component | developer machine, simulation | pass or fail |
-| Does the device follow the standard? | conformance | shielded lab, golden reference, protocol analyzer | pass or fail per clause |
-| Does it work with other vendors' devices? | interoperability | lab with a client zoo, test house | pass or fail per pair, a matrix |
+| Does the device follow the standard? | conformance | shielded lab, golden reference, analyzer | pass or fail per clause |
+| Does it work with other vendors' devices? | interoperability | lab with a client zoo, test house | a matrix of pairs |
 | How fast, how far, how low a latency? | performance, benchmarking | conducted lab, then OTA chamber | a distribution, not a number |
-| How many clients, how fast a churn? | scale and stress | emulated clients plus real ones | a capacity curve and a knee |
-| Does it still work after 3 days? | soak, endurance | lab rack | a time series of the metrics |
-| Does a failure heal? | fault injection, negative | lab with controllable power, links and RF | recovery time distribution |
+| How many clients, how fast a churn? | scale and stress | emulated plus real clients | a capacity curve and a knee |
+| Does it still work after three days? | soak | lab rack | time series of metrics |
+| Does a failure heal? | fault injection | lab with controllable power, links, RF | recovery time distribution |
 | Does it work where people live? | field, test house, beta | houses, offices, campuses | a population of results with the environment recorded |
-| May it be sold here? | regulatory (emissions, SAR, DFS, power) | accredited lab | a report from a notified body |
-| May it carry the logo? | certification (Wi-Fi Alliance programs, **from memory**) | authorised test lab | a certificate |
+| May it be sold here? | regulatory (emissions, power, DFS) | accredited lab | a report |
+| May it carry the logo? | certification | authorised test lab | a certificate |
 
-Two words that are used loosely and should not be. **Verification** asks whether the product meets its specification ("did we build it right"); **validation** asks whether the specification serves the user ("did we build the right thing"). A throughput test that passes against a datasheet verifies; a customer who sees the video freeze in the bedroom validates. A Wi-Fi product can pass every verification test and fail validation, which is why the field and the test house exist.
+**Verification** asks "did we build it right" (does it meet the spec); **validation** asks "did we build the right thing" (does the spec serve the user). A product can pass every datasheet test and still freeze the video in the bedroom, which is why the house and the field exist.
 
-A **test oracle** is the rule that says what a correct result is. For a conformance test it is the standard; for a performance test it is a requirement with a statistical rule ("median of 10 runs at least 450 Mbit/s with a 95 percent lower bound at least 430"); for an interoperability test it is "the same as the reference stack". A test with no oracle produces a number, not a verdict. Most disputes about a result are disputes about the oracle, so write it before the first run.
+**The oracle.** A test oracle is the rule that says what a correct result is. For conformance it is the standard; for performance it is a requirement with a statistical rule ("median of 10 runs at least 450 Mbit/s with a 95 percent lower bound of 430"); for interoperability it is "the same as the reference stack". **A test with no oracle produces a number, not a verdict**, and most arguments about results are arguments about the oracle. Write it before the first run.
 
-### 1.2 Black, grey and white box
+**Black, grey and white box.** Black box uses only the interfaces a customer has (the air, the Ethernet port) and cannot say why a test failed. White box uses internals (logs, counters, a serial console, injected faults) and explains failures. **Grey box** is the Wi-Fi default: run the test through the air and record the driver's rate, retry and airtime counters every second alongside it, because a throughput drop is only useful with the rate and retry history next to it ([WF 08](08_wifi_capture_tools_and_debug.md)).
 
-- **Black box** exercises the product only through its interfaces (the air, the Ethernet port, the web page). It is what a customer sees and what a certification lab does. It cannot say why a test failed.
-- **White box** uses internal access: logs, counters, debug commands, instrumented builds, a serial console. It explains failures and can force states (inject a deauthentication, drop a key message, set a rate) that the air interface cannot produce on demand.
-- **Grey box** is a black box test with the white box evidence collected alongside: run the throughput test through the air and record the driver's rate statistics, retry counters and airtime every second. This is the usual choice in Wi-Fi platform work, because a throughput drop is only useful with the rate and retry history next to it, which is the capture and counter discipline of [WF 08](08_wifi_capture_tools_and_debug.md).
+**The test pyramid.** Many fast, cheap tests at the bottom and few slow, realistic ones at the top:
 
-### 1.3 The test pyramid for a Wi-Fi platform
-
-```
-                 field / beta                  few, slow, realistic, uncontrolled
-              test house, certification
-           system tests in the RF lab          tens to hundreds, hours each
-        integration: driver + firmware + AP    hundreds, minutes each
-     component and protocol tests (simulated)  thousands, seconds each
-   unit tests, static analysis, sanitizers     tens of thousands, milliseconds each
+```mermaid
+flowchart BT
+    U[Unit tests, static analysis, sanitizers: thousands, milliseconds] --> C[Component and protocol tests, simulated frames: hundreds to thousands, seconds]
+    C --> I[Integration: driver, firmware, AP: hundreds, minutes]
+    I --> S[System tests in the RF lab: tens to hundreds, hours]
+    S --> F[Test house, certification, field and beta: few, slow, realistic]
 ```
 
-The cost per test rises about a factor of ten per level and so does the realism. The rule that follows: **a bug found at a lower level costs a tenth as much and is easier to reproduce**, so every escape from a higher level should become a test at the lowest level that can express it. A radio-only failure that was reproduced by a frame replay becomes a protocol test with a captured frame; a race that needed 4 hours of soak becomes a component test with an injected delay.
+Cost and realism both rise about tenfold per level. The rule that follows: **every escape from a higher level becomes a test at the lowest level that can express it.** A failure found in the field that a frame replay reproduces becomes a protocol test with a captured frame; a race that needed four hours of soak becomes a component test with an injected delay.
 
-### 1.4 Approaches that recur
+Test approaches that recur: **baseline and delta** (one change at a time), **boundary and equivalence** (channels 36, 64, 100, 144, 165; widths 20 to 160 MHz), **factorial and pairwise** (section 10), **regression** (rerun on every change), **exploratory** (a person with a hypothesis, walking away from the AP on a video call), **negative and fault injection** (wrong PSK, rogue deauth, kill RADIUS), **soak and stress**, and **differential** (our AP against a reference AP in the same spot).
 
-| Approach | Idea | Wi-Fi example |
-|---|---|---|
-| Baseline and delta | measure a reference, change one thing, measure again | same AP, firmware N against N+1, one client, one position |
-| One variable at a time | vary a single factor, hold the rest | sweep attenuation in 3 dB steps, everything else fixed |
-| Factorial and pairwise | vary many factors, cover combinations | band, width, security, client, AP mode, roam, traffic (section 9.3) |
-| Boundary and equivalence | test at the edges and one per class | channel 36, 64, 100, 144, 165; 20, 40, 80, 160 MHz |
-| Regression | rerun the known tests on every change | nightly suite gating the merge |
-| Exploratory | a person with the product and a hypothesis | an engineer walking away from the AP during a video call |
-| Negative and fault injection | provoke the failure on purpose | rogue deauth, wrong PSK, kill the RADIUS server, pull the uplink |
-| Soak | run at moderate load for days | 50 clients, 72 hours, memory and association count trended |
-| Stress | exceed the specified load until it breaks | associations per second until the rejection rate rises |
-| Differential | the same test on two implementations | our AP and a reference AP in the same position, same client |
+## 2. Where to test: conducted lab, chamber, test house, field
 
-## 2. Lab, field and test house
-
-### 2.1 What each one buys
-
-| Property | Conducted lab (cables, attenuators, shield boxes) | OTA lab (chamber, turntable) | Test house or office | Field (customer site) |
+| Property | Conducted lab (cables, attenuators, shield boxes) | OTA chamber (turntable) | Test house or office | Field |
 |---|---|---|---|---|
 | RF control | complete | high | low | none |
-| Repeatability | best (relative spread of a few percent or below) | very good | poor (tens of percent) | poorest |
-| Realism of propagation | none (a wire has no multipath) | good if the chamber and the positioning are good | real | real |
+| Repeatability | best (a few percent) | very good | poor (tens of percent) | poorest |
+| Propagation realism | none (a wire has no multipath) | good if positioning is good | real | real |
 | Realism of clients and neighbours | what you bring | what you bring | partly | all of it |
-| Cost per run | low | high (the chamber) | medium (a place and people) | high (travel, access, risk) |
-| What it finds | protocol, rate adaptation, capacity, regression | antenna, beamforming, MIMO, range, orientation | roaming, coverage, interference from real devices, usability | the unknown unknowns |
-| Failure mode | a perfect result that no customer will see | long and expensive | non-repeatable result | an anecdote |
+| Cost per run | low | high | medium | high |
+| Finds | protocol, rate adaptation, capacity, regressions | antenna, beamforming, MIMO, range, orientation | roaming, coverage, real interferers, usability | the unknown unknowns |
+| Failure mode | a perfect result no customer will see | long and expensive | non-repeatable | an anecdote |
 
-A good programme uses all four and does not ask one to do the job of another: **lab for regression and diagnosis, test house for realism and interoperability, field for what nobody thought of**, and the findings flow downward into automated lab tests.
+A good programme uses all four and does not ask one to do another's job: **lab for regression and diagnosis, chamber for antenna and range, test house for realism and interoperability, field for what nobody thought of**, with findings flowing back down into automated lab tests.
 
-### 2.2 Isolation arithmetic
+**Isolation is the foundation of a conducted test.** Two devices on a bench are connected by the air as well as by the cable, and free-space loss at one metre is only about 40 dB at 2.4 GHz and 47 dB at 5 GHz, while a receiver floor is around -95 dBm for a 20 MHz channel. A leaked signal 10 dB under that floor needs on the order of **75 to 80 dB of isolation at one metre**, and bare devices are tens of dB short. Three consequences:
 
-A conducted test is only conducted if nothing else reaches the receiver. The arithmetic uses the free space path loss of [WF 11](11_rf_fundamentals_and_link_budget.md), FSPL = 20 log10(4 π d f / c).
+1. **A cable is not isolation.** Connectors leak and an unterminated port radiates. Use **shield boxes** (rated around 80 to 100 dB) or a shielded room and terminate unused ports.
+2. **An attenuator range is a dynamic range.** The usable sweep is bounded by the isolation floor above and the connection loss below. If the isolation is poor, the low-rate end of a range test is polluted by leakage and rate adaptation looks better than it is. The Wi-Fi Alliance's device metrics ask for ambient signals below -100 dBm in an 80 MHz channel.
+3. **Distance is not attenuation.** A neighbouring test bed three metres away still arrives about 45 dB above the preamble detection level. Two beds in one room interfere deterministically, and it looks like a product bug.
 
-At 1 m the loss is **40.2 dB at 2.44 GHz** and **47.3 dB at 5.5 GHz** (computed: 4 π × 1 m × 2.44 GHz / c = 102.3 gives 40.2 dB; 4 π × 5.5 GHz / c = 230.5 gives 47.3 dB). An access point transmitting at 20 dBm EIRP puts **-27.3 dBm** into a receiver 1 m away at 5.5 GHz. A 20 MHz receiver has a thermal floor of -101 dBm (-174 + 73), plus a noise figure of about 6 dB, so about **-95 dBm**. To keep a leaked signal 10 dB under that floor you need **-105 - (-27.3) = 77.7 dB** of isolation at 1 m. Two bare devices on a bench are 30 to 50 dB short of that.
-
-Three consequences:
-
-1. **Cables are not isolation.** A coaxial cable with a connector leaks, and an unterminated port radiates. Use shielded enclosures (a shield box is rated at 80 to 100 dB of isolation, **from memory**) or a shielded room, and terminate unused ports.
-2. **An attenuator range is a dynamic range.** A cabled test can sweep the path loss only between the isolation floor and the connection loss; with 70 dB of isolation and a 20 dB minimum path loss, the usable sweep is 50 dB, which has to cover the span between the highest and the lowest usable rate (about 40 dB between the sensitivity of the top and bottom rate in the tables of [WF 02](02_wifi_phy.md), **from memory**). If the isolation is worse, the low-rate end of the sweep is polluted by the leak, and the rate adaptation looks better than it is.
-3. **Distance is not attenuation.** At 3 m the loss is 56.8 dB at 5.5 GHz, so a neighbouring AP at 20 dBm arrives at **-36.8 dBm**, which is **45 dB above** the -82 dBm preamble detection level. Two test beds in the same room with open air between them interfere, and the interference is deterministic enough to look like a product bug.
-
-An **attenuator matrix** (programmable, one step of 0.25 to 1 dB, **from memory**) connects N APs to M clients with a controlled path loss between each pair, which is how a conducted roaming test is built: attenuate AP1 from 40 to 90 dB while attenuating AP2 from 90 to 40 dB. A **turntable** inside an anechoic chamber rotates the device under test to measure antenna pattern and throughput against orientation, and a **channel emulator** adds delay spread and Doppler (**from memory**).
+An **attenuator matrix** connects N APs to M clients with a programmable path loss between each pair (this is how a conducted roam is built: attenuate AP1 up while attenuating AP2 down). A **turntable** in an anechoic chamber rotates the device to measure antenna pattern and throughput against orientation. A **channel emulator** adds delay spread and Doppler for fading.
 
 ## 3. What to measure, and exactly what the number means
 
-A metric without a definition is the main reason two labs disagree. Candela's session 8 names throughput, roaming and latency; write each as a definition that fixes the end points, the traffic and the statistic.
+Two labs disagree because they defined the metric differently. Define each one by its end points, traffic and statistic. The Wi-Fi Alliance's device-metrics document takes this approach (throughput, one-way delay and jitter, rate against range, channel switching, band steering, roaming, AR/VR traffic) and asks for **distributions** (PDFs, CDFs) rather than single averages.
 
 ### 3.1 Throughput
 
-- **Offered load**: what the generator sends. **Goodput**: what the application receives, in bits per second, over a stated interval, excluding the warm-up. **Throughput** in a test report should say which, and at which layer (PHY rate, MAC throughput, TCP payload).
-- **Zero-loss throughput** (the RFC 2544 definition, **from memory**): the highest offered rate at which no frame is lost, found by binary search. On a wired device this is a stable number. On a radio link with rate adaptation and a fading channel it is a distribution, because the loss-free rate itself moves, so report the median and a low percentile of repeated searches, or use a fixed offered load and report the loss.
-- **TCP throughput** depends on the window, the round-trip time and the congestion control: a 16 KB window gives 64, 6.4 and 1.3 Mbit/s at 2, 20 and 100 ms (measured in [WF 08](08_wifi_capture_tools_and_debug.md)). RFC 6349 (**from memory**) defines a framework: measure the path MTU and the baseline round trip first, compute the bandwidth-delay product, then compare the TCP result with the ideal.
-- **Directions and streams**: uplink and downlink differ (the AP and the client have different power, antennas and queues), and one stream differs from eight. A report that says "500 Mbit/s" and not how many streams, which direction and which congestion control cannot be reproduced.
+- **Offered load** is what the generator sends; **goodput** is what the application receives over a stated interval, excluding warm-up. Say which, and at which layer (PHY rate, MAC throughput, TCP payload).
+- **Zero-loss throughput** (the RFC 2544 idea) is the highest offered rate with no loss, found by binary search. On a wired device it is stable. On a radio link with rate adaptation and fading it is a **distribution**, so report the median and a low percentile of repeated searches:
+
+```python
+import random, statistics
+
+def zero_loss_search(loss_free, lo=0, hi=1000, tol=5):
+    while hi - lo > tol:
+        mid = (lo + hi) / 2
+        lo, hi = (mid, hi) if loss_free(mid) else (lo, mid)
+    return lo
+
+random.seed(3)   # a link whose true capacity wobbles around 420 Mbit/s
+res = [zero_loss_search(lambda r, cap=random.gauss(420, 40): r <= cap) for _ in range(20)]
+print(round(statistics.median(res)), round(min(res)), round(max(res)))   # 414 352 492
+```
+
+Twenty searches on the same link give answers from 352 to 492. A single zero-loss number from such a link is a sample from that spread.
+
+- **TCP throughput** depends on window, RTT and congestion control. RFC 6349 gives a framework: measure path MTU and baseline RTT first, compute the bandwidth-delay product, and compare the TCP result with the ideal.
+- **Direction and streams.** Uplink and downlink differ (different power, antennas, queues) and one stream differs from eight. "500 Mbit/s" with no direction, stream count and congestion control cannot be reproduced.
 
 ### 3.2 Latency, jitter and loss
 
-- **Round trip** (ping, RFC 2681 **from memory**) needs one clock and can include a slow reply path. **One way delay** (RFC 2679 **from memory**) needs synchronised clocks at both ends (PTP or GPS at microsecond level), and is the right measure for a voice or video stream.
-- **Jitter** is the variation of the delay: the inter-packet delay variation of RFC 3393 (**from memory**) or the running estimate of RFC 3550 that RTP receivers report.
-- **Use percentiles, not means.** The mean of a latency distribution is set by the bulk; the experience is set by the tail (p99, p99.9) and by the lost packets, which have no latency at all and therefore **vanish from a latency average**. Section 3.4 measures this.
-- **Loss** is reported as a fraction of the packets sent, with the packet size and rate, and its pattern (isolated or bursty) matters more than the mean for voice.
-- **Load matters.** Latency on an idle link and latency with a saturated link are different quantities; a deep buffer costs latency, not goodput (measured in [WF 08](08_wifi_capture_tools_and_debug.md): 49.1 ms with cubic and 6.6 ms with BBR on a 50 ms buffer).
+- **Round trip** (ping) needs one clock and can include a slow reply path. **One-way delay** needs clocks synchronised at both ends (PTP or GPS, microsecond level) and is the right measure for voice and video; the Alliance metrics prefer it.
+- **Jitter** is the variation of delay (inter-packet delay variation, or the running estimate RTP receivers report).
+- **Use percentiles, not means.** The mean is set by the bulk of packets; the experience is set by the tail (p99, p99.9), and **lost packets have no latency, so they vanish from a latency average.** Always report loss beside latency.
+- **Load changes everything.** Latency on an idle link and on a saturated link are different quantities; a deep buffer costs latency, not goodput ([WF 08](08_wifi_capture_tools_and_debug.md)).
+- **Loss** is a fraction of packets sent, with packet size and rate, and its pattern (isolated or bursty) matters more than the mean for voice.
 
-### 3.3 Roaming and failover
+### 3.3 Roaming, channel switching and band steering
 
-Define the roam from the **application's view**, not the protocol's: the **gap** is the longest interval in which a stream that normally delivers a packet every T seconds delivers none, around the event. Report it with the stream's packet interval, because the measurement resolution is that interval. Distinguish:
+Define a roam from the **application's view**. The **gap** is the longest interval in which a stream that normally delivers a packet every T seconds delivers none, around the event. Report it with T, because T is the measurement resolution:
 
-- **Link-layer roam time**: from the last data frame through the old AP to the first through the new one (read from a capture, as in [WF 05](05_wifi_roaming_and_radio_management.md)).
-- **Application gap**: the same plus the time the network needs to learn the new location (ARP, bridge learning, a mobility anchor, DHCP if the address changed, a TCP retransmission timeout that has backed off).
-- **Roam success rate**: the share of attempted roams that completed without a re-authentication or a lost session.
+```python
+def roam_gap(ts, event_t, window=2.0):
+    """Longest interval with no packet around the event. ts: sorted arrival times in seconds."""
+    near = [t for t in ts if event_t - window <= t <= event_t + window]
+    return max((b - a for a, b in zip(near, near[1:])), default=None)
 
-The common requirement of a 50 ms gap for voice (**from memory**) is an application figure; fast transition (802.11r) is the tool that makes the link-layer part fit inside it.
-
-### 3.4 An outage measured with real packets
-
-`s3_gap.py` sends a 10 ms UDP probe to an echo server across the shaped veth path, replaces the route with a blackhole for D ms and restores it, and reports the longest silence between two replies. Fifteen trials per D.
-
-```
---- the prober sends one UDP packet every 10 ms; the route to the server is made a blackhole for D ms and then restored; 15 trials per D; the gap is the longest silence between two replies
-(configured outage D ms | median gap seen ms | min | max | median packets lost | mean RTT ms with the event | p99 RTT ms | max RTT ms)
-     0 |    11.4 |   10.7 |   13.9 |    0 |  0.224 |  0.414 |  0.704
-    20 |    30.0 |   29.3 |   30.6 |    2 |  0.222 |  0.371 |  0.871
-    50 |    60.0 |   58.9 |   60.7 |    5 |  0.240 |  0.586 |  1.107
-   200 |   209.9 |  208.7 |  210.9 |   20 |  0.243 |  0.577 |  1.910
-   800 |   810.4 |  809.7 |  820.2 |   80 |  0.225 |  0.557 |  0.882
+ts = [i * 0.02 for i in range(200)]                 # one packet every 20 ms
+ts = [t for t in ts if not (1.5 < t < 1.62)]        # an outage of about 120 ms
+print(round(roam_gap(ts, 1.5), 3))                  # 0.12
 ```
 
-Reading the table:
+Separate the pieces: **protocol time** (probe or reassociation to completion, from a capture), **data outage** (the gap above, from the stream) and **application recovery** (a TCP flow may stall longer than the outage because of retransmission backoff). The Alliance metrics define roaming by data outage time, roam time and the fast-transition (reassociation) time, all from captures. Repeatable roaming tests use **recorded walk-throughs**: record the signal levels of a real walk, then replay them through an attenuator matrix, so every run sees the same fade.
 
-1. **The gap is D plus one probe interval**, **30.0, 60.0, 209.9 and 810.4 ms** for D = 20, 50, 200 and 800 (D = 0 gives 11.4 ms, the probe interval plus scheduling jitter). The prober cannot see the start and end of the outage inside its own interval, so it overstates by up to one interval. Packets lost are D/10: **2, 5, 20, 80**.
-2. **The mean round trip is blind to the event.** It is **0.222 to 0.243 ms** in every row, including the 800 ms outage that lost 80 packets, because a lost probe has no round trip and does not enter the average. The p99 is 0.37 to 0.59 ms and the worst reply 0.7 to 1.9 ms. A latency dashboard would report a healthy network through an outage that every user would feel.
-3. **An outage is found in the loss and the gap statistics, not in latency.**
+**Channel switching** (after an OBSS, interference or DFS event) is measured as how quickly traffic resumes (the Alliance expects within 5 seconds); **band steering** as the data outage while a client is moved.
 
-The same arithmetic shows what a slow prober does. `ans_c.py` (section 14) gives the reported gap for a true 200 ms outage:
+### 3.4 Scale and capacity
 
-```
---- true outage 200 ms, a prober that sends every I ms and sees a reply only if the probe is sent outside the outage; 20000 random phases
-(I ms | mean measured gap | min | max | outages shorter than 50 ms missed entirely, for a 30 ms outage)
-     10 |   210.0 |  210.0 |  210.0 |   0.0 %
-     20 |   220.0 |  220.0 |  220.0 |   0.0 %
-    100 |   300.0 |  300.0 |  300.0 |  70.7 %
-    500 |   697.1 |  500.0 | 1000.0 |  94.7 %
-   1000 |  1190.8 | 1000.0 | 2000.0 |  97.2 %
-```
-
-A probe every 100 ms reports **300 ms** (the gap is a multiple of the probe interval: (floor(D / I) + 1) × I), a probe every 500 ms reports 500 or 1000 ms depending on whether a probe fell inside the outage (mean **697 ms**), and a 30 ms outage escapes a 100 ms prober **70.7 percent** of the time and a 1 s prober **97.2 percent**. **A roaming test needs a prober an order of magnitude faster than the gap it wants to resolve**, and the interval belongs in the report next to the result.
-
-### 3.5 Scale and capacity metrics
-
-- **Associated clients** (the count that stays associated for the test interval), **association rate** (clients per second that complete 4-way handshakes), **authentication rate** (802.1X exchanges per second), **ARP and DHCP rate**.
-- **Per-client throughput and its fairness**: the Jain index (sum x)^2 / (n sum x^2) is 1 when all get the same and 1/n when one gets everything. Airtime fairness is the Wi-Fi-specific form: one slow client takes airtime from the rest ([WF 03](03_wifi_mac.md)).
-- **The knee**: the load at which a metric (latency, loss, rejection rate) leaves its flat region. Report the knee and the load at which the system fails, not the average over the whole sweep.
-- **Soak metrics**: memory, handles, association table size and error counters, trended over hours; the interesting number is the slope.
-
-
+Capacity has more than one definition, so pick one: the number of **associated** clients, the number **passing traffic**, the **association rate** a controller sustains, the **aggregate throughput** at a given client count, and the **client count at which a latency percentile crosses a target** (the knee). Report the curve, not only the maximum.
 
 ## 4. Repeatability: how much one number moves
 
-### 4.1 Three real sets and two modelled ones
+The noise of a Wi-Fi measurement is set by the radio and the environment, not by the wired parts of the bed. A shaped wired path repeats to about 0.1 percent between runs; a good conducted Wi-Fi lab link repeats to a few percent; a house link can vary by 20 percent or more, with the best run nearly twice the worst. Three consequences follow.
 
-`s1_repeat.sh` runs real iperf3 (2 s after a 1 s omit, one TCP stream with cubic, 25 runs) through the client, router and server namespaces with a 20 Mbit/s token bucket in each direction. It repeats the set while three busy loops compete for the 2 cores, and runs 25 UDP runs at 18 Mbit/s. `s1_stats.py` adds two modelled Wi-Fi sets (limit 1) and computes the statistics.
-
-```
---- real iperf3 runs: 2 s each after a 1 s omit, TCP, one stream, to a server behind a 20 Mbit/s token bucket
-(condition | runs | mean Mbit/s | sd | CV % | min | max | 95 % CI half width % of mean)
-  TCP, quiet VM (real)           |  25 | 18.972 |  0.020 |  0.11 |  18.93 |  19.03 |  0.04
-  TCP, 3 busy loops (real)       |  25 | 18.966 |  0.022 |  0.12 |  18.92 |  19.02 |  0.05
-  UDP at 18 Mbit/s (real)        |  25 | 17.986 |  0.029 |  0.16 |  17.92 |  18.04 |  0.07
-  Wi-Fi model, lab (modelled)    |  25 | 512.106 | 14.794 |  2.89 | 475.76 | 541.76 |  1.19
-  Wi-Fi model, house (modelled)  |  25 | 396.955 | 72.431 | 18.25 | 271.06 | 531.75 |  7.53
-```
-
-What the table says:
-
-- The real shaped path has a relative spread of **0.11 percent** (sd 0.020 on a mean of 18.972 Mbit/s), **0.12 percent** with three busy loops and **0.16 percent** for UDP. The CPU competition made no measurable difference because the shaper, not the host, sets the rate. A wired leg that is the bottleneck-free part of a test bed adds almost no noise, so the noise in a Wi-Fi test is the radio's.
-- The modelled lab link has a relative spread of **2.89 percent** and the modelled house **18.25 percent** (min 271, max 532 around a mean of 397 Mbit/s: the best run is **1.96 times** the worst). A 5 percent difference between builds is smaller than the noise of one house run by a factor of 3.6.
-- The 95 percent confidence interval of the mean is **±1.19 percent** after 25 lab runs and **±7.53 percent** after 25 house runs. The interval says how well the *mean* is known; it does not shrink the run to run variation that a customer sees.
-
-### 4.2 Runs needed for a precision
-
-The half width of the confidence interval of a mean of n runs is t × s / √n, with t the Student quantile for n - 1 degrees of freedom. Requiring it to be within a fraction e of the mean gives the smallest n with **t × cv / √n ≤ e** where cv is the relative spread. The script finds it by search:
-
-```
---- how many runs for a given precision: the smallest n with t * sd / sqrt(n) <= e * mean, e as a fraction of the mean, with the relative sd of each set above
-(precision e | runs: real shaped path | modelled Wi-Fi lab | modelled Wi-Fi house)
-    5.0 % |     2 |     4 |    54
-    2.0 % |     2 |    11 |   323
-    1.0 % |     2 |    35 |  1282
-    0.5 % |     3 |   131 |  5119
-```
-
-For the house, **54 runs** for ±5 percent, **323** for ±2 percent, about **5,100** for ±0.5 percent; for the lab **4, 11, 35 and 131**. Because n grows as the square of 1/e, halving the precision interval costs four times the runs. Two practical consequences:
-
-1. **When the environment sets the noise, buy variance reduction, not runs.** Section 5 and section 7 show three ways (control the environment, pair the runs, measure the environment). Going from 18 to 3 percent spread (house to lab) saves a factor of **(18.25 / 2.89)^2 = 39.9** in runs, which is the real reason labs exist.
-2. **The precision you can afford sets the smallest difference you can claim.** With 54 runs a build, a 5 percent difference is about the limit in a house; a 2 percent claim needs a lab.
-
-### 4.3 One run cannot call a regression
-
-```
---- can one run tell two builds apart? the modelled house runs against a "build B" that is a fixed percent lower (the same runs scaled), single run against five and fifteen runs with a t test
-  true change  0.0 %,  1 runs per build: flagged as a regression  44.1 % of the time
-  true change  0.0 %,  5 runs per build: flagged as a regression   2.5 % of the time
-  true change  0.0 %, 15 runs per build: flagged as a regression   2.9 % of the time
-  true change  2.0 %,  1 runs per build: flagged as a regression  48.4 % of the time
-  true change  2.0 %,  5 runs per build: flagged as a regression   3.3 % of the time
-  true change  2.0 %, 15 runs per build: flagged as a regression   5.0 % of the time
-  true change  5.0 %,  1 runs per build: flagged as a regression  59.1 % of the time
-  true change  5.0 %,  5 runs per build: flagged as a regression   4.8 % of the time
-  true change  5.0 %, 15 runs per build: flagged as a regression  10.9 % of the time
-```
-
-(The rule for one run: call it a regression when B is more than 2 percent below A. For 5 and 15 runs: a t test at 5 percent on the house model, one-sided in effect because only B lower counts.)
-
-- With **no change at all**, a single run against a single run raises a false alarm **44.1 percent** of the time. Nearly every regression ticket opened from a single noisy run is that.
-- A t test on 5 runs a build keeps the false alarm at **2.5 percent** (the test is working) but a true 5 percent drop is found **4.8 percent** of the time, **10.9 percent** with 15 runs: in a house, neither is enough. This is the power problem: **the false alarm rate is a choice, the detection rate is a consequence of the noise and the number of runs**. A test report should state the smallest drop it could have detected (the minimum detectable effect) next to "no regression found".
-
-## 5. Benchmarking in the lab
-
-### 5.1 The discipline
-
-A benchmark is a controlled comparison. The steps, in order:
-
-1. **Fix the configuration and write it down**: firmware hash, driver and kernel versions, country code, channel and width, security mode, client model and driver, positions or attenuation, traffic generator version and command. Treat a result without it as lost.
-2. **Calibrate the bed**: measure the path loss of every cable and attenuator with a network analyzer or a known reference, and verify the isolation (section 2.2) by measuring the leak with the DUT's antenna ports terminated. A lab that has not measured its own noise has no right to claim a precision.
-3. **Use a golden reference** (a known AP and client that never change) and run it every day. If the reference moves, the bed changed, not the build; this is the control chart of the lab.
-4. **Warm up and omit**: skip the first seconds (rate adaptation converging, TCP slow start) with `iperf3 -O`, and say so.
-5. **Change one thing, or randomise the order of changes** (section 5.3).
-6. **Run enough times** (section 4.2) and **report the distribution**: n, median, a low percentile, the spread and the interval, not one number.
-7. **Record the environment with the result**: the other traffic on the channel (airtime busy time from a monitor), the temperature of the DUT, the time. A result you cannot explain is only repeatable if it carries its context.
-
-### 5.2 Variance components
-
-The total variance of a benchmark is a sum of contributions: run to run noise (fading, scheduling), setup to setup (cabling, antenna position, client reseating), day to day (temperature, neighbours), and the build difference you want. The first can be averaged by more runs; the others cannot, and they set a **floor** below which more runs buy nothing. A lab that measures its own floor (the same build, the same bed, reseated each day) learns the real minimum detectable effect. A gauge repeatability and reproducibility study (**from memory**, a method of manufacturing quality) does exactly this: parts (devices), operators (setups) and repeats (runs), and decomposes the variance.
-
-### 5.3 Comparing two builds when the environment drifts
-
-Sections 4.1 to 4.3 assumed independent runs. A real environment drifts: neighbours' traffic, temperature, a client's thermal state. `s6_paired.py` models the drift as a slow AR(1) process and compares three ways to schedule 10 runs of A and 10 of B:
+**How many runs for a precision.** The half-width of the confidence interval of a mean of n runs is t × s / √n. Requiring it within a fraction e of the mean gives the smallest n with t × cv / √n ≤ e, where cv is the relative spread:
 
 ```python
-def trial(r, delta, pairs, design):
-    n = 2 * pairs; d = drift(r, n); f = r.normal(0, 0.06, n)
-    if design == 'blocks': lab = np.array([0] * pairs + [1] * pairs)
-    elif design == 'paired': lab = np.array([0, 1] * pairs)
-    else: lab = r.permutation(np.array([0, 1] * pairs))          # randomised order
-    y = 400 * (1 - delta * lab) * np.exp(d + f)
-    if design == 'paired':
-        a, b = y[lab == 0], y[lab == 1]
-        return stats.ttest_rel(a, b).pvalue < 0.05 and b.mean() < a.mean()
-    a, b = y[lab == 0], y[lab == 1]
-    return stats.ttest_ind(a, b, equal_var=False).pvalue < 0.05 and b.mean() < a.mean()
+import math
+from scipy import stats
+
+def runs_needed(cv, e):
+    for n in range(2, 100000):
+        if stats.t.ppf(0.975, n - 1) * cv / math.sqrt(n) <= e:
+            return n
+
+print(runs_needed(0.0289, 0.05), runs_needed(0.1825, 0.05), runs_needed(0.1825, 0.02))   # 4 54 323
 ```
 
-```
---- 10 runs per build, 3000 trials per cell; the fraction of trials that call build B a regression (p < 0.05, B lower)
-(true drop of B | sequential blocks | randomised order | interleaved pairs)
-     0 % |   23.8 % |    2.2 % |    2.3 %
-     3 % |   30.9 % |    7.1 % |   11.9 %
-     5 % |   37.1 % |   16.6 % |   28.3 %
-    10 % |   54.2 % |   53.4 % |   81.6 %
---- the same with 30 runs per build
-     0 % |   31.5 % |    2.7 % |    1.8 %
-     3 % |   40.7 % |   13.3 % |   31.7 %
-     5 % |   47.6 % |   31.4 % |   74.8 %
-    10 % |   63.9 % |   82.1 % |  100.0 %
-```
+A lab (spread about 3 percent) needs 4 runs for ±5 percent; a house (spread about 18 percent) needs 54, and 323 for ±2 percent. Because n grows as 1/e², **halving the interval costs four times the runs**. When the environment sets the noise, **buy variance reduction, not runs**: control the environment, pair the runs, measure the environment. Going from 18 to 3 percent spread saves a factor of about 40 in runs, which is the real reason labs exist.
 
-- **All of A, then all of B (blocks)** treats the drift between the blocks as a build difference: with no real change it calls B a regression **23.8 percent** of the time at 10 runs a build and **31.5 percent** at 30 (more runs make it worse, because the confidence interval narrows around a biased difference). This is how most manual comparisons are made.
-- **Randomised order** restores the false alarm rate (**2.2 percent**), but its detection of a true 5 percent drop is only **16.6 percent** at 10 runs and **31.4 percent** at 30, because the drift is still inside the variance.
-- **Interleaved pairs (ABAB) with a paired test** also keeps the false alarm rate (**2.3 percent**) and removes the slow drift, because adjacent runs share it: for a true 5 percent drop it finds **28.3 percent** at 10 pairs and **74.8 percent** at 30; for 10 percent, **81.6** and **100.0 percent**.
+**One run cannot call a regression.** Compare two builds that are *identical* with one run each and a rule "flag if B is more than 2 percent below A": with house-level noise this raises a **false alarm close to half of the time**. Most regression tickets opened from a single noisy run are exactly this.
 
-The rule: **never compare builds measured at different times; interleave them, randomise the order within pairs if the order could matter, and use a paired test.** The same logic applies to antennas, positions and clients.
-
-### 5.4 What the conducted lab cannot tell you
-
-A cabled lab has no multipath, no antenna pattern and no body in the way. It will pass a build that fails in a house because of a spatial stream imbalance, a beamforming weakness or a flaw in rate adaptation on a time-varying channel. Include a channel emulator (**from memory**: delay profiles such as the TGn models) or move the same test to a chamber and a test house before you claim a throughput. The conducted number is the **upper bound** of what the product can do and the right place to find a regression; it is the wrong place to find a user's experience.
-
-
-
-## 6. Scale and stress
-
-### 6.1 What scale testing is for
-
-A scale test asks what happens when the number of clients, flows or events grows. Wi-Fi platforms fail in four ways under scale, and a test plan needs one test for each:
-
-| Failure | Cause | What to sweep | What to watch |
-|---|---|---|---|
-| Capacity cliff | a table, a queue or a CPU fills | clients associated, flows, VLANs, ACL entries | rejection rate, latency knee, CPU, memory |
-| Airtime collapse | contention, low-rate clients, management overhead | clients active, offered load per client, beacon rate and SSIDs | per-client throughput, Jain fairness, channel busy time |
-| Control-plane storm | all clients act at once (reboot, power return, roam wave) | association rate, authentication rate, DHCP rate | time to last client up, failures, retries |
-| Slow leak | a resource that is not returned | soak at constant load, churn at constant population | memory slope, handles, table sizes |
-
-Client population matters. **Emulated clients** (a traffic generator that associates many virtual stations from a few radios, as a Candela LANforge or an Ixia or Spirent system does, **from memory**) give the count cheaply and exercise the control plane, but each one shares a radio and an RF path with its siblings, so their airtime and rates are not those of real devices. **Real clients** (a rack of phones and laptops) give the radio behaviour and the client-specific bugs but cost a room and manual care, so a good bed uses emulated clients for the count and a small set of real clients as a probe on the same cell.
-
-### 6.2 A control-plane scale test with real software
-
-`s2_scale.sh` starts N real `wpa_supplicant` instances at once, each in its own network namespace, against `hostapd` 802.1X servers with the built-in EAP server and an EAP-MD5 user, and reads the time from the common start to the `CTRL-EVENT-EAP-SUCCESS` line in the AP logs (limit 3 says what this does and does not model).
-
-```
---- N supplicants started at the same instant against N hostapd processes (one per veth, since multi-BSS needs a BSSID block), EAP-MD5, the time from start to the AP logging EAP success for that client
-(clients | authenticated | median s | p95 s | max s)
-     1 |    1 |   2.06 |   2.06 |   2.06
-    10 |   10 |   2.05 |   2.06 |   2.06
-    30 |   30 |   2.11 |   2.14 |   2.14
-    60 |   60 |   2.22 |   2.28 |   2.28
-   100 |  100 |   2.29 |   2.48 |   2.52
-```
-
-Reading the table:
-
-- **All clients authenticated every time**, up to 100.
-- The **median time barely moves**: 2.06 s for 1 client, 2.29 s for 100, a rise of 0.23 s over 99 extra clients, about **2.3 ms a client** on 2 cores. The slowest of 100 took 2.52 s, 10 percent above the median.
-- The **common floor of 2.05 s** is not the server's work: a single client has it too. A wired 802.1X supplicant starts with a timer before it sends its first frame, and I did not isolate which; the lesson for a test is that **a fixed latency in the control plane hides under the scale effect**, so measure N = 1 first and subtract it before computing a per-client cost.
-- **Do not extrapolate.** 100 on 2 cores with EAP-MD5 and one process per client says nothing about 2,000 TLS-based EAP clients on a controller. The cost of PEAP or EAP-TLS is dominated by public key operations on the server ([WF 04](04_wifi_security.md), **from memory**), and the failure mode at the knee is a queue that grows without bound, which this sweep never reached.
-
-### 6.3 Designing a sweep
-
-1. **Find the knee with a geometric sweep** (1, 2, 4, ... clients) until a metric leaves its flat range, then refine linearly between the last good and first bad point.
-2. **Repeat each point** (section 4): the knee is a statistic, and a single run on each side can place it a factor of two wrong.
-3. **Hold everything else fixed**: the offered load per client, packet size and traffic mix.
-4. **Record the resource trends** of the DUT (CPU, memory, table sizes) with the test, not only the traffic results.
-5. **Test the recovery** as well: after the overload, remove the load and check that the system returns to its baseline performance without a reboot. A system that survives the peak and never recovers is a failure.
-6. **Stress beyond the specification** to learn how the product fails (graceful rejection, a crash, a silent drop) and write the answer into the plan as an expected behaviour.
-
-### 6.4 Soak and churn
-
-A soak test runs a realistic mix at moderate load for 24 to 72 hours. Its pass criterion is not "it did not crash" but **a bounded slope** for the monitored resources: define a threshold for memory growth per hour and for the count of each table, and fail the run when the fitted slope exceeds it. A churn test keeps the population constant and replaces clients at a steady rate (associate, run for a while, disassociate), which finds leaks that a static population hides, such as a per-association structure not freed on the error path.
-
-## 7. Testing in test houses and real environments
-
-### 7.1 Why a house is different
-
-A house or an office has what the lab removes: multipath from walls and furniture, a dozen neighbouring networks, microwave ovens and baby monitors, IoT devices with poor radios, people walking, and clients of every age. The same build that gives a spread of 3 percent in a cabled lab gives **18 percent** in the modelled house of section 4, because the environment adds variation between runs (the neighbours' airtime, the client's position, the time of day). Candela's session 8c lists the challenges; they group into four.
-
-| Challenge | Why it hurts | Solution |
-|---|---|---|
-| **Uncontrolled interference** | neighbours' airtime and non-Wi-Fi emitters change between runs | measure the channel busy time and the spectrum during every run ([WF 08](08_wifi_capture_tools_and_debug.md)); test at fixed hours; pair and interleave the runs (section 5.3); use a channel with the least occupation and record which |
-| **Position and orientation** | a 10 cm shift changes the signal by several dB through multipath | mark positions with tape; use a fixed rig with a repeatable height; take several positions per room and report the distribution; keep the client orientation fixed or rotate it on purpose |
-| **Heterogeneous clients** | each phone and laptop has its own radio, drivers, power save and quirks | keep a named client zoo with versions; test every client on the same position set; record the client and its OS build with every result |
-| **People and access** | testing needs people, time and permission | automate the repetitive parts (a test box that runs the full script from a button); schedule overnight when the owner is away; agree the scope and privacy (a capture contains other people's traffic, so capture only what the test needs and treat it as personal data) |
-
-### 7.2 Residential and enterprise are different problems
-
-- **Residential**: one or a few APs, a mix of walls, a hard-to-model client mix, a small number of simultaneous users with a video call, a game and a set of IoT devices. The user's question is "does it work in every room?", so test the **coverage** (rate and loss per room), the **worst room**, the behaviour of a mesh satellite ([WF 07](07_wifi_architectures_mesh_and_services.md)) and the **recovery** (the router restarts, the uplink goes down).
-- **Enterprise**: many APs, controlled by a controller or a cloud, high density (a lecture hall or a stadium), roaming under the sound of a thousand clients, RADIUS and a captive portal, VLANs and policies. The question is "does it work for everyone at the same time, and can I find the problem when it does not?", so test **capacity per AP**, **roaming** along a path (with a prober as in section 3.4), **band steering and load balancing**, **authentication storms** (section 6.2), and the **observability** of the product (does the management system show the client, the AP and the reason?).
-
-### 7.3 A test house protocol
-
-1. **Survey first.** Run a passive survey of the spaces and a spectrum capture ([WF 08](08_wifi_capture_tools_and_debug.md)), and record the neighbours and the noise before touching the product. A result without that baseline cannot be explained later.
-2. **Define the positions and the paths** (a table: room, position, height, distance, walls to the AP) and the **walking route** for roaming, with the timing marks.
-3. **Define the client set and the traffic mix**, and the run length and count from section 4.2 for the precision you need; if the budget cannot reach it, say what precision you can claim.
-4. **Interleave the builds and the positions** (section 5.3); never test one build on Monday and the other on Friday.
-5. **Capture alongside** the throughput: a monitor-mode sniffer on the channel (its limits are in [WF 08](08_wifi_capture_tools_and_debug.md): it hears the data frames worse than the ACKs), the AP's counters, and the client's logs.
-6. **Convert findings into lab tests.** A house failure becomes a repro in the cabled lab, where it can be fixed and kept as a regression test; if it cannot be reproduced in the lab, the lab is missing a capability and that is also a finding.
-
-### 7.4 What a home result can claim
-
-A single walk through a single house gives an **anecdote**. Ten houses with the same protocol give a **distribution**, and the claim is about the distribution ("the median of the worst-room rates is X and the 10th percentile Y"). Report the number of houses and the construction (brick, wood, concrete), because the spread across houses is larger than the spread across runs, and a build that wins in a wooden house can lose in a brick one.
-
-
-
-## 8. Automation and manual testing
-
-### 8.1 What each is good for
-
-| | Automated | Manual |
-|---|---|---|
-| Repetition, regression, nightly gating | yes | no |
-| Statistics (many runs, sweeps, soak) | yes | impractical |
-| Combinatorial coverage | yes | no |
-| Exploration, new features, "does this feel wrong" | no | yes |
-| Odd clients, usability, physical interactions (reset button, LEDs, power cycles) | partly, with relays and cameras | yes |
-| Cost structure | high to build, near zero per run | no build, high per run |
-| Failure mode | a green dashboard that tests the wrong thing | a result that depends on who ran it |
-
-Automate a test when it will run **often enough that the build cost is repaid** and its result is **well defined**. Keep manual what needs judgement, and turn what the manual tester finds into an automated check so that the finding is not forgotten. A reasonable split for a Wi-Fi platform team is that the nightly suite covers the regression and the matrix, the weekly run covers scale and soak, and the humans spend their time on new features, odd clients and the house.
-
-### 8.2 The harness
-
-An automated Wi-Fi bed has the same parts everywhere (the names vary, **from memory**):
-
-```
- scheduler / CI  ->  test runner  ->  bed control   ->  DUT control
-   (nightly,          (pytest or       (attenuators,      (CLI, SSH, REST,
-    on commit)         a framework)     power relays,      serial console,
-                                        turntable)         firmware flashing)
-        |                  |
-        v                  v
-   results store  <-  traffic and capture  (iperf3, a traffic generator,
-   (database,          (monitor sniffers, counters, logs from every device)
-    trend charts)
-```
-
-Requirements that separate a harness that is trusted from one that is ignored:
-
-1. **Every test starts from a known state** (factory reset or a stored configuration, a cleared client association) and ends by restoring it. A test that depends on the previous test's leftover is the source of most mystery failures.
-2. **Every result carries its context** (section 5.1): build, bed, positions, environment measurements.
-3. **Logs from every device are collected on failure**, including the captures, so that a failed test can be diagnosed without being rerun.
-4. **The bed can be health-checked** by a self-test (a golden link) before the suite starts, so that a bed fault is reported as a bed fault and not as 200 failed tests.
-5. **A test distinguishes a product failure from an infrastructure failure** (the DUT answered incorrectly versus the SSH connection dropped) and reports them differently.
-
-### 8.3 Flaky tests and the retry policy
-
-A noisy test fails sometimes for reasons unrelated to the product. The tempting fix is to retry, and the arithmetic of retries is worth having in front of you. Model each run of a healthy build as failing with probability f (noise) and each run of a buggy build as failing with probability q (an intermittent bug). A policy decides pass or fail from n runs. `s5_flaky.py` computes the exact binomial results and checks them with 200,000 Monte Carlo trials per cell (the largest difference between the two is **0.0018**).
+**Power: the smallest effect you can detect.** A t test on n runs per build keeps false alarms at its chosen level (say 5 percent), but whether it *finds a real drop* depends on the noise and n:
 
 ```python
-def p_pass(policy, n, p):  # p = probability one run passes
-    if policy == 'single': return p
-    if policy == 'retry': return 1 - (1 - p) ** n                      # pass if any run passes
-    if policy == 'majority': return sum(comb(n, i) * p ** i * (1 - p) ** (n - i) for i in range(n // 2 + 1, n + 1))
-    if policy == 'all': return p ** n                                     # pass only if every run passes
+def min_detectable_effect(cv, n, alpha=0.05, power=0.8):
+    """Smallest true drop (fraction of mean) a two-sample t test with n runs per build detects."""
+    df = 2 * n - 2
+    se = cv * math.sqrt(2 / n)
+    return (stats.t.ppf(1 - alpha / 2, df) + stats.t.ppf(power, df)) * se
+
+print({n: round(float(min_detectable_effect(0.1825, n)) * 100, 1) for n in (5, 15, 54)})   # {5: 36.9, 15: 19.3, 54: 9.9}
+print(round(min_detectable_effect(0.0289, 5) * 100, 1))                              # 5.8
 ```
 
-```
---- healthy build: a run fails with probability f=0.05 (noise only). bug build: a run fails with probability q.
-(policy | n | healthy build blocked | bug q=0.50 passes (escapes) | bug q=0.20 escapes | bug q=0.05 escapes | runs spent healthy | Monte Carlo check max abs diff)
-  single   | 1 |   5.00% |  50.00% |  80.00% |  95.00% | 1.00 | 0.0012
-  retry    | 2 |   0.25% |  75.00% |  96.00% |  99.75% | 1.05 | 0.0004
-  retry    | 3 |   0.01% |  87.50% |  99.20% |  99.99% | 1.05 | 0.0005
-  majority | 3 |   0.72% |  50.00% |  89.60% |  99.28% | 3.00 | 0.0018
-  majority | 5 |   0.12% |  50.00% |  94.21% |  99.88% | 5.00 | 0.0006
-  all      | 3 |  14.26% |  12.50% |  51.20% |  85.74% | 2.85 | 0.0008
-```
+In a house, even 54 runs per build only detect a drop of about 10 percent; five runs in a lab detect about 6 percent. **A test report should state the smallest drop it could have detected next to "no regression found".** The false alarm rate is a choice; the detection rate is a consequence of noise and run count.
 
-With f = 0.05:
+## 5. Benchmarking without fooling yourself
 
-- **A single run** blocks a healthy build **5.00 percent** of the time and lets a bug that fails half its runs through **50.00 percent** of the time.
-- **Retry until pass, up to 3 runs** brings the false block rate to **0.01 percent** (0.05^3) at an average of **1.05 runs** a test, which is why teams adopt it. The cost is the escape rate: a q = 0.5 bug passes **87.50 percent** of the time, a q = 0.2 bug **99.20 percent**. **Retry hides the intermittent bugs, which are the expensive ones.**
-- **Majority of 3** costs 3 runs and gives 0.72 percent false blocks, a q = 0.5 escape of 50.00 percent: it filters noise without changing the verdict on a 50 percent bug, but a 20 percent bug escapes at **89.60 percent**.
-- **Fail if any of 3 fails** catches the intermittent bugs best (a q = 0.5 bug escapes **12.50 percent**) and blocks **14.26 percent** of healthy builds.
+A benchmark is a controlled comparison. The discipline, in order (the SmallNetBuilder lab method and the Alliance metrics both follow it):
 
-The suite effect is larger than it looks. A suite of 40 independent tests with f = 0.05 is red **87.15 percent** of the time with no retry, **9.53 percent** with 2 runs and **0.50 percent** with 3: a developer who sees a red suite 7 days in 8 stops reading it.
+1. **Fix and record the configuration**: firmware hash, driver and kernel versions, country code, channel and width, security mode, client model and driver, attenuation or position, generator version and exact command. A result without this is lost.
+2. **Calibrate the bed.** Measure every cable and attenuator, verify isolation with the DUT's antenna ports terminated, and recalibrate after any change. The test bed must outperform the DUT's stated performance.
+3. **Use a golden reference**: a known AP and client that never change, run daily. If the reference moves, the bed changed, not the build. This is the lab's control chart.
+4. **Warm up and omit.** Skip the first seconds (rate adaptation converging, TCP slow start). A typical protocol runs 90 seconds per throughput point and drops the first 10; `iperf3 -O` does the same. Say so.
+5. **Install and reset reproducibly.** Update to a known firmware, then **power-cycle in the final configuration** so the device settles its own operating parameters there.
+6. **Pair the runs.** Interleave A and B (ABABAB) rather than all of A then all of B, so slow drift (temperature, neighbours' traffic) hits both builds equally and cancels in the difference.
+7. **Test out of the box.** Customers do not tune internal parameters, so change external parameters (traffic, interference, topology) and leave the device's internals alone, unless the question is about tuning.
+8. **Do not hide behind averages.** Plot the CDF.
 
-```
---- a suite of 40 independent tests, healthy build, probability the suite is red
-  single   n=1 :  87.15%
-  retry    n=2 :   9.53%
-  retry    n=3 :   0.50%
-```
+**What the conducted lab cannot tell you.** A cable has no multipath, no antenna pattern, no orientation, no human body and no neighbours. A great conducted result can still fail in a house. Treat lab numbers as **relative** (build against build) and use the chamber and the house for **absolute** claims. Small chambers without turntables or multipath emulation give results that are not comparable with a full OTA router process.
 
-```
---- how many runs to be 95% sure to see a bug that fails with probability q at least once: n = ceil(ln 0.05 / ln(1 - q))
-  q=0.50 -> 5 runs
-  q=0.20 -> 14 runs
-  q=0.10 -> 29 runs
-  q=0.05 -> 59 runs
-  q=0.01 -> 299 runs
-```
+### 5.1 Rate against range
 
-The last table is the other side: to be 95 percent sure of seeing a bug that fails with probability q at least once you need ln 0.05 / ln(1 - q) runs, **5 for q = 0.5, 29 for q = 0.1, 299 for q = 0.01**. A bug that fails once in a hundred needs about three hundred runs of the right test, which is a soak, not a nightly test.
+The standard way to compare radios: step the path loss (typically in 3 dB steps up to the point the link breaks, for example to 60 dB on 2.4 GHz and 48 dB on 5 GHz in one published method), run downlink and uplink at each step, and plot throughput against attenuation. The curve shows the **rate adaptation algorithm** (does it step down smoothly or fall off a cliff), **sensitivity** (where the link dies), and **asymmetry** between uplink and downlink. Repeat at several turntable angles in a chamber, because antennas are not isotropic.
 
-The practical policy that follows:
+### 5.2 Multi-node systems
 
-1. **Do not retry silently.** Retry for the gate, but **record every retry** and report the retry rate per test; a test that needs retries is a test with a defect (in the test or the product) that has an owner.
-2. **Quarantine** a test with a measured flake rate above a threshold: it runs but does not gate, and its failures are trended; the owner has a deadline.
-3. **Run the intermittent-bug hunters separately** (soak, repeated runs of the failing test), because a retry policy is built to hide exactly what they look for.
-4. **Treat a pass after retry as a result with a different label** ("passed on retry 2"), not as a pass.
+For mesh and multi-AP systems, put each node in its own shielded chamber, link them with attenuators, and measure throughput at the root, one hop and two hops, backhaul rate separately, and a **simultaneous-client capacity run** (for example three clients for 30 minutes) to expose airtime sharing. Keep all test traffic on the LAN side so router CPU does not hide the radio.
 
-## 9. Test plan development
+## 6. Scale, stress, soak and fault injection
 
-### 9.1 What a test plan is
+**What scale testing is for.** To find the **knee**: the load at which a latency percentile, a failure rate or a resource crosses a limit. A scale test that only reports "it handled 500 clients" has hidden the interesting number.
 
-A test plan is a document that lets another engineer run the tests and reach the same verdict. It states **what is tested, how, with what, how often, by whom, and how a result is judged**. Candela's session 8d covers developing and executing a test plan with the engineering tools; the template below is the structure I use, and it works at two levels: the plan for a feature or release, and the test case.
+- **Client emulation.** A real client cannot be multiplied by 500. Use an emulator (many virtual stations from a few radios, or a protocol-level tester) for **control-plane** scale (associations, 802.1X, DHCP, roams per second) and keep a few **real** clients in the mix to measure what a real client sees. Be explicit about which parts are emulated: emulated clients do not contend like 500 real radios, so they test the controller and the AP's tables, not the airtime.
+- **Design a sweep.** Change one dimension at a time (client count, association rate, traffic mix), with enough points to see the knee, and repeat the point near it.
+- **Control-plane scale.** Measure association success rate, time to complete, 802.1X and RADIUS throughput, DHCP leases per second, and what fails first (a table, a CPU, a timer). A **thundering herd** (all clients reassociating after an outage) is a distinct test ([WF 07](07_wifi_architectures_mesh_and_services.md)).
+- **Soak.** Moderate load for days (for example 50 clients for 72 hours), with memory, descriptor, association count and latency trended. A leak is a slope, not a failure, so graph it.
+- **Churn.** Clients joining and leaving continuously stress timers and cleanup paths that steady state never reaches.
+- **Fault injection (negative testing).** Provoke the failure on purpose: pull the uplink, kill RADIUS, reboot the controller, send a rogue deauthentication, send malformed frames, exhaust DHCP, flip the clock. The metric is the **recovery time distribution** and whether the system returns to a *correct* state, not only whether it returns.
+- **Security tests.** Wrong PSK, replayed handshake messages, downgrade attempts, PMF enforcement, fuzzed information elements. A frame parser that crashes on a malformed element is a security bug ([WF 04](04_wifi_security.md)).
 
-```
-TEST PLAN: <feature or release>                                 owner, version, date
-1. Scope          what is in, what is out, what changed, what risk this covers
-2. References     spec clauses, requirements, tickets, earlier test reports
-3. Test items     firmware and driver builds, hardware revisions
-4. Bed            topology diagram, equipment and versions, calibration date,
-                  isolation measured, golden reference
-5. Matrix         factors and levels, the cases selected, what was cut and why
-6. Metrics        each defined as in section 3 (end points, traffic, statistic)
-7. Method         warm-up, run length, runs per case (from section 4), order
-                  (interleaved), environment recording
-8. Pass criteria  per metric: statistic, threshold, confidence rule,
-                  minimum detectable effect achieved
-9. Entry/exit     what must be true to start, what must be true to stop
-10. Schedule      rig-hours (section 9.4), people, dates, dependencies
-11. Risks         known noise sources, missing equipment, untested areas
-12. Reporting     where results go, what the summary says, who decides
+## 7. Test houses and real environments
 
-TEST CASE: <id> <title>
-objective        the question, one sentence
-traceability     requirement or clause or ticket
-preconditions    state of the bed and of the DUT
-steps            numbered, with commands exactly as run
-measurements     what is recorded and at what interval
-pass/fail        the oracle, with numbers and the statistical rule
-cleanup          return to the known state
-duration         setup, run, teardown
-```
+A house adds what the lab removes: multipath, walls, a person's body, real neighbours and real clients. It costs repeatability (section 4), so use it for the questions only it can answer.
 
-### 9.2 Entry and exit criteria, and prioritisation
+- **Residential and enterprise are different problems.** A house has one to three APs, mixed clients, many walls and a neighbour on every channel; an enterprise has dense APs, roaming, RADIUS, VLANs and thousands of clients.
+- **A test house protocol.** Fixed floor plan with marked positions; fixed client models and orientations; a **survey of the ambient RF** before and after (neighbours change); runs at several times of day; the same walk for roaming; every run labelled with the environment.
+- **Measure the environment, then pair.** Record ambient channel utilisation and neighbour counts per run, run A and B interleaved, and use the environment as a covariate rather than pretending it is constant.
+- **What a home result can claim.** A distribution over positions and times, with the environment described. It can say "in this house, at these ten positions, build B had a median 8 percent lower throughput in the far rooms". It cannot say "B is 8 percent slower".
 
-**Entry criteria** keep the lab from testing garbage: the build passed the unit and smoke tests, the bed passed its self-test, the plan is reviewed. **Exit criteria** say when to stop: all high priority cases run, no open blocker, the pass criteria met with the minimum detectable effect achieved, and the remaining risks written down and accepted by a named person. Without exit criteria, testing ends when the schedule does.
+## 8. Conformance, interoperability, certification and regulatory
 
-Prioritise by **risk = likelihood of a defect times its impact**, and by **change**: a feature that changed this release is tested before one that did not; a function that handles every packet before a rarely used management feature; a security function before a cosmetic one. Say in the plan what was *not* tested and why: that is a risk statement, and leaving it out is how an untested path ships.
+- **Conformance** checks the device against the standard clause by clause using a golden reference, with an analyzer to see exactly which frame is wrong.
+- **Interoperability** checks pairs of real implementations. The matrix is large (APs by clients by security by band), which is why it uses pairwise selection (next section) and a **client zoo** of current phones, laptops, IoT devices and older gear. Most field problems are interoperability problems, and most of those are a client doing something technically legal that the AP did not expect.
+- **Certification.** The **Wi-Fi Alliance** runs test programs (Wi-Fi CERTIFIED for each generation, WPA3, device provisioning (DPP), EasyMesh, Agile Multiband, Optimized Connectivity and others) in **authorised test labs** that use its test bed and a set of reference devices; passing earns the logo and listing. It checks interoperability behaviour and features, not your performance. University interoperability labs (such as UNH-IOL) publish test suites for performance and IoT as well.
+- **Regulatory testing** is separate and legal, not optional: emissions and spectral mask, transmit power, DFS radar detection, out-of-band emissions, SAR (body exposure), safety and EMC, done by accredited labs per country (FCC, CE/ETSI, others). A firmware change that alters power or DFS behaviour can need re-testing.
+- **Carrier and enterprise programs** add their own requirements (voice quality, roaming, battery), with their own labs.
 
-### 9.3 Covering a matrix: all-pairs
+## 9. Automation and the flaky test
 
-A Wi-Fi feature has many independent factors, and the product of their levels explodes. Take seven (`s4_plan.py`): band (3 levels), width (4), security (5), client (8), AP mode (3), roam type (3), traffic (4). The full factorial is 3 × 4 × 5 × 8 × 3 × 3 × 4 = **17,280** cases.
+**Manual** testing is for exploration, usability and one-off diagnosis. **Automation** is for anything run more than a few times: regression, matrix coverage, soak, nightly benchmarks. The harness has the same parts everywhere:
 
-The observation behind **pairwise (all-pairs) testing** is that most faults involve one or two factors: a client that fails with WPA3, a width that fails on one band. A suite that contains every pair of factor values at least once catches all of those at a small fraction of the size. `s4_plan.py` builds one greedily (300 random candidates per step, pick the one that covers the most uncovered pairs) and checks the coverage:
+- **Controllers** for the DUT (SSH, serial, vendor API), for the **attenuators** and turntable, for **traffic generators** (iperf3, a commercial generator) and for **sniffers**.
+- **A test description** (the configuration, steps, oracle) as data, so a run is reproducible.
+- **Artifacts** saved per run: configuration, logs, counters per second, captures, and the result with its metadata, in a store you can query.
+- **A scheduler** and **resource locking**, because the RF bed is a single shared resource and two jobs must not use it at once.
+- **A verdict engine** that applies the oracle (thresholds, statistics, comparison to the golden reference) and files results.
+
+**Flaky tests.** In Wi-Fi a test fails sometimes for reasons that are not a bug: a neighbouring AP, a scan, a client that took longer to associate. The wrong responses are to **retry until it passes** (this hides real intermittent bugs and makes every dashboard green) or to ignore it. The right response:
+
+1. **Classify the failure** (infrastructure, environment, product) from the artifacts automatically where possible.
+2. **Retry once and record both results.** If it passes on retry, count it as a flake and track the **flake rate per test**.
+3. **Quarantine** a test whose flake rate is above a threshold, with an owner and a deadline, rather than deleting it.
+4. **Hunt the cause.** A flake is often a real race or a real environmental sensitivity that customers will also meet.
+
+## 10. Test plans, coverage and reporting
+
+**A test plan** says what is in scope, what is out, the environments, the entry and exit criteria, the schedule, the risks and who does what. A good one is built from **risks**: for each thing that could hurt a customer, there is a test, and the test has an oracle.
+
+**Entry and exit criteria.** Entry: the build is stable enough to test (smoke tests pass, the environment is calibrated). Exit: all tests of priority 1 pass, no open critical bug, the performance targets are met with the stated confidence, and the known issues are documented. Prioritise by **customer impact times likelihood**, not by ease.
+
+**Covering a matrix.** Band, width, security, client, AP mode, roam and traffic make thousands of combinations. Most failures involve the interaction of **two** parameters, so **pairwise (all-pairs) coverage** tests every pair of values at least once with far fewer cases:
 
 ```python
-def greedy():
-    left = set(allp); suite = []
-    while left:
-        best, bc = -1, None
-        for _ in range(300):
-            c = tuple(rng.randrange(l) for l in L)
-            g = len(pairs_of(c) & left)
-            if g > best: best, bc = g, c
-        suite.append(bc); left -= pairs_of(bc)
-    return suite
+import itertools
+
+def pairwise(params):
+    names = list(params)
+    pairs = {(i, x, j, y) for (i, a), (j, b) in itertools.combinations(list(enumerate(names)), 2)
+             for x in params[a] for y in params[b]}
+    full = list(itertools.product(*[params[n] for n in names]))
+    tests = []
+    while pairs:
+        best = max(full, key=lambda t: sum((i, t[i], j, t[j]) in pairs
+                                           for i, j in itertools.combinations(range(len(names)), 2)))
+        tests.append(best)
+        for i, j in itertools.combinations(range(len(names)), 2):
+            pairs.discard((i, best[i], j, best[j]))
+    return tests
+
+P = {"band": ["2.4", "5", "6"], "width": [20, 40, 80], "sec": ["open", "wpa2", "wpa3"],
+     "client": ["A", "B", "C", "D"], "roam": ["none", "11r"]}
+print(len(list(itertools.product(*P.values()))), len(pairwise(P)))   # 216 13
 ```
 
-```
---- the matrix: band=3, width=4, security=5, client=8, ap_mode=3, roam=3, traffic=4
-full factorial: 17280 cases
-all-pairs (greedy, seed 7): 43 cases (0.25% of full), pairs to cover 376
-pair coverage check: 376 of 376
---- detection of 2000 random faults per order (a fault fires when its factor values all occur in one case)
-(order | all-pairs suite 43 | random suite 43 | random suite 3x size | full)
-  1 |  100.0% |  100.0% |  100.0% | 100.0%
-  2 |  100.0% |   90.9% |   99.3% | 100.0%
-  3 |   54.5% |   51.3% |   82.8% | 100.0%
-  4 |   16.2% |   17.5% |   41.2% | 100.0%
---- time: cases x minutes per case
-   5 min/case: full  1440.0 h (180.0 days of 8 h), all-pairs    3.6 h
-  12 min/case: full  3456.0 h (432.0 days of 8 h), all-pairs    8.6 h
-```
+216 combinations collapse to 13 cases that cover every pair. Add the **known-dangerous** combinations by hand (a client model with a history of bugs, DFS plus 160 MHz), because pairwise misses interactions of three.
 
-- The number of value pairs to cover is **376** (the sum over factor pairs of the product of their levels), and the greedy suite covers all of them in **43 cases**, **0.25 percent** of the full matrix. The lower bound is the product of the two largest level counts, 8 × 5 = 40, so 43 is 3 cases above that bound.
-- **Detection of simulated faults** (a fault fires when its factor values all occur in one case, 2,000 random faults of each order): single factor faults **100 percent** and pair faults **100 percent**, as the construction guarantees, against **90.9 percent** for 43 random cases. For 3 factor faults all-pairs finds **54.5 percent** (random 43: 51.3 percent, random 129: 82.8 percent), and for 4 factor faults **16.2 percent**.
-- The honest summary: **all-pairs is the cheapest way to cover single and pair interactions, and a poor way to cover triples**. If the faults in your product are three-way (a band, a width and a client together), use a 3-way suite (a few hundred cases for these levels), or put the known risky combinations in as mandatory cases and use all-pairs for the rest.
-- **Constraints** matter in real matrices: the 6 GHz band requires WPA3 or OWE (no WPA2-only network), and a client may not support 160 MHz. A pairwise generator must exclude impossible combinations and still cover every possible pair; check the output for pairs that cannot occur and for missing pairs that can.
-- **Always add the failures you have already had**: a case that found a bug once is a mandatory regression case, whatever the generator says.
+**The schedule is arithmetic.** Number of cases × time per case × repetitions ÷ number of beds. A soak is days of one bed, a ten-point range sweep with three repeats is hours. Compute it before promising a date, and say which tests are cut when the date is fixed.
 
-### 9.4 The schedule is arithmetic
+**Reporting.** A report that a manager can act on has: a one-line verdict, the question, the environment (with the configuration), the result as a distribution with sample size and the smallest detectable effect, what changed against the last build, open risks, and links to artifacts. **Show a CDF, not an average**, and put the worst case beside the median. Say plainly what was *not* tested.
 
-`ans_e.py` (section 14) puts numbers on the 43 cases with setup 4 min, 3 runs of 90 s, teardown 1 min: **9.5 minutes** a case, **6.81 hours** on one rig, 3.40 hours on 2 rigs and 1.70 on 4. The full 17,280 case matrix at the same 9.5 minutes is **2,736 hours**, or 342 days of 8 hours. If the house noise needs 15 runs a case, the 43 cases take **19.71 hours** on one rig. A plan that does not state the rig hours has not been checked for feasibility, and the usual response (cut runs per case) silently destroys the precision of section 4.
+## 11. Debugging a test result: symptom, likely cause, first check
 
-### 9.5 Reporting
-
-A report that can be acted on has:
-
-1. **A verdict per requirement** (pass, fail, not run, passed with retry) and the **summary of risk**: what is known, what is not.
-2. **The statistics**: for each metric, the median, a low percentile, n, the interval and the minimum detectable effect; a plot of the distribution (a box or a strip plot) is more honest than a bar of the mean.
-3. **The context**: build, bed, environment, dates.
-4. **The failures with evidence**: log, capture, counters, and the reproduction command.
-5. **The trend**: the same metric over the last builds, because a single result is a point and the trend is a regression detector.
-
-
-
-## 10. Tools, standards and programs
-
-Everything in this section is **from memory** and was not run here; check names, versions and numbers against the vendor and the standard before relying on them.
-
-### 10.1 Test equipment
-
-| Kind | Examples | What it does |
+| Symptom | Likely cause | First check |
 |---|---|---|
-| Traffic and client emulation | Candela LANforge, Keysight (Ixia) IxChariot and IxLoad, Spirent Avalanche, iperf3, flent, netperf, `tc netem` | generates load, emulates many clients, measures throughput, latency, loss |
-| Wi-Fi bed automation | Octoscope-class systems, shielded racks, RF switch and attenuator matrices, WLANPi | builds a repeatable RF topology under software control |
-| RF measurement | vector signal analyzers, spectrum analyzers, power meters, network analyzers, real-time spectrum tools | EVM, spectral mask, power, path loss, leak |
-| Isolation | shield boxes, shielded rooms, anechoic chambers, turntables | removes the environment, or makes the environment a controlled one |
-| Channel emulation | fading and delay-spread emulators | multipath and Doppler on a cable |
-| Capture and analysis | monitor-mode sniffers, Wireshark and tshark, Ekahau Sidekick, AirMagnet-class tools | see the air ([WF 08](08_wifi_capture_tools_and_debug.md)) |
-| Roaming test | mobility emulators with attenuators, a robot or a trolley with a client | moves a client through the cell while a prober measures |
-| Power and thermal | power analyzers, thermal chambers | energy per bit, behaviour at temperature limits |
+| Throughput changes between identical runs | Environment noise, rate adaptation, neighbour traffic | Spread over 20 runs; ambient channel utilisation per run |
+| Lab number far above the house number | No multipath, no body, no neighbours | Expected; compare builds in the lab and claim absolutes only from the house |
+| Range test curve stops early | Isolation or attenuator limit, wrong cable loss | Measure leakage with terminated ports; recalibrate |
+| Roam gap is much longer than the capture shows | TCP recovery after the outage, not the roam | Gap of a UDP stream against TCP stall |
+| Regression flagged then gone | Single-run false alarm | Rerun with paired runs and a test; report the minimum detectable effect |
+| Test passes on retry | Flake with a real cause, or environment | Flake rate over 100 runs; look for the common factor |
+| Soak shows a slow rise in memory | A leak | Slope of memory against time; find the allocation by build bisect |
+| Great scale result with emulated clients | Emulated clients do not contend for the air | Repeat with real clients in the mix |
+| Two labs disagree | Metric defined differently | Compare the definitions, directions, streams, warm-up, statistic |
 
-### 10.2 Standards and programs
+## 12. Common mistakes
 
-| Name | What it covers |
+1. **A test with no oracle.** A number is not a verdict.
+2. **Calling a regression from single runs.**
+3. **Reporting "no regression" without the smallest detectable effect.**
+4. **Quoting throughput without direction, streams, congestion control and layer.**
+5. **Reporting a mean latency** and hiding the tail and the lost packets.
+6. **An uncalibrated or leaky conducted bed.**
+7. **Running all of A then all of B**, so drift lands on one build.
+8. **Presenting a lab result as an absolute customer number.**
+9. **No golden reference**, so a bed change looks like a build change.
+10. **Retrying flaky tests until green**, hiding real intermittent bugs.
+11. **Testing only the happy path.** No fault injection, no churn, no soak.
+12. **Relying on emulated clients** for airtime questions.
+13. **Using only the matrix's corners**, instead of pairwise coverage.
+14. **Recording no configuration**, so a result cannot be reproduced.
+15. **Averaging across environments**, so a house and a lab result are combined.
+
+## 13. Interview questions
+
+1. **How do you tell whether firmware B is slower than A?** State the question and oracle, use a calibrated lab with paired and interleaved runs, enough runs for the noise (compute them), a t test or confidence interval, and report the smallest effect you could detect.
+2. **Why can't a single iperf run call a regression?** Run-to-run spread; identical builds raise false alarms close to half the time in a noisy environment.
+3. **What is a golden reference and why use one?** A fixed AP and client run every day; if it moves, the bed changed, not the build.
+4. **Conducted lab against chamber against house?** Control and repeatability against realism and cost; the lab for regression, the chamber for antenna and range, the house for roaming and interoperability.
+5. **What makes a conducted test conducted?** Isolation of 75 to 100 dB, terminated ports, shield boxes; cables alone leak.
+6. **Define a roaming time.** The application's data gap around the event, with the stream's packet interval; separate protocol time, data outage and application recovery.
+7. **Why report latency percentiles and loss together?** Means hide the tail, and lost packets have no latency.
+8. **How do you test 1,000 clients without 1,000 radios?** Emulate for the control plane, keep real clients for the data plane, state what is emulated, and sweep to find the knee.
+9. **What is pairwise testing and what does it miss?** Cover every pair of parameter values with few cases; misses three-way interactions, so add known-dangerous ones.
+10. **How do you handle a flaky test?** Classify, retry once and record both, track a flake rate, quarantine with an owner, and look for the cause.
+11. **What does Wi-Fi certification test and what does it not?** Interoperability and features per program in authorised labs; not performance.
+12. **What is the difference between verification and validation in Wi-Fi?** Meeting the spec against serving the user; a product can pass the first and fail the second.
+13. **How would you build a rate-against-range test?** Attenuator in 3 dB steps, both directions, warm-up omitted, several turntable angles, plot throughput against loss and read the adaptation behaviour.
+14. **What belongs in a test report?** Verdict, question, configuration, distribution with sample size and detectable effect, comparison, risks, what was not tested.
+
+## 14. Scenarios and design questions
+
+**S1. Build a nightly performance regression for a new Wi-Fi 6 AP.** *Where to practise:* a lab with one AP, one client in a shield box and a variable attenuator. *Approach:* fixed configuration, golden reference, paired runs, a statistic with a stated detectable effect, results in a store, alert on a significant drop.
+
+**S2. A customer reports video freezing during walking; the lab roaming test passes.** *Where to practise:* a lab roam with recorded signal replay and a real UDP video stream. *Approach:* measure the application gap, not the protocol time; replay the customer's walk; compare the client's roam trigger with the lab's.
+
+**S3. Design the scale test for a controller that must support 2,000 APs and 20,000 clients.** *Where to practise:* a simulator for APs and clients plus a small real bed. *Approach:* control-plane sweep (join rate, association rate, roams), find the knee, thundering-herd test, soak with churn, what is emulated.
+
+**S4. Two labs give different throughput for the same product.** *Where to practise:* compare two test configurations on your own bed. *Approach:* align definitions (direction, streams, warm-up, window), calibrate both, run the golden reference in each, compare the distributions.
+
+**S5. Plan the testing for a new DFS feature.** *Where to practise:* a chamber with a radar generator, or a vendor-supplied radar test set. *Approach:* conformance (detection and channel move time), interoperability (clients that follow the CSA), fault injection (false radar), regulatory re-test, field soak.
+
+**S6. Your pairwise matrix passed, but a bug appears with one client model on 160 MHz.** *Where to practise:* add the case and a minimal repro. *Approach:* a three-way interaction; add known-dangerous combinations, lower the failure to a component test with a captured frame.
+
+**S7. A flaky roaming test fails 5 percent of the time.** *Where to practise:* run it 200 times with captures. *Approach:* classify failures, find the common factor (channel, neighbour, client state), decide product bug against environment, fix or quarantine.
+
+**S8. Write the exit criteria for a release.** *Where to practise:* draft against a previous release. *Approach:* priority-1 pass, no critical bugs, performance targets with confidence, soak duration, interop matrix complete, regulatory sign-off, documented known issues.
+
+**S9. Benchmark your AP against a competitor for a customer report.** *Where to practise:* a chamber or a test house with both devices in the same positions. *Approach:* out of the box, same client, interleaved runs, several positions, CDFs, disclose the environment and the detectable effect.
+
+## 15. Strong answers (outlines)
+
+**S1.** Fix everything that is not the build: configuration file in the repo, calibrated attenuators, a golden AP run first every night. Per build, run an interleaved A/B schedule against the last released build, 10 to 20 runs per point, with the first 10 seconds omitted. Compute the confidence interval of the difference and compare to the detectable effect for that noise (compute it from the golden reference's own spread). Alert only on a significant drop, store per-second rate and retry counters, and keep the artifacts so a failure is diagnosable.
+
+**S2.** The lab test measured the protocol, and the customer felt the application. Replay a recorded walk through the attenuators with a real UDP stream and measure the longest gap. Compare when the client chose to roam (its threshold) with the lab client's. A sticky client or a slow key exchange without 11r produces a gap the protocol test never sees ([WF 05](05_wifi_roaming_and_radio_management.md)).
+
+**S3.** Use an AP and client emulator for join and association rates; sweep one dimension at a time and graph success rate and time to complete against load to find the knee; test the thundering herd by dropping all APs and bringing them back; run a 72 hour soak with churn; keep real clients in the mix for latency. State clearly that emulated clients do not test airtime.
+
+**S4.** Compare the definitions first (direction, streams, window, duration, warm-up, offered against goodput). Calibrate both beds and run the golden reference in each. If the reference differs, fix the beds. If it matches, the difference is in the method. Compare distributions, not means.
+
+**S5.** Conformance: detection of a test radar pattern and the time to vacate within the rules. Interoperability: clients that honour the channel switch announcement and those that do not. Fault injection: a false radar and a missed one. Re-run the regulatory test if the behaviour changed. Field soak on DFS channels near real radar sources.
+
+**S6.** Reproduce with a minimal case, capture, and find which parameters interact. Add the combination to the regression set, push the failure down to a component test with the captured frame, and keep a list of known-dangerous combinations that bypass the pairwise generator.
+
+**S7.** Run 200 times with a capture and counters. Cluster the failures by channel, time, client state and neighbour activity. If one factor explains most, it is likely a real race or an environmental sensitivity that customers also meet. Fix or document; quarantine only with an owner and a date.
+
+**S8.** Priority-1 tests pass; no critical bugs open; performance within target with the confidence stated; soak of at least 72 hours with flat memory; interoperability matrix covered with the client zoo; regulatory and certification done; known issues documented and accepted.
+
+**S9.** Same positions, same client models, devices out of the box with the same country code and channel plan, interleaved runs over several days, CDFs and the environment recorded. Report the detectable effect and say what the test cannot claim.
+
+## 16. Cheat sheet
+
+| Fact | Value |
 |---|---|
-| RFC 2544 | benchmarking methodology for network devices: throughput, latency, frame loss, back to back frames |
-| RFC 2679, 2680, 2681 | one-way delay, one-way packet loss, round trip delay metrics |
-| RFC 3393 | IP packet delay variation |
-| RFC 6349 | framework for TCP throughput testing |
-| RFC 6815 | applicability of RFC 2544 and its limits |
-| RFC 3550 | RTP, including the interarrival jitter estimator |
-| IEEE 802.11-2024 | the base standard; the protocol clauses define what conformance means |
-| Wi-Fi Alliance programs | Wi-Fi CERTIFIED for each generation (4, 5, 6, 6E, 7), WPA3, Passpoint, Wi-Fi Agile Multiband, Wi-Fi EasyMesh, Wi-Fi Optimized Connectivity; interoperability testing against reference devices at authorised labs |
-| Regulatory | FCC (US), ETSI (EU), ISED (Canada), MIC (Japan), others: radiated and conducted power, spectral mask, spurious emissions, DFS radar detection, SAR, safety, EMC |
-| Test lab accreditation | ISO/IEC 17025 for the lab that issues the report |
+| Test starts with | A question and an oracle |
+| Verification, validation | Built it right, built the right thing |
+| Pyramid | Unit, component, integration, system lab, house and field |
+| Lab, chamber, house, field | Control and repeatability against realism and cost |
+| Isolation | About 75 to 100 dB; shield boxes; terminate ports |
+| Throughput report | Direction, streams, window, congestion control, layer, warm-up |
+| Zero-loss throughput | Binary search; on a radio, a distribution |
+| Latency report | Percentiles plus loss, one-way delay for media |
+| Roaming gap | Longest gap in a periodic stream, with its interval |
+| Runs for precision | Smallest n with t × cv / √n ≤ e; halving e costs 4 times |
+| Single-run regression | False alarm near half of the time in a noisy bed |
+| Detectable effect | State it next to "no regression" |
+| Benchmark discipline | Record config, calibrate, golden reference, warm-up, paired runs |
+| Range test | 3 dB steps, both directions, turntable angles |
+| Scale test | Sweep for the knee; emulate control plane, real clients for data |
+| Pairwise | 216 combinations to 13 pairs-covering cases |
+| Flaky tests | Classify, retry once, track rate, quarantine, find cause |
+| Certification | Wi-Fi Alliance programs in authorised labs; not performance |
+| Report | Verdict, config, distribution, detectable effect, not-tested list |
 
-The certification programs test **interoperability**, not performance: a device that is Wi-Fi CERTIFIED joined, authenticated and moved data with reference devices in a defined set of tests. It says nothing about throughput, range or latency, and does not replace your own matrix.
+## 17. Sources and caveats
 
-## 11. Common mistakes
+Web sources used for this tutorial: the Wi-Fi Alliance [Wi-Fi Device Metrics v1.0](https://www.wi-fi.org/system/files/Wi-Fi_Device_Metrics_v1.0.pdf) (throughput, one-way delay and jitter, rate against range, channel switching, band steering, roaming and AR/VR metrics; chamber isolation, distributions, recorded roaming scenarios); SmallNetBuilder's [How We Test Wi-Fi Systems](https://www.smallnetbuilder.com/wireless/wireless-howto/how-we-test-wi-fi-systems-revision-1/) (chamber topology, attenuation sweeps, 90 second runs with a 10 second omit, capacity and multi-hop tests, stated limitations); and the UNH-IOL [Wi-Fi IoT and STA performance test suites](https://iol.unh.edu/sites/default/files/testsuites/wireless/performance/Wi-Fi_IoT_Test_Suite_Summary_1.0.pdf). The Candela course (session 8) is the syllabus.
 
-1. **Reporting one number.** One run is a sample; the claim needs a median or a mean with n and an interval (section 4).
-2. **Comparing builds measured at different times.** The drift between the blocks becomes a regression in **23.8 percent** of comparisons with no change (section 5.3). Interleave.
-3. **Averaging latency.** Lost packets have no latency; the mean stays at 0.22 ms through an 800 ms outage (section 3.4). Report percentiles, loss and the gap.
-4. **A prober slower than the event.** A 100 ms prober reports a 200 ms outage as 300 ms and misses 70.7 percent of the 30 ms ones.
-5. **Mistaking cabling for isolation.** Two devices on a bench are 30 to 50 dB short of the 77.7 dB needed at 1 m for a 5.5 GHz receiver (section 2.2).
-6. **Testing only in the lab, or only in a house.** The lab finds regressions and cannot find a user's experience; the house finds the experience and cannot be repeated. Use both and move findings downward.
-7. **A conducted result presented as a range or capacity claim.** The conducted number is an upper bound.
-8. **Retrying until green.** Retry up to 3 hides a q = 0.5 bug **87.5 percent** of the time and a q = 0.2 bug 99.2 percent. Record every retry and label a pass on retry differently (section 8.3).
-9. **Calling pairwise coverage "full coverage".** It finds 100 percent of single and pair faults and **54.5 percent** of 3 factor faults and **16.2 percent** of 4 factor faults in the simulation.
-10. **Cutting runs to fit the schedule.** The schedule is rig hours; cutting 15 runs to 3 widens the confidence interval by a factor of about 4.5 (the square root of 5 for the runs and 2.0 for the Student quantile with 2 degrees of freedom instead of 14), which must be written in the plan, not found in the post-mortem.
-11. **No oracle.** A test that produces a number without a threshold and a statistical rule produces an argument.
-12. **A test that depends on the previous test.** Reset to a known state and restore it at the end.
-13. **No environment record.** A result that cannot be explained cannot be repeated; log the channel busy time, the neighbours and the time of day.
-14. **Treating the reference as fixed without checking it.** Run a golden link daily and chart it; when it moves, the bed moved.
-15. **Scale from emulated clients alone.** Many emulated stations share a radio; use real clients as a probe in the same cell.
-16. **Extrapolating a scale result.** 100 EAP-MD5 clients on 2 cores say nothing about 2,000 EAP-TLS ones.
-17. **Ignoring the fixed latency.** The 2.05 s floor under the scale result is not a per-client cost; measure N = 1 and subtract.
-18. **Capturing other people's traffic in a test house** without agreement and without limiting it to what the test needs.
-
-## 12. Interview questions
-
-1. **A colleague says build B is 3 percent slower in a Wi-Fi throughput test. How do you decide whether to believe it?** State the oracle (what is a regression), ask n, spread, order and environment. With a house spread of 18 percent a 3 percent claim needs hundreds of runs; with a lab spread of 3 percent, about 35 for ±1 percent. Insist on interleaved or randomised order and a paired test; blocks flag a false regression in 23.8 percent of cases here. Report the minimum detectable effect.
-2. **How many runs do you need for ±5 percent?** n is the smallest with t × cv / √n ≤ 0.05: 4 at 2.9 percent spread, 54 at 18.25 percent. It grows as the square of 1/e, so halving the interval costs four times the runs.
-3. **Why does a retry make a flaky test look fixed, and why is that a problem?** It reduces the false block rate (0.05 to 0.0001 with 3 tries) and the detection of intermittent bugs by the same factor (a q = 0.5 bug passes 87.5 percent). The bug that fails sometimes is the expensive one.
-4. **A roam test reports 40 ms of gap with a 100 ms probe. Is it right?** No: a 100 ms prober can only report a gap of 0, 100, 200, ..., and the 40 ms result is not possible from a gap measurement; check the method. The reported gap is a multiple of the interval, and an outage of 30 ms is missed 70.7 percent of the time.
-5. **Latency average is 5 ms, but users complain of freezes. What do you look at?** Packet loss and gap statistics, percentiles (p99, p99.9), the queue (bufferbloat), retries and rate changes, and a capture; the average excludes the lost packets and the tail. Measure under load.
-6. **How would you build a roaming test?** An attenuator matrix with two APs and one client, ramp AP1 from 40 to 90 dB while AP2 goes from 90 to 40, a prober every 5 to 10 ms, a capture on both channels, report the gap distribution over many roams, the success rate and the link-layer breakdown (scan, authentication, reassociation, key exchange).
-7. **What can the lab not tell you, and what can a test house not tell you?** The lab: multipath, antenna, real interferers, user behaviour. A house: repeatability and the cause. Hence both, and a path from house findings to lab regression tests.
-8. **Design the matrix for a feature with 7 factors.** Full is 17,280. Use all-pairs (43 cases here), add the mandatory risky and historical cases, and say that triples are only 54.5 percent covered; add a 3-way suite for the risky subset.
-9. **How do you stop a nightly suite being ignored?** Fix flake (record retries, quarantine, owner and deadline), make failures diagnosable (logs and captures collected), health-check the bed first, gate only on trusted tests, trend the results.
-10. **What goes into a Wi-Fi test report?** Verdict per requirement, statistics (n, median, low percentile, interval, MDE), context (build, bed, environment), evidence (logs, captures), trend, and the risk statement of what was not tested.
-11. **Isolation: why is a cabled test not enough, and how do you check it?** Leak at 1 m is -27.3 dBm at 5.5 GHz against a -95 dBm floor; cables and unterminated ports leak; measure the leak with the DUT antennas terminated and a sensitive receiver; use shield boxes and terminate ports.
-12. **Throughput versus goodput, and what does an RFC 2544 zero-loss test mean on a radio link?** Offered load against delivered payload; the zero-loss rate moves with the channel, so it is a distribution; report the median and a low percentile or a loss at a fixed load.
-13. **A customer's house shows half the lab throughput. What is your plan?** Survey the house (spectrum, neighbours, rate per room), capture (retries, rates, airtime), compare with a golden client in the same position, change one variable at a time, interleave AP builds, reproduce in the lab with an attenuator and an interferer, and add the repro as a regression test.
-14. **How do you size a scale test for 5,000 clients?** Geometric sweep to find the knee, real clients as probes beside emulated ones, control-plane storm tests (authentication, DHCP) separately from the data plane, record the resources, test recovery, soak the working point; state what was extrapolated.
-15. **Soak: what is the pass criterion?** A bounded slope on each monitored resource (memory per hour, table sizes), no crash, and no performance degradation against the start, not the absence of a crash alone.
-16. **Verification versus validation in Wi-Fi?** Meeting the spec and the datasheet versus working for the user in the bedroom; the field and the test house exist for validation.
-
-
-
-## 13. Problems
-
-Each problem has a script in `prog/` and its output in section 14. Work it on paper first, then run it.
-
-**Problem A. Runs for a claim.** The house model has a relative spread of 18.25 percent and the lab model 2.89 percent. How many runs give a 95 percent interval of ±10, ±5 and ±2 percent of the mean in the house, and ±5, ±2 and ±1 percent in the lab? Which factor of runs does the lab save at ±5 percent?
-
-**Problem B. A small matrix.** A feature has four factors with 3, 3, 2 and 2 levels. How many cases does the full matrix have, how many value pairs must an all-pairs suite cover, and what is the lower bound for the suite size? Build a suite that reaches it and check the coverage.
-
-**Problem C. A prober for a roam test.** The requirement is a roam gap of at most 50 ms. A true outage of 200 ms is measured by probers that send every 10, 20, 100, 500 and 1000 ms. What does each report, and which can verify a 50 ms limit? What share of 30 ms outages does each miss?
-
-**Problem D. A retry policy.** A suite of 60 independent tests has a per-run noise failure probability of 0.02. How many tries per test are needed for a healthy build to be red less than 1 percent of the time? What does that policy do to a test that has a bug failing with probability 0.3, and to a suite with three such bugs?
-
-**Problem E. A rig budget.** The 43 case suite has a setup of 4 min, 3 runs of 90 s and a teardown of 1 min per case. How long is it on one rig, how many builds can 1, 2 and 4 rigs test in a 10 hour night, and what does the house noise (15 runs per case) do to the budget?
-
-## 14. Answers
-
-**A.** The interval half width is t × cv / √n, so n is the smallest integer with t × cv / √n ≤ e:
-
-```
---- relative sd 18.25 percent (the modelled house set), 95 percent confidence
-  half width 10.0 % of the mean -> 16 runs
-  half width  5.0 % of the mean -> 54 runs
-  half width  2.0 % of the mean -> 323 runs
---- relative sd 2.89 percent (the modelled lab set)
-  half width  5.0 % of the mean -> 4 runs
-  half width  2.0 % of the mean -> 11 runs
-  half width  1.0 % of the mean -> 35 runs
-```
-
-House: **16, 54 and 323 runs** for ±10, ±5 and ±2 percent. Lab: **4, 11 and 35** for ±5, ±2 and ±1 percent. At ±5 percent the lab saves 54 / 4 = **13.5 times**; the asymptotic ratio is (18.25 / 2.89)^2 = 39.9, and the difference is the Student quantile, which is large for 4 runs (t = 3.18 with 3 degrees of freedom). The smallest n is found by search, because the quantile depends on n and an iteration of n = (t cv / e)^2 can oscillate at small n.
-
-**B.** Full matrix: 3 × 3 × 2 × 2 = **36**. Pairs to cover: factor pairs 3·3 + 3·2 + 3·2 + 3·2 + 3·2 + 2·2 = 9 + 6 + 6 + 6 + 6 + 4 = **37**. Lower bound: every pair of values of the two largest factors needs its own case, 3 × 3 = **9**. A greedy search over 200 seeds finds it:
-
-```
---- factors 3,3,2,2: full factorial 36 cases, pairs to cover 37, lower bound 3*3 = 9 cases
-smallest suite found over 200 greedy seeds: 9 cases
-   (0, 0, 0, 1)
-   (0, 1, 1, 0)
-   (0, 2, 0, 0)
-   (1, 0, 1, 0)
-   (1, 1, 0, 1)
-   (1, 2, 1, 1)
-   (2, 0, 1, 0)
-   (2, 1, 0, 1)
-   (2, 2, 1, 1)
-coverage: 37 of 37 pairs
-```
-
-Nine cases cover all 37 pairs, a quarter of the full matrix, and the bound is reached, so it is optimal.
-
-**C.** The reported gap is (floor(D / I) + 1) × I when no probe falls in the outage, so a 200 ms outage is seen as 210 ms (10 ms), 220 (20 ms), 300 (100 ms), and 500 or 1000 ms (500 ms and 1 s probers):
-
-```
---- true outage 200 ms, a prober that sends every I ms and sees a reply only if the probe is sent outside the outage; 20000 random phases
-(I ms | mean measured gap | min | max | outages shorter than 50 ms missed entirely, for a 30 ms outage)
-     10 |   210.0 |  210.0 |  210.0 |   0.0 %
-     20 |   220.0 |  220.0 |  220.0 |   0.0 %
-    100 |   300.0 |  300.0 |  300.0 |  70.7 %
-    500 |   697.1 |  500.0 | 1000.0 |  94.7 %
-   1000 |  1190.8 | 1000.0 | 2000.0 |  97.2 %
-```
-
-The 30 ms outage is missed **0, 0, 70.7, 94.7 and 97.2 percent** of the time. A 50 ms limit needs a resolution well below 50 ms: the 10 ms prober reports 30.0 ms for a 20 ms outage (section 3.4) and can separate 40 from 60; the 100 ms prober cannot see an outage shorter than its interval, and its answer is a multiple of 100. The prober interval should be about one fifth of the limit (10 ms for 50 ms) and must be reported with the gap.
-
-**D.** A test with n tries is blocked with probability f^n, and a suite of 60 is red with probability 1 - (1 - f^n)^60:
-
-```
---- 60 independent tests, each run fails with p=0.02 when healthy
-(retries allowed n | healthy suite red | one test with a q=0.3 bug escapes | all 3 such bugs in the suite escape)
-  1 |  70.24469 % |  70.00 % |  34.30 %
-  2 |   2.37190 % |  91.00 % |  75.36 %
-  3 |   0.04799 % |  97.30 % |  92.12 %
-  4 |   0.00096 % |  99.19 % |  97.59 %
-```
-
-One try leaves the healthy suite red **70.2 percent** of the time, two tries **2.37 percent**, three **0.048 percent**: the answer is **3 tries**. The cost: a bug that fails with probability 0.3 passes **97.3 percent** of the time (1 - 0.3^3), and a suite with three such bugs lets all of them through **92.1 percent** of the time (from 34.3 percent with one try). Three tries solve the noise by making the suite blind to intermittent bugs. The better fix is to reduce f (find the source of the noise), and to run the intermittent hunters as a separate test with many runs.
-
-**E.** Per case: 4 + 3 × 1.5 + 1 = **9.5 minutes**. Suite: 43 × 9.5 = 408.5 minutes = **6.81 hours**.
-
-```
---- per case: setup 4.0 min + 3 runs x 90 s + teardown 1.0 min = 9.50 min
-suite: 43 cases x 9.50 min = 6.81 h on one rig
-  1 rigs: 6.81 h wall, builds per 10 h night: 1
-  2 rigs: 3.40 h wall, builds per 10 h night: 2
-  4 rigs: 1.70 h wall, builds per 10 h night: 5
---- with 15 runs per case for the noisy house set: 19.71 h on one rig
-```
-
-One rig fits **1 build** in a 10 hour night, two rigs 2 (3.40 hours each), four rigs 5 (1.70 hours each, floor(10 / 1.70) = 5). With 15 runs a case the case takes 4 + 22.5 + 1 = 27.5 minutes and the suite **19.71 hours**: it no longer fits a night on one rig and takes 4.93 hours on four. This is how the schedule decides the precision, and why the plan has to state the rig hours.
-
-## 15. Cheat sheet
-
-| Topic | Rule |
-|---|---|
-| Oracle | Write the pass rule with a number and a statistical rule before the first run |
-| Spread | Real shaped wired path 0.11 percent; modelled Wi-Fi lab 2.89, house 18.25 percent |
-| Runs for ±e | smallest n with t × cv / √n ≤ e; 54 for ±5 percent at 18.25 percent spread; grows as 1/e^2 |
-| One run | cannot call a regression: 44.1 percent false alarm at a 2 percent rule |
-| Order | Blocks AAA..BBB false regression 23.8 percent; randomise or interleave and pair |
-| Latency | Report p99 and loss, not the mean; the mean stayed 0.22 ms through an 800 ms outage |
-| Gap | Prober reports D + I; (floor(D / I) + 1) × I for a slow prober; interval about one fifth of the limit |
-| Isolation | FSPL at 1 m: 40.2 dB at 2.44 GHz, 47.3 dB at 5.5 GHz; a 20 dBm AP leaks -27.3 dBm at 1 m, needs 77.7 dB |
-| Scale | Find the knee; N = 1 first, subtract the floor; 100 real supplicants 2.29 s median, 2.3 ms per client |
-| Matrix | 17,280 to 43 with all-pairs; pairs 100 percent, triples 54.5 percent, quads 16.2 percent |
-| Retry | 3 tries: false block 0.01 percent, but a q = 0.5 bug escapes 87.5 percent; record retries |
-| Runs to see a bug | n = ln 0.05 / ln(1 - q): 5, 14, 29, 59, 299 for q = 0.5, 0.2, 0.1, 0.05, 0.01 |
-| Lab and house | Lab for regression and cause, house for realism and interop, field for the unknown; findings flow down to lab tests |
-| Schedule | Rig hours = cases × minutes a case; 43 cases at 9.5 min is 6.81 h; 15 runs a case is 19.71 h |
-| Report | Verdict, statistics with MDE, context, evidence, trend, what was not tested |
-
-## Sources
-
-- Candela Technologies course, sessions 8a, 8b, 8c and 8d (testing fundamentals, lab, test houses, test plan development): https://www.candelatech.com/course.php
-- IEEE Std 802.11-2024 (the standard that defines conformance); Wi-Fi Alliance certification program descriptions: https://www.wi-fi.org/certification
-- IETF benchmarking and measurement RFCs: RFC 2544, RFC 2679, RFC 2680, RFC 2681, RFC 3393, RFC 3550, RFC 6349, RFC 6815 (numbers and scope from memory, check at https://www.rfc-editor.org)
-- iperf3 documentation: https://software.es.net/iperf/ and the `tc` tbf manual page of iproute2
-- hostapd and wpa_supplicant (version 2.10): https://w1.fi
-- mrncciew.com study material (CWNA, CWAP, CWSP and CCIE Wireless), background only; no page was quoted for this tutorial
-- Combinatorial testing background: pairwise and t-way coverage, NIST combinatorial testing resources (concept from memory)
-- Tutorials of this series: [WF 02](02_wifi_phy.md), [WF 03](03_wifi_mac.md), [WF 04](04_wifi_security.md), [WF 05](05_wifi_roaming_and_radio_management.md), [WF 07](07_wifi_architectures_mesh_and_services.md), [WF 08](08_wifi_capture_tools_and_debug.md), [WF 11](11_rf_fundamentals_and_link_budget.md)
+Caveats. The statistics (runs needed, minimum detectable effect), the zero-loss search, the roam-gap function and the pairwise generator were run here. The spreads used (about 3 percent for a lab link and 18 percent for a house link) are illustrative values from earlier simulations in this study track, not field measurements, so replace them with the spread of your own golden reference. The isolation figures are rough link-budget arithmetic and the shield-box ratings are typical values from memory. The names and scope of Wi-Fi Alliance programs, and the RFC numbers cited (2544, 6349), are from memory and worth checking before you quote them. The comparison of roaming metrics follows the Alliance document, which was summarised here from a fetched excerpt.
