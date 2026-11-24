@@ -41,7 +41,7 @@ Protecting a wireless link means four separate things, and mixing them up is the
 
 WEP encrypted each frame with the RC4 stream cipher, using a key made of the shared secret and a 24-bit **initialisation vector (IV)** sent in the clear with every frame. An **integrity check value** (a CRC-32) was added before encryption. Three mistakes follow from that design:
 
-1. **The IV is far too short and the key mixing is trivial.** With only 24 bits, IVs repeat after a few million frames, and on a busy network within hours. Two frames with the same IV and key are encrypted with the same keystream, so XORing the two ciphertexts removes the keystream and leaves the XOR of the plaintexts, which is easy to attack with known formats (ARP, IP headers). Worse, RC4 had weaknesses with certain IV values (the Fluhrer, Mantin, Shamir attack and its successors), which let an attacker recover the key from tens of thousands of captured frames.
+1. **The IV is far too short and the key mixing is crude.** With only 24 bits, IVs repeat after a few million frames, and on a busy network within hours. Two frames with the same IV and key are encrypted with the same keystream, so XORing the two ciphertexts removes the keystream and leaves the XOR of the plaintexts, which is straightforward to attack given known formats (ARP, IP headers). Worse, RC4 had weaknesses with certain IV values (the Fluhrer, Mantin, Shamir attack and its successors), which let an attacker recover the key from tens of thousands of captured frames.
 2. **The integrity check is linear.** A CRC is not a cryptographic MAC. Flipping chosen bits in the ciphertext flips the same bits in the plaintext, and the CRC can be adjusted to match without knowing the key. An attacker can modify frames and even inject them.
 3. **There is no replay protection and no key management.** The same key is shared by everyone and never changes, so one leaked or cracked key breaks the whole network forever, and any station can read any other's traffic.
 
@@ -278,7 +278,7 @@ If a roaming client had to redo the whole exchange (and for enterprise, the whol
 7. **Leaving transition mode forever.**
 8. **Assuming a hidden SSID is a security measure.** It appears in probe requests and association frames.
 9. **Relying on MAC filtering.** MAC addresses are visible and forgeable.
-10. **Forgetting management frame protection.** Deauthentication stays a trivial attack.
+10. **Forgetting management frame protection.** Deauthentication stays a cheap attack.
 11. **Reusing the same passphrase on a network for years with many people having it.** There is no revocation for one person.
 12. **Calling a nonce reuse a theoretical problem.** KRACK made it practical.
 
