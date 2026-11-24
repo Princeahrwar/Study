@@ -120,7 +120,7 @@ sequenceDiagram
 
 A **replay counter** in each message stops an attacker from replaying old handshake messages.
 
-Two details of the timing are easy to get wrong. The station can compute the PTK as soon as it has M1 (it has the PMK, the ANonce, its own SNonce and both addresses), while the AP can only compute it after M2 delivers the SNonce. And the MIC algorithm depends on the key descriptor version: HMAC-MD5 for the oldest TKIP case, HMAC-SHA1 (truncated to 128 bits) for WPA2 with CCMP, and AES-128-CMAC for the AKM suites that use SHA-256, which includes SAE and the later enterprise suites.
+Two details of the timing are often got wrong. The station can compute the PTK as soon as it has M1 (it has the PMK, the ANonce, its own SNonce and both addresses), while the AP can only compute it after M2 delivers the SNonce. And the MIC algorithm depends on the key descriptor version: HMAC-MD5 for the oldest TKIP case, HMAC-SHA1 (truncated to 128 bits) for WPA2 with CCMP, and AES-128-CMAC for the AKM suites that use SHA-256, which includes SAE and the later enterprise suites.
 
 ### 4.1 What is inside an EAPOL-Key frame
 
