@@ -271,7 +271,7 @@ sequenceDiagram
 
 The WUR reduces wake cost but is not free: it listens continuously. The saving depends on how often the alternative would wake. A station using beacon listening wakes every interval; the wake energy divided by the interval is its average cost. The WUR costs its listening power all the time. Equating them gives a **break-even interval**: wake energy divided by WUR power.
 
-With an assumed wake energy of 0.2 mJ and an assumed WUR power of 0.5 mW, the break-even is 0.4 seconds. A device that must respond within 100 ms is better off with a WUR (about 4 times the battery life in my model). A device that can tolerate several seconds of latency is better off just listening to beacons, because the WUR's constant listening costs more than the occasional wake. The deciding number is the WUR power, which I do not have for a real chip: the paper says only that a WUR consumes thousands of times less than the main radio. **The lesson: a wake-up radio is a tool for low latency with low power, not simply a power saver.**
+With an assumed wake energy of 0.2 mJ and an assumed WUR power of 0.5 mW, the break-even is 0.4 seconds. A device that must respond within 100 ms is better off with a WUR (about 4 times the battery life in my model). A device that can tolerate several seconds of latency is better off just listening to beacons, because the WUR's constant listening costs more than the occasional wake. The deciding number is the WUR power, which I do not have for a real chip: the paper says only that a WUR consumes thousands of times less than the main radio. **The lesson: a wake-up radio is a tool for low latency with low power, not just a power saver.**
 
 ---
 
