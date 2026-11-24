@@ -84,7 +84,7 @@ Used in the topic tables of the track plans.
 | Computer organization | CO 01 to 31 written; track complete | The next track |
 | Operating systems | OS 01 to 21 written; track complete; 2 older notes | The next track |
 | Linux | Plan widened to 14 tutorials (audited Nov 2026); LX 01 to LX 14 written; track complete | none |
-| Networking | Plan widened to 15 topics plus a Wi-Fi sub-track of 13 (audited Nov 2026); NET 01 to NET 09 and NET 11 to NET 15 written; WF 01 to WF 09 and WF 11 written, WF 10, WF 12 and WF 13 in progress (priority raised 23 Nov 2026) | WF 10 |
+| Networking | Plan widened to 15 topics plus a Wi-Fi sub-track of 15 (audited Nov 2026); NET 01 to NET 09 and NET 11 to NET 15 written; WF 01 to WF 11 written, WF 12 to WF 15 in progress (priority raised 23 Nov 2026) | WF 12 |
 | Debugging | DBG 01 written (method and toolbox) | DBG 02 |
 | Kernel | 1 older note | K 01 |
 | Drivers | 5 older notes | DRV 01 |
