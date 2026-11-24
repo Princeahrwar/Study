@@ -68,6 +68,10 @@ flowchart TD
 - The **PTK** is made fresh for every association by a pseudo-random function (HMAC-SHA1 in WPA2) over the PMK, the two MAC addresses and two random numbers, the **ANonce** (from the AP) and the **SNonce** (from the station). It is split into the **KCK** (key confirmation key, used to compute the MIC that authenticates handshake messages), the **KEK** (key encryption key, used to wrap the group key in the handshake) and the **TK** (temporal key, used to protect the data frames). CCMP uses 384 bits in total.
 - The **GTK** is chosen by the AP and shared by all clients, because multicast must be decryptable by everybody. The **IGTK** protects group-addressed management frames when protected management frames are on.
 
+The sizes depend on the cipher. With **CCMP** (AES) the PTK is 384 bits: KCK 128, KEK 128 and a 128-bit temporal key, and the GTK is 128 bits. With **TKIP** the PTK is 512 bits, because the temporal key is 256 bits (a 128-bit encryption key and two 64-bit Michael keys, one per direction), and the GTK is 256 bits. In an enterprise network the PMK is the first 256 bits of the **MSK**, the master session key that both the client and the RADIUS server derive during the EAP method; the server hands it to the AP in the RADIUS Access-Accept, inside the vendor attributes MS-MPPE-Recv-Key and MS-MPPE-Send-Key, protected with the RADIUS shared secret. On the group side the AP keeps a random **GMK** (group master key) and derives the GTK from it with a pseudo-random function; the GMK is never sent, and the AP can regenerate it periodically. Each key therefore has one origin and one job, and nothing derived lower in the hierarchy reveals anything above it.
+
+There is also a **PMKID**, a name for a PMK rather than a key: the first 128 bits of HMAC-SHA1 over the string "PMK Name" followed by the AP's and the station's addresses, keyed with the PMK. It lets an AP and a station recognise a cached PMK without exchanging it (for roaming, WF 05), and, in some implementations, it appears in the first handshake message, which is what the PMKID attack of section 6.1 relies on.
+
 A short script reproduces the derivation exactly, and the result can be checked against `wpa_passphrase` (published test vector: passphrase `password`, SSID `IEEE`):
 
 ```python
@@ -88,7 +92,7 @@ def ptk(pmk, aa, spa, anonce, snonce, bits=384):
     return prf(pmk, b"Pairwise key expansion", data, bits)
 ```
 
-`pmk_from_passphrase("password", "IEEE").hex()` gives `f42c6fc52df0ebef...`, the same as `wpa_passphrase IEEE password`. Two consequences follow from the structure. The SSID is part of the PMK, so a precomputed table of passphrase hashes is only useful for a given SSID (which is why common SSIDs such as "linksys" were attacked with rainbow tables). And because the PTK depends on both nonces and both addresses, two sessions with the same password get completely different data keys.
+A PMKID is one more line: `hmac.new(pmk, b"PMK Name" + aa + spa, hashlib.sha1).digest()[:16]`. `pmk_from_passphrase("password", "IEEE").hex()` gives `f42c6fc52df0ebef...`, the same as `wpa_passphrase IEEE password`. Two consequences follow from the structure. The SSID is part of the PMK, so a precomputed table of passphrase hashes is only useful for a given SSID (which is why common SSIDs such as "linksys" were attacked with rainbow tables). And because the PTK depends on both nonces and both addresses, two sessions with the same password get completely different data keys.
 
 ---
 
@@ -115,6 +119,29 @@ sequenceDiagram
 - **M4** confirms. Both sides install the TK and start encrypting.
 
 A **replay counter** in each message stops an attacker from replaying old handshake messages.
+
+Two details of the timing are easy to get wrong. The station can compute the PTK as soon as it has M1 (it has the PMK, the ANonce, its own SNonce and both addresses), while the AP can only compute it after M2 delivers the SNonce. And the MIC algorithm depends on the key descriptor version: HMAC-MD5 for the oldest TKIP case, HMAC-SHA1 (truncated to 128 bits) for WPA2 with CCMP, and AES-128-CMAC for the AKM suites that use SHA-256, which includes SAE and the later enterprise suites.
+
+### 4.1 What is inside an EAPOL-Key frame
+
+All four messages are the same frame type, an EAPOL-Key, whose fields are: a descriptor type, a 16-bit **key information** field, the key length, a 64-bit **replay counter**, the 32-byte **key nonce**, a key IV and receive sequence counter (used for the group key), the **key MIC** (16 bytes) and a variable **key data** field. The key information bits tell the four messages apart, and are the quickest way to read a capture:
+
+| Bit meaning | M1 | M2 | M3 | M4 |
+|---|---|---|---|---|
+| Key descriptor version (2 = HMAC-SHA1 with AES) | 2 | 2 | 2 | 2 |
+| Key type: pairwise | 1 | 1 | 1 | 1 |
+| Install (use these keys now) | 0 | 0 | 1 | 0 |
+| Key ack (the sender wants an answer) | 1 | 0 | 1 | 0 |
+| Key MIC present | 0 | 1 | 1 | 1 |
+| Secure (keys installed on the sender's side) | 0 | 0 | 1 | 1 |
+| Encrypted key data (the GTK is wrapped) | 0 | 0 | 1 | 0 |
+| Resulting 16-bit value | 0x008a | 0x010a | 0x13ca | 0x030a |
+
+The key data field of M2 carries the station's RSN element, and in M3 the AP's RSN element and the **GTK key data encapsulation (KDE)**: the group key, its key index and a transmit flag, encrypted with the KEK. In `tshark` the useful filters are `eapol` for all of them and `wlan_rsna_eapol.keydes.msgnr == 3` for one message. If a handshake is repeated, it is usually because a message is missing or a MIC check fails; the difference between "M1 repeated several times" (the station never answered, so a driver or key problem on the station) and "M1, M2, M3 repeated" (the AP never got M4) tells you which side to look at.
+
+### 4.2 Group key rekeying
+
+The GTK is not for life. When a station leaves, or on a timer, the AP chooses a new GTK and delivers it with a **group key handshake**: two messages, the AP sending the new GTK encrypted with the KEK and a MIC, and the station acknowledging. This keeps forward protection against a client that has left the network but still knows the old group key, and it is the reason a very short group rekey interval causes brief multicast hiccups on some clients.
 
 **Key reinstallation attacks (KRACK).** The handshake had a subtle flaw: if M4 is lost, the AP retransmits M3, and a station that blindly installs the key again resets its **packet number** counter to zero. An attacker who blocks M4 and replays M3 can make the station reuse nonces under the same key, which breaks the confidentiality of the cipher. The fix was in the client implementations: install the key only once per handshake and ignore retransmitted M3 for key installation. It is also why you should know that "never reuse a nonce" is not abstract: the attack was a nonce reuse caused by a state machine bug.
 

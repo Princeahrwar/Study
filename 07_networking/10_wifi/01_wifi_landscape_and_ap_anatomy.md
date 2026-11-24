@@ -38,9 +38,9 @@ The widest configuration each generation allows gives the headline numbers:
 | 802.11n (Wi-Fi 4) | 2009 | 2.4, 5 | 40 MHz | 64-QAM | 4 | 600 Mbit/s |
 | 802.11ac (Wi-Fi 5) | 2013 | 5 | 160 MHz | 256-QAM | 8 | 6.9 Gbit/s |
 | 802.11ax (Wi-Fi 6, 6E) | 2021 | 2.4, 5, 6 | 160 MHz | 1024-QAM | 8 | 9.6 Gbit/s |
-| 802.11be (Wi-Fi 7) | 2024 | 2.4, 5, 6 | 320 MHz | 4096-QAM | 16 | 46 Gbit/s |
+| 802.11be (Wi-Fi 7) | 2024 | 2.4, 5, 6 | 320 MHz | 4096-QAM | 16 (8 in many tables) | 46 Gbit/s at 16 streams |
 
-(Years and parameters are from memory. 802.11b, 1999, used a single carrier with spread spectrum at up to 11 Mbit/s and is not an OFDM generation.)
+(Years and parameters are from memory. 802.11b, 1999, used a single carrier with spread spectrum at up to 11 Mbit/s and is not an OFDM generation. Sources disagree on the 802.11be stream count: the standard allows 16, but many summary tables quote 8, which halves the headline to about 23 Gbit/s. The 802.11-1997 original ran at 1 and 2 Mbit/s with frequency hopping or direct sequence spread spectrum, and 802.11ad and ay at 60 GHz are separate branches covered in WF 14.)
 
 To check one row, take 802.11n at 40 MHz: 108 data subcarriers, 6 bits each, coding rate 5/6, four streams, a 3.6 microsecond symbol. That is 108 x 6 x 5/6 x 4 / 3.6, which is 600 Mbit/s. The same arithmetic gives the other rows. From the first row to the last is a factor of roughly 850.
 
@@ -61,7 +61,11 @@ A peak rate assumes the widest channel and the most streams. A phone usually has
 
 Routers are sold with a class label such as AX1800 or AX3000. The number is the sum of the peak rates of the bands, for example 2.4 GHz at 40 MHz plus 5 GHz at 80 MHz. No single client can use both bands at once, so the label describes the box, not any one user's speed. And a PHY rate is not throughput: preambles, interframe gaps, acknowledgements and contention eat a large share of the airtime. A good single client typically sees roughly half to two thirds of the PHY rate as TCP goodput (WF 03 explains why).
 
-### 1.4 Generations and names
+### 1.4 What a subcarrier is, in 802.11a
+
+The formula of section 1.1 hides a detail worth knowing. In 802.11a and g a 20 MHz channel is divided by a 64-point FFT into 64 subcarriers spaced 312.5 kHz apart. Of those, 52 are used: 48 carry data and 4 are **pilots** (always BPSK, at known positions) that let the receiver track phase and frequency drift. The rest, including the centre (DC) subcarrier and the band edges, stay empty to keep the signal inside its spectral mask. A symbol lasts 3.2 microseconds plus a 0.8 microsecond guard interval, so 4 microseconds. At 64-QAM (6 bits) and coding rate 3/4 that is 48 x 6 x 3/4 / 4 us = 54 Mbit/s, the number every later generation starts from. 802.11n kept the spacing but used more subcarriers per width (52 data subcarriers in 20 MHz, 108 in 40 MHz) and allowed a 0.4 microsecond short guard interval, worth about 11 percent; 802.11ac added 80 and 160 MHz; 802.11ax divided the same spectrum four times more finely (78.125 kHz spacing). WF 02 goes through each.
+
+### 1.5 Generations and names
 
 The Wi-Fi Alliance gave the generations numbers in 2018 so that customers need not remember letters:
 
@@ -192,6 +196,8 @@ Other bodies supply pieces without being "Wi-Fi": the IETF writes DHCP, DNS, RAD
 
 The distinction matters at work. A datasheet line "802.11a/b/g/n/ac/ax" says which amendments the radio implements. "Wi-Fi CERTIFIED 6" says a lab ran the Alliance tests on that product. An optional standard feature that no certification covers may exist in silicon and interoperate with nothing.
 
+The Alliance itself began in 1999 as the Wireless Ethernet Compatibility Alliance, formed by companies behind 802.11b (it took its current name in 2002), because the IEEE standard alone did not guarantee that two vendors' radios would work together. It is a trade association that owns the trademark and the test plans, which is why an IEEE amendment can exist for years before a certification does, and why a certified product has passed a defined subset, in defined combinations. Its mandatory programmes cover the core radio standards and WPA2 or WPA3 security; optional ones include WMM, WMM Power Save, WPS, Passpoint, Wi-Fi Direct and Aware, EasyMesh, Agile Multiband, Wi-Fi Location, HaLow and TDLS.
+
 ### 3.2 The life of a feature
 
 1. A task group drafts an amendment, and the working group ballots each draft until comments are resolved.
@@ -215,6 +221,17 @@ There are more letters than anyone can hold, but they fall into groups:
 | Interworking | u | Network discovery and selection (basis of Passpoint) |
 | Direct links | z | TDLS |
 | Location and sensing | mc, az, bk, bf | Ranging and sensing |
+
+A fuller timeline of the amendments you will meet (years approximate, from public summaries; amendments are merged into the base standard over time):
+
+| Period | Amendments |
+|---|---|
+| 1997 to 1999 | 802.11 original; a (5 GHz OFDM) and b (2.4 GHz, 11 Mbit/s) |
+| 2001 to 2005 | d (international roaming), g (OFDM on 2.4 GHz), h (5 GHz spectrum management: DFS and TPC), i (security), j (Japan 4.9 GHz), e (QoS) |
+| 2008 to 2011 | k (radio resource measurement), r (fast transition), y (3.65 GHz US), w (protected management frames), n (2009), p (vehicles), s (mesh), u (interworking), v (network management), z (TDLS) |
+| 2012 to 2018 | aa (robust streaming), ac (2013), ad (2012), ae (management frame QoS), af (TV white space), ai (FILS), ah (HaLow), aj (China 45 GHz), ak (general link), aq (pre-association discovery) |
+| 2021 to 2025 | ax (2021), ay, ba (wake-up radio), az (positioning), bb (light communication), bc (enhanced broadcast), bd (V2X), be (2024), bf (sensing, 2025) |
+| In progress | bh (random MAC addresses), bi (enhanced data privacy), bk (320 MHz positioning), bn (Wi-Fi 8), and work on ambient power, integrated mmWave and post-quantum cryptography |
 
 Two rules save confusion. A lower-case letter is an amendment; an upper-case letter (802.11F, 802.11T) was a recommended practice or a withdrawn item. And once the alphabet ran out, names continue with two letters (`aa`, `ab`, ..., `ba`). A string like `k/v/r` or `a/b/g/n/ac/ax` in a vendor list is the feature set the product implements.
 

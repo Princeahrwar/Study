@@ -99,7 +99,13 @@ The four numbers that describe a generation's OFDM are the spacing between subca
 
 (From memory.) 802.11ax made the subcarriers four times closer, so the symbol is four times longer. A longer symbol and a longer guard option make the signal robust in dense and outdoor environments, and it also lowers the relative overhead of the guard, but it is the reason the Wi-Fi 6 peak rate rose only modestly (WF 01).
 
-### 4.4 Channel estimation
+### 4.4 The 802.11a symbol as the template
+
+Everything later is a variation on the OFDM burst of 802.11a, so it is worth holding in your head. A 20 MHz channel is divided by a 64-point FFT into subcarriers 312.5 kHz apart. Fifty-two are used: 48 carry data and 4 are **pilots**, fixed BPSK subcarriers at known positions that let the receiver track residual phase and frequency error as the frame goes on. The centre subcarrier (DC) and the band edges stay empty so the signal fits its spectral mask. The useful symbol lasts 3.2 microseconds, the guard interval is a quarter of that, 0.8 microseconds (a copy of the end of the symbol), and a full symbol is 4 microseconds. Every subcarrier of a burst uses the same constellation. The frame begins with a 16-microsecond preamble (an 8-microsecond short training sequence of ten repeats for detection and gain setting, then an 8-microsecond long training sequence for channel estimation and frequency correction), followed by a 4-microsecond SIGNAL symbol sent in BPSK that tells the receiver the rate and length.
+
+Before that, **802.11b** did not use OFDM. It spread each symbol with a Barker sequence (DSSS, 1 and 2 Mbit/s) or complementary code keying (CCK, 5.5 and 11 Mbit/s) in a 22 MHz channel. 802.11g added OFDM on 2.4 GHz while staying compatible with b, which is why the protection mechanisms of WF 03 exist. A 2.4 GHz network that still allows 1 and 2 Mbit/s lets a DSSS preamble (up to 192 microseconds long) occupy the air before any data, a large cost per frame.
+
+### 4.5 Channel estimation
 
 The receiver does not know the channel, so each frame starts with known **training fields**. It compares what it received with what it expected, estimates the channel at every subcarrier, and uses that to equalise the rest of the frame. More training symbols give a better estimate (the error falls by 3 dB each time the number of training symbols doubles), which is why MIMO frames carry one training field per stream and why a long frame in a changing channel needs mid-frame training (the **midambles** of the vehicle standard in WF 14).
 
@@ -185,6 +191,12 @@ The legacy preamble alone takes 20 microseconds. With the newer fields and per-s
 This is the reason for **aggregation** (WF 03): put many MPDUs in one PPDU so that one preamble and one acknowledgement serve many frames. At the highest rate of 802.11ax one 1500-byte MPDU delivers under 10 percent of the PHY rate as useful data; eight deliver about 40; a hundred or more reach 90 percent. The maximum PPDU duration (the 5.5 ms limit) bounds the aggregate, and a large aggregate has its own costs in latency and in retransmitting a whole burst on a loss.
 
 ---
+
+### 7.1 PPDU formats and MCS numbering
+
+Each generation defines one or more **PPDU formats**, and a capture shows which one a frame uses. 802.11n has a **mixed format** (a legacy preamble followed by HT fields, so legacy stations can defer) and an optional **greenfield** format without the legacy part, which almost nobody uses because it gives up compatibility. 802.11ac has the **VHT** format, always preceded by a legacy preamble. 802.11ax has four: **HE SU** (one user), **HE MU** (several users, in OFDMA or MU-MIMO downlink), **HE ER SU** (extended range, a repeated format for the cell edge) and **HE TB** (the uplink response to a trigger frame). 802.11be adds EHT formats in the same spirit.
+
+The MCS numbering also differs by generation, a frequent source of confusion. In **802.11n** one MCS number covers the constellation and the number of streams together: MCS 0 to 7 are one stream (BPSK 1/2 up to 64-QAM 5/6), 8 to 15 are two streams, 16 to 23 three and 24 to 31 four. In **802.11ac** and later the MCS number gives only modulation and coding (0 to 9 in ac, 0 to 11 in ax, 0 to 13 in be) and the number of streams is a separate field. Some combinations are not defined (in ac, MCS 9 is not allowed at 20 MHz with one stream). When you read "MCS 7" in a log, check which generation produced it.
 
 ## 8. MIMO: capacity, diversity and rank
 

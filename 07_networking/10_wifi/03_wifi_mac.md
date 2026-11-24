@@ -55,6 +55,8 @@ def decode_fc(raw):
 
 Feeding it the bytes `88 09 2c 00` gives a QoS data frame (type data, subtype 8) from a station to the AP with the retry bit set and a duration of 44 microseconds.
 
+The flag bits sit in the second byte of frame control in this order, from the low bit: ToDS, FromDS, More Fragments, Retry, Power Management, More Data, Protected Frame, Order. A few details matter. **More Fragments** is only set on unicast frames, because broadcast and multicast are never fragmented (they have no acknowledgement to build on). **Order** is set only on non-QoS data frames that must be delivered strictly in order, and is zero otherwise. **Retry** is the most useful bit in a capture: as a rule of thumb a data network tolerates roughly 10 percent retries while voice wants under 5 percent, and a protocol analyser or driver counter can measure it. **Protected Frame** says the body is encrypted (it is also set in the third frame of the old WEP shared-key authentication).
+
 ### 1.2 The rest of the header
 
 After frame control come:
@@ -65,6 +67,8 @@ After frame control come:
 - **QoS control** (QoS data only): the traffic identifier (priority), the acknowledgement policy, and whether the payload is an A-MSDU (section 5).
 - **HT/VHT/HE control** (when present): a small field used for link adaptation feedback and similar.
 - **Frame body**, then a 32-bit **frame check sequence (FCS)**.
+
+Sizes help when you read hex. Frame control is 2 bytes, duration/ID 2, each address 6, sequence control 2, QoS control 2 and HT/VHT/HE control 4, with a 4-byte FCS at the end. A plain data frame therefore has a 24-byte header (30 with the fourth address), a QoS data frame 26 (32 with four addresses), plus 4 when an HT control field is present. The body of an MSDU is limited to 2304 bytes before encryption overhead (management frames have the same limit); the aggregate formats of section 5 move far more in one PHY transmission.
 
 Control frames are small: an ACK is 14 bytes, a CTS 14, an RTS 20. They carry only a receiver address (and a transmitter for RTS), because they have no payload and need to be fast.
 
@@ -217,19 +221,31 @@ Everything fixed in time (DIFS, backoff, preamble, SIFS, acknowledgement) is pai
 
 A radio that listens all the time costs far too much power. A station that wants to sleep tells the AP with the **power management bit** in a frame (often a null frame). From then on the AP **buffers** frames for it. The AP's beacons carry a **TIM** (traffic indication map): a bitmap, indexed by association ID, saying which sleeping stations have buffered frames. A sleeping station wakes for beacons (at a multiple of the beacon interval called the **listen interval**), reads the TIM, and if its bit is set sends a **PS-Poll** (or a trigger, below) to fetch the frames, staying awake while the **More Data** bit says there are more.
 
-### 6.2 Multicast and the DTIM
+### 6.2 What a beacon carries for power save
+
+The TIM is an information element (element ID 5) in every beacon. It holds a length, a **DTIM count** (beacons remaining until the next DTIM; zero means this beacon is one), a **DTIM period** (beacons between DTIMs), a **bitmap control** byte and a **partial virtual bitmap**. Each bit of the virtual bitmap stands for one association ID. The AID is assigned by the AP in the association response and runs from 1 to 2007, so a full bitmap would be 2008 bits. Sending all of it in every beacon would waste airtime, so only the part from the first to the last set bit is sent, and the upper seven bits of the bitmap control byte give an offset that skips the leading zero bytes (an offset of N skips 2N bytes). The lowest bit of the bitmap control is set when the AP has buffered multicast or broadcast traffic, which tells stations to stay awake after this DTIM beacon. A station also uses the timestamp in each beacon to correct its clock, because contention can delay a beacon past its nominal time.
+
+The station chooses how often to wake by its **listen interval** (in beacon intervals), stated in the association request; the AP must buffer frames long enough to cover it. The DTIM period is a single value for the whole BSS, so a larger period saves power for everyone and delays multicast for everyone.
+
+Under the original **legacy power save** the station keeps the power management bit at 1 in every frame it sends while dozing between beacons, so the AP buffers everything for it, and the station retrieves frames one at a time with PS-Poll, staying awake while More Data is set. That is chatty: every frame costs a poll.
+
+Three further mechanisms are worth a sentence. **Scheduled APSD** and **PSMP** (802.11n, built on HCCA scheduling that almost no deployment uses) let an AP schedule service periods in advance. **SM power save** is unrelated to buffering: an 802.11n station with several antennas turns off all but one receive chain and wakes the others when the AP sends it a frame that needs them (in static mode, after an RTS/CTS exchange). And in an IBSS there is no AP to buffer, so stations announce buffered traffic to each other with **ATIM** frames in a short announcement window after each beacon.
+
+### 6.3 Multicast and the DTIM
 
 Broadcast and multicast frames are for everyone, so the AP cannot send them when some stations sleep. It buffers them and sends them right after a beacon with a **DTIM** (delivery traffic indication message), which occurs every DTIM period of beacons. All stations that want multicast wake for the DTIM beacon, and the AP sends the buffered group traffic at the basic rate, with no acknowledgement. Two consequences: a long DTIM period saves power but delays multicast (and breaks protocols that need quick multicast replies, like discovery), and chatty multicast traffic keeps every station awake and uses the slowest rate, which is why networks filter or convert multicast (WF 07 and WF 14).
 
-### 6.3 U-APSD
+### 6.4 U-APSD
+
+Precisely, a station configures **trigger-enabled** and **delivery-enabled** for each access category during association. A QoS data or QoS null frame in a trigger-enabled category, sent while the power management bit is set, starts a **service period**. The AP delivers frames from the delivery-enabled categories, up to a limit the station negotiated (the maximum service period length), and marks the last one with the **end of service period (EOSP)** bit, after which the station may doze again. (Some descriptions call the trigger a null frame with the PM bit cleared; that is the older non-QoS idea. U-APSD proper uses QoS frames and keeps PM set.)
 
 PS-Poll is slow, since a station must poll for each frame. **Unscheduled automatic power save delivery (U-APSD)** from 802.11e lets a station sleep and wake whenever it needs to send. Its own uplink frame acts as a **trigger**, and the AP replies by delivering the buffered downlink frames of the categories enabled for delivery, ending with a flag. It is the basis for efficient voice: the phone sends a voice frame every 20 ms, which triggers the delivery of the other side's voice frame, and sleeps in between.
 
-### 6.4 Target wake time
+### 6.5 Target wake time
 
 **Target wake time (TWT)** from 802.11ah and 802.11ax moves from "wake every beacon and ask" to a negotiated schedule: a station and the AP agree on when it will wake and for how long, and the AP can schedule many stations into different slots, reducing contention as well as power. It is individual (one pair) or broadcast (a schedule for many). Chapter WF 06 explains it in detail.
 
-### 6.5 What to look at when a phone drains its battery on Wi-Fi
+### 6.6 What to look at when a phone drains its battery on Wi-Fi
 
 A device that never sleeps (the PM bit stuck), a short DTIM period, frequent multicast or broadcast (mDNS, router advertisements), an AP that does not buffer correctly, a retried power-save frame, and aggressive background scanning.
 
