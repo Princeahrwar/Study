@@ -50,6 +50,8 @@ Networking questions arrive from several directions: "what happens when you type
 | 13 | [`13_load_balancing_proxies_and_anycast.md`](13_load_balancing_proxies_and_anycast.md) | Load balancing, proxies and anycast | L4 against L7, NAT mode against DSR, consistent hashing and Maglev hashing, connection tracking and the problem of backend changes, health checks, IPVS and `nftables` load balancing, XDP load balancers (Katran-style), anycast and BGP, reverse proxies and connection pooling, TLS termination. Cross-reference the load-balancing design problem in `11_hld` | Written (Nov 2026) | 18 |
 | 14 | [`14_queueing_qos_and_traffic_management.md`](14_queueing_qos_and_traffic_management.md) | Queueing, QoS and traffic management | Queueing delay and Little's law applied to a link, buffer sizing and bufferbloat, tail drop, RED and ECN marking, CoDel and FQ-CoDel, token bucket and leaky bucket, policing against shaping, strict priority, DRR and WFQ, DSCP and 802.1p, `tc` qdiscs on Linux (`tbf`, `htb`, `fq_codel`, `cake`) | Written (Nov 2026) | 19 |
 | 15 | [`15_networking_interview_question_bank.md`](15_networking_interview_question_bank.md) | Networking interview question bank | Questions with answers across the track, a "network is slow" and "connection fails" triage tree, 10 to 15 troubleshooting scenarios reproduced in network namespaces (as in LX 14), design-style questions (load balancer, firewall data path, packet router), a one-page cheat sheet | Written (Nov 2026) | 24 |
+| 16 | `16_network_foundations_gaps.md` | Network foundations: media, topologies, legacy routing, gateway redundancy, attacks | Added 24 Nov 2026 after a check against a four-phase curriculum. Network scopes (PAN, LAN, MAN, WAN) and topologies; circuit against packet switching; hubs, bridges, L2 and L3 switches and where APs and WLCs sit; copper (Cat5e, Cat6, Cat6a) and fibre (single-mode against multimode), speed and duplex mismatch; PoE (802.3af, at, bt) and what an AP needs; APIPA and RFC 1918; floating static routes and administrative distance; RIP and EIGRP concepts next to OSPF and BGP; HSRP, VRRP and GLBP with a real `keepalived` VRRP failover; TACACS+ against RADIUS; ACL types; ARP spoofing, DNS cache poisoning, VLAN hopping and Zero Trust; FTP, SFTP, SMTP, IMAP and SSH against Telnet | To write | after WF 15 |
+| 17 | `17_cloud_sdn_automation_and_labs.md` | Cloud networking, SDN, NFV, automation and lab tools | Added 24 Nov 2026. VPCs, subnets, route tables, security groups against NACLs, load balancers (links to NET 13), peering and transit; SDN (control plane and data plane split, OpenFlow, P4 at a glance, links to NET 11); NFV and virtual network functions; automation with Python and Ansible (a playbook that configures a namespace lab, idempotence); simulators and emulators (Packet Tracer, GNS3, EVE-NG) against namespaces and FRR, and which to use when | To write | after NET 16 |
 
 ---
 
@@ -169,6 +171,7 @@ Every NET tutorial follows these rules, so the track is something you run and lo
 | 01–09, 11–15 | Core topics | NET 01 to 09 and 11 to 15 written (Nov 2026; NET 10 is the Wi-Fi stretch sub-track) |
 | 10 | Wi-Fi sub-track (WF 01 to WF 15) | In progress (priority raised 23 Nov 2026): WF 01 to WF 11 written; WF 12, WF 13, WF 14 and WF 15 to write, in order |
 | 14 | Queueing | Written (Nov 2026, added after the audit) |
+| 16, 17 | Foundations gaps; cloud, SDN, automation and labs | To write (added 24 Nov 2026), after WF 15 |
 | 15 | Question bank | Written (Nov 2026) |
 
 Cross-track view: [`../00_MASTER_PLAN.md`](../00_MASTER_PLAN.md).
@@ -235,6 +238,9 @@ Priority: **raised on 23 Nov 2026**. You asked for networking to be completed, e
 | RF basics, link budget, antennas, noise | **WF 11** (new) | Standard texts and the MathWorks "WLAN (Wi-Fi) Explained" series |
 | Power save: PS-Poll, DTIM, U-APSD, TWT | WF 03 and WF 06 | IEEE 802.11 power management clauses (from memory) |
 | Beamforming, sounding, MU-MIMO in detail | WF 02 and WF 06 | MathWorks series, vendor white papers |
+| Antenna types (omnidirectional, patch, Yagi, parabolic), polarisation, radiation patterns (added 24 Nov 2026; WF 11 has gain and aperture only) | WF 11 addendum, written with WF 14 | Antenna texts, CWNA material |
+| PoE for access points (802.3af, at, bt power classes, budget per switch) | NET 16 | IEEE 802.3 (from memory) |
+| Wireless LAN controller as a device class and the AP-to-WLC lab | WF 07 (exists) and NET 17 (simulators) | |
 | Regulatory limits: EIRP, TPC, DFS timing, AFC | WF 02, WF 06, WF 11 | FCC and ETSI rules (from memory; verify before use) |
 | Passpoint, Hotspot 2.0, ANQP, 802.11u | WF 04 | Wi-Fi Alliance Passpoint documents |
 | WPA3-SAE and OWE message detail | WF 04 | RFC 7664 (Dragonfly) and the 802.11 clauses |
