@@ -1,63 +1,37 @@
-# WF 05: Wi-Fi roaming and radio management, from the roam decision to the channel plan
+# WF 05: Wi-Fi roaming and radio management: from the roam decision to the channel plan
 
-*Part of the [networking plan](../00_plan.md), Wi-Fi sub-track · Candela session 5a (roaming and radio resource management, with DFS), with 802.11k, v and r, PMKSA caching and opportunistic key caching, band and client steering, radio resource management (channel and power), DFS and the channel switch announcement, and the controller-era topics from the CWSP, CWAP and CCIE Wireless syllabus folded in · Time: about 10 hours · You need: [WF 03](03_wifi_mac.md) (scanning, the three states, DCF and the performance anomaly), [WF 04](04_wifi_security.md) (the 4-way handshake, PMKSA, the 802.11r key hierarchy in preview) and [WF 11](11_rf_fundamentals_and_link_budget.md) (path loss, shadowing, the link budget). Roaming answers two questions: **when should a station leave an access point, and how fast can it arrive at the next one with its keys and its state?** Radio management answers the matching question for the network: **which channel and which power should each access point use so that the stations have somewhere good to roam to?** This tutorial builds both from the bottom: the frames of 802.11k and v (decoded by `tshark`), the 802.11r key hierarchy, a roam time model that shows where the milliseconds go (the scan, not the handshake), simulations of roam thresholds and steering, channel and power planning on a 20 access point floor, and the DFS recovery policies.*
+*Part of the [networking plan](../00_plan.md), Wi-Fi sub-track · Candela session 5a (roaming and radio resource management, with DFS) plus gap topics (key caching, steering, controller-era roaming) · You need: [WF 03](03_wifi_mac.md) (frames, scanning, the association states), [WF 04](04_wifi_security.md) (PMK, PTK, the 4-way handshake)*
 
-"Why does my call drop when I walk down the corridor" and "what does 802.11r do" are two of the most common wireless interview questions, and the Staff answer is a budget: how long each step takes, which step dominates, and which mechanism removes it. This tutorial puts a computed or simulated number on each step, and marks what comes from memory of the standard or of vendor behaviour.
+A Wi-Fi network is a set of access points that a client treats as one network. The client is the one that walks; the network has to make that walk invisible. Two halves of the job: **roaming**, which is how a client moves from one access point to the next without the call dropping, and **radio resource management (RRM)**, which is how the network chooses channels, power and widths so that there is a next access point worth moving to. Both are policy problems wrapped around a few protocol tools (802.11k, 802.11v, 802.11r), and both are where most real-world Wi-Fi complaints come from: "my call drops in the corridor", "my phone sticks to the far access point", "the network keeps changing channels".
 
-**Eight honest limits, stated first.**
-
-1. **There is no radio here, so no roam was measured.** The roam times are a model: the airtime of each frame comes from its size at 6 Mbit/s with the DCF waits of [WF 03](03_wifi_mac.md), and the processing time per frame (1 ms at each end) and the RADIUS round trips (5, 40 and 100 ms) are **assumptions**, printed beside every table. A real driver adds firmware latency, queues and scan policies that I did not measure.
-2. **The standard was not re-read.** The layouts of the neighbor report, beacon report, BSS transition and channel switch frames are decoded by `tshark`, which checks the field positions. The **802.11r key derivation (KDF-SHA256, the labels, the context)** is **from memory** and has no independent check: `tshark` cannot derive FT keys and `wpa_supplicant` cannot run here, so a mistake in a label would not be caught. What the script demonstrates (one key per access point, binding to the identifiers) does not depend on the exact constants.
-3. **My FT frames are structurally right and cryptographically empty.** The MIC fields are zero and the element contents are placeholders, so `tshark` decodes the fields but nothing is verified.
-4. **The roam decision simulation is a corridor model**: nine access points in a line, log distance loss with correlated shadowing, no walls, one client, four policies of my own. Real clients decide with vendor specific logic, and the point of the simulation is the shape of the trade (stickiness against ping-pong against roam cost), not any phone.
-5. **The steering model is a single cell with assumed behaviour**: 40 clients, 70 % dual band, every client asking for the same demand, and the compliance rates (35 % self-selection, 30 % ignoring) are my assumptions.
-6. **The radio management model uses a simple propagation model and two simple algorithms** (a greedy colouring and a random local search) on one random floor. The vendor algorithms (the dynamic channel assignment and transmit power control of the controller era) and their thresholds are **from memory**.
-7. **The DFS timers (60 s check, 30 minute non-occupancy, 10 s move time) are from memory** of the regulatory numbers and are inputs of a model; false detection rates are not modelled.
-8. **Not run here:** a controller, mobility groups, anchor and foreign tunnels, FlexConnect, CleanAir, `hostapd` (this VM has no `cfg80211`, so [WF 10](10_linux_wireless_stack_and_openwrt.md) covers `hostapd_cli` and the roaming daemons) and any real client. Those sections are explained from memory and marked.
+This is a favourite topic in Senior and Staff interviews because it is where protocol, RF and product design meet. A strong answer is not a list of amendments. It is a budget (where the time of a roam goes), a decision (who chooses when to move), and a trade-off (every knob that helps one client hurts another).
 
 By the end you can:
 
-- **say where a roam spends its time** (modelled: a full active scan of 38 channels at 30 ms is **1,140 ms**, a scan of the **3 channels** of an 802.11k neighbor list **90 ms**, and the exchange after it is **5.7 ms** for 802.11r, **10.6 ms** with PMKSA or OKC, **66.5 ms** for a full EAP-TLS with a 5 ms RADIUS server and **311.5 ms** at 40 ms, **1,039 ms** for PEAP at 100 ms; the whole roam is **1,451 ms** and **72** lost voice packets with no help, **96 ms** and **4** with a neighbor list and 802.11r, **6 ms** and **0** when the scan is skipped);
-- **read and build the 802.11k and v frames** (built and decoded by `tshark`: a neighbor report response of **57 bytes** for two candidates at **15 bytes** each, a beacon report that carries RCPI **96** for **-62 dBm** and RSNI **70** for **25 dB**, and a BSS transition request with the disassociation imminent bit and a disassociation timer of **100 TU = 102.4 ms**);
-- **derive the 802.11r keys and say what each protects** (computed, from memory of the KDF: one PMK-R0 per authentication, one **PMK-R1 per access point**, one PTK per association; four frames of **177, 177, 187 and 177 bytes** in my model of an over-the-air transition; pre-deriving every pair for **1,000 access points and 10,000 clients** takes **480 MB**, deriving on demand about **1.5 µs** per roam);
-- **choose roam thresholds and hysteresis** (simulated on 200 walks: always roaming to the best access point gives **5.12 roams per 100 m** and **1.44 ping-pongs per 100 m**; roaming below **-80 dBm** is sticky, with **12.3 %** of the time below -75 dBm and **106.8 Mbit/s** mean; roaming below **-65 dBm** with a **5 dB** margin gives **3.53 roams**, **0.01 ping-pongs** and **139.9 Mbit/s**; with a **1,450 ms** roam the best-AP policy loses **8.83 %** of the time and falls from 142.8 to **130.2 Mbit/s**, while the -65 dBm policy keeps **131.2**);
-- **explain band and client steering and where it fails** (modelled: with no steering **20.8 %** of the clients are on 5 GHz and the 2.4 GHz cell needs **95 %** of the air for 1.5 Mbit/s per client, so only **27 %** of the clients get their demand; with steering and every client complying **58 %** are on 5 GHz, both cells sit near **53 %** and **100 %** get it; if **30 %** ignore the steering **92 %** do; one 1 Mbit/s client in a cell of 20 raises the airtime from **88 %** to **235 %**);
-- **plan channels and power** (simulated on 20 access points in 100 m by 100 m: 3 channels in 2.4 GHz leave **54** co-channel pairs that hear each other after greedy colouring against **60.4** at random, 9 channels in 5 GHz leave **13** against **20.1**, and **25** channels (with DFS) **0**; transmit power at **14 dBm** keeps **98.2 %** good coverage while the share of points with a second access point at -67 dBm or better falls from **97.9 %** to **71.7 %**; a failed access point opens **2.1 %** holes at 8 dBm and none at 14 dBm);
-- **count beacon overhead** (computed: a 300 byte beacon at **1 Mbit/s** takes **2,592 µs**, **10.12 %** of the air for four SSIDs on one access point and **101.2 %** for ten access points on a channel; at 6 Mbit/s **1.64 %** and **16.4 %**);
-- **handle a DFS event** (the channel switch announcement built and decoded by `tshark`; modelled outage per radar event of **1.0 s** when a non-DFS channel is announced, **60.5 s** when the move must wait for a 60 s channel check and **70.0 s** with no fallback chosen; with **2 events per day** that is **2 s**, **121 s** and **140 s** a day).
-
-## Where the numbers come from
-
-Each experiment is a script `sN_*.py` in `prog/` with its output frozen in `v/`, run with `run.sh`. `dot11.py` is the frame builder of [WF 03](03_wifi_mac.md) and `ft.py` the 802.11r key functions. `s1_kv.py` builds the six action frames of 802.11k and v and has `tshark` decode them, `s2_ft.py` derives the FT key hierarchy and builds the four frames of a fast transition, `s3_roamtime.py` is the roam time model, `s4_decision.py` the corridor walk with four roam policies, `s5_steering.py` the band steering model, `s6_rrm.py` the channel, power and coverage hole model, and `s7_dfs.py` the channel switch announcement and the DFS recovery policies. The answers to the problems are `ans_a` to `ans_e`.
-
-Every number in the text is copied from `v/*.out` or computed from a printed figure with the arithmetic shown. A number that is not measured, simulated, modelled or computed here is marked **from memory**. The simulations use fixed seeds, so each run prints the same figures.
-
-## Data and timing
-
-| What | Size or time |
-|---|---|
-| 802.11k and v frames (`s1_kv.sh`) | 6 frames in a pcap, under 1 s |
-| FT keys and frames (`s2_ft.sh`) | 3 access points, 4 frames, under 1 s |
-| Roam time model (`s3_roamtime.sh`) | arithmetic, under 1 s |
-| Corridor walks (`s4_decision.sh`) | 8 rows of 200 walks of 333 steps, about 2 s |
-| Steering model (`s5_steering.sh`) | 4 rows of 400 draws, under 2 s |
-| Channels, power, holes (`s6_rrm.sh`) | 20 access points, about 3 s |
-| CSA and DFS (`s7_dfs.sh`) | 4 frames and arithmetic, under 1 s |
-
-## Mapping to the Candela course
-
-Candela session 5a covers roaming and radio resource management, with the DFS mechanics. This tutorial covers the same ground and adds what a Senior or Staff interview asks for beyond the course: the frames of 802.11k and v and what each field is for (sections 2 and 3), the 802.11r key hierarchy and why each access point gets its own key (section 4), the cost of each key caching method and the scan that dominates (sections 5 and 6), the roam decision as a design problem with hysteresis and roam cost (section 7), steering (section 8), channel and power planning with beacon overhead (section 9) and the DFS recovery policies (section 10). The CWSP fast roaming topics (PMK caching, OKC, preauthentication, FT over the air and over the DS) are sections 4 and 5, and the **controller-era** topics (mobility groups, L2 and L3 roaming, anchor and foreign, FlexConnect, client exclusion, rogue handling, coverage hole detection, RF groups, CleanAir) are in section 11, from memory. The **6 GHz discovery** items that matter for roaming (reduced neighbor report, preferred scanning channels, FILS discovery) are in section 6 and in [WF 06](06_wifi6_6e_7_features.md); **multi-link roaming** is in [WF 12](12_wifi7_eht_and_mlo.md) and the **seamless roaming of multi-AP coordination** in [WF 13](13_wifi8_uhr_802_11bn.md).
+- say who decides a roam, what the four steps of a roam are, and why the station, not the network, is in charge;
+- explain where a roam spends its time and which mechanism removes which part;
+- read and build the 802.11k and 802.11v frames (neighbor report, beacon report, BSS transition management) and say why a BTM request is advice, not a command;
+- explain the key-caching ladder: full 802.1X, PMKSA caching, opportunistic key caching, preauthentication and 802.11r, with the cost and the failure mode of each;
+- derive the 802.11r key hierarchy (PMK-R0, PMK-R1, PTK), name the key holders, and walk through the over-the-air and over-the-DS exchanges;
+- choose roam thresholds and hysteresis, and explain sticky clients and ping-pong roaming;
+- design band steering and client steering, and say where steering fails;
+- explain what RRM does (channel, power, width, coverage holes), how an RF group and leader work, and why RRM is slow and conservative on purpose;
+- explain DFS, the channel switch announcement and the cost of a radar event, and set a DFS policy;
+- read a roam from a capture and measure its real outage;
+- debug the common roaming symptoms from the evidence.
 
 ---
 
 ## 1. Who decides, and what a roam is
 
-In an ESS (several access points with one SSID, [WF 01](01_wifi_landscape_and_ap_anatomy.md)) **the station decides when to roam**. The standard gives the access point no way to move a station: it can only advise (a BSS transition request), make the current link worse (ignore a station, lower its rate, send a deauthentication) or make the neighbour more attractive. Everything below follows from that. A roam has four phases:
+In an ESS (several access points with the same SSID and security, [WF 01](01_wifi_landscape_and_ap_anatomy.md)) **the station decides when and where to roam**. The standard gives the access point no way to move a station. It can only advise (a BSS transition request), make the current link worse (ignore the station, lower its rate, send a deauthentication) or make the neighbour more attractive. Almost every roaming problem traces back to this one fact: the network has the information and the client has the control.
 
-1. **Trigger**: the station concludes that the current link is not good enough (RSSI below a threshold, too many retries, a low rate, missed beacons) or an access point asks it to move.
-2. **Discover**: it finds the candidates: scan channels, listen to beacons and probe responses, or use a list from the network (802.11k).
-3. **Select**: it ranks the candidates (RSSI, load from the BSS load element, rate, band preference).
-4. **Execute**: authentication, **reassociation** (which names the previous access point so that the network can move state), the key setup of [WF 04](04_wifi_security.md), and the resumption of traffic, plus whatever the network does behind: the switch learns the new location of the MAC address, a controller moves the client entry, and downlink frames queued at the old access point are lost or forwarded.
+A roam has four steps:
+
+1. **Trigger.** The station decides the current link is not good enough (RSSI below a threshold, many retries, a low rate, missed beacons), or the access point asks it to move.
+2. **Discover.** The station finds the candidates: it scans channels, listens to beacons and probe responses, or uses a list from the network (802.11k).
+3. **Select.** It ranks the candidates (RSSI first, then band, load from the BSS load element, supported rates).
+4. **Execute.** Authentication, **reassociation** (which names the previous access point), the key setup of [WF 04](04_wifi_security.md), and the resumption of traffic. Behind the scenes the wired side has to learn that the station moved.
 
 ```mermaid
 sequenceDiagram
@@ -79,795 +53,551 @@ sequenceDiagram
     Note over A1,A2: Network moves the client state
 ```
 
-The reassociation request (subtype 2, [WF 03](03_wifi_mac.md)) carries the **current AP address**, which is how the target learns where to fetch the station's context from (a controller, or the access point over the wired side with a vendor protocol or the old IAPP, **from memory**). A station that does not roam properly uses **association** (subtype 0) and a full authentication, which in an enterprise network means a full 802.1X exchange: the table of section 5 prices that difference.
+**Reassociation, not association.** The reassociation request (subtype 2, [WF 03](03_wifi_mac.md)) carries the **current AP address**. That is how the target learns where to fetch the station's context from (a controller, or the old access point over a vendor protocol). A client that does a plain association (subtype 0) is not roaming: it is a fresh join, and the network treats it so.
 
-Two facts frame the rest of the tutorial. **First**, the scan and the key exchange are most of the time (section 6). **Second**, roaming is a **policy** problem as much as a protocol problem: a station that roams too late is stuck at a low rate and drags everyone down ([WF 03](03_wifi_mac.md) section 7), and one that roams too often loses service at every move (section 7).
+**What the wired side does.** The switch must learn that the MAC address now lives behind a different port. The new access point (or the controller) sends a **gratuitous frame** with the station's source address so that switches update their tables, and frames queued at the old access point are lost or forwarded depending on the product. A roam that looks perfect on the air can still lose a second of downlink traffic because the switch kept sending to the old port.
 
-## 2. 802.11k: telling the station where to look
+Two facts frame the rest of this tutorial. **First**, the scan and the key exchange are most of the time of a roam (section 2). **Second**, roaming is a policy problem as much as a protocol problem: a client that roams too late sits at a low rate and drags the others down ([WF 03](03_wifi_mac.md) section 7), and a client that roams too often loses service at every move (section 3).
 
-802.11k (**radio resource measurement**) lets an access point and a station ask each other for measurements, and gives the station a **neighbor report**: the list of nearby access points of the same ESS with their channels. Its value is the scan: with the list the station visits 3 channels and not 38.
+## 2. Where a roam spends its time
 
-The frames are **action frames of category 5** (radio measurement). The script builds the neighbor report request and response, a **beacon request** (the access point asks the station to measure beacons) and the **beacon report** that answers, and a BSS transition request and response (section 3), and `tshark` decodes all six:
+A roam is short only if every step is short. The steps and what makes each long:
 
---- the six action frames, built here and decoded by tshark (category 5 radio measurement, category 10 WNM)
-frame  size  what                                           decoded by tshark
-  1     33  neighbor report request                        category_code=5 action_code=4 dialog_token=1
-  2     57  neighbor report response                       category_code=5 action_code=5 dialog_token=1
-  3     47  radio measurement request (beacon request)     category_code=5 action_code=0 dialog_token=2
-  4     58  radio measurement report (beacon report)       category_code=5 action_code=1 dialog_token=2 channelnumber=36 rcpi=96 rsni=70
-  5     46  BSS transition management request              category_code=10 action_code=7 dialog_token=0x03 pref_cand=1 disassoc_imminent=1 disassoc_timer=100 validity_interval=10
-  6     35  BSS transition management response             category_code=10 action_code=8 dialog_token=0x03 bss_transition_status_code=0 bss_transition_target_bss=02:00:00:00:00:02
+| Step | What it costs | What shortens it |
+|---|---|---|
+| Decide to leave | The client waits until the link is bad (often seconds of poor service) | A BTM request, a higher threshold, hysteresis done well |
+| Scan | A **passive** scan waits for a beacon, so at least one beacon interval (about 100 ms) per channel. An **active** scan sends a probe request and waits for responses, tens of ms per channel. A client with no list scans every channel it supports, which is a second or more | An 802.11k neighbor list (3 or 4 channels, not 30 or more), a short preferred-channel list, 6 GHz discovery aids |
+| Authenticate and associate | A few frames: milliseconds | Nothing needed |
+| Keys | A full 802.1X exchange is 7 to 10 round trips to a RADIUS server, so the time is the **server distance times the number of rounds**. A 4-way handshake is 4 frames | Key caching (PMKSA, OKC) or 802.11r |
+| Network update | Switch learning, controller state move, queued frames | Gratuitous frames, a fast controller path, no L3 tunnel |
 
-A **neighbor report element** (element ID 52) is **15 bytes per candidate**: the BSSID (6), the BSSID information (4: reachability, whether the security matches, key scope, spectrum management, QoS, APSD, radio measurement, delayed and immediate block ack, **mobility domain** (bit 10: the same 802.11r domain, so a fast transition is possible), **high throughput** and very high throughput bits), the **operating class** and **channel** (which tell the station where to look) and the PHY type, with optional sub-elements (for example a preference). The response of two candidates is **57 bytes**.
+Two lessons come out of the table. First, **the scan is usually the biggest single cost** on a network that has already deployed key caching, so 802.11k is more valuable than most engineers think. Second, **a full EAP roam depends on where the RADIUS server is**. With a server on the same site the exchange is tens of milliseconds. With a cloud RADIUS service 40 ms away and 7 to 10 rounds, it is a third of a second to a second or more. Apple's own deployment guidance says that with full 802.1X authentication roaming can take several seconds, during which data cannot pass, and that the fast-roaming features exist to prevent that gap. A cloud-managed network without key caching makes every roam a perceptible event.
 
---- the numbers inside
-neighbor report element: id 52, 13 bytes of body per candidate (BSSID 6 + BSSID information 4 + operating class 1 + channel 1 + PHY type 1), 15 bytes with the element header; frame 2 is 57 bytes for two candidates = 24 header and 2 action bytes + 1 token + 2 x 15 = 57
-BSSID information built here: 0x00000c0f (bits: reachable 3, security 4, key scope 8, mobility domain 0x400, HT 0x800); the dump of tshark -V on this frame showed the same value 0x00000c0f
-RCPI = 2 x (dBm + 110): -62 dBm -> 96, decoded -62 dBm; RSNI = 2 x (SNR + 10): 25 dB -> 70, decoded 25.0 dB
-operating class 115 = 5 GHz channels 36 to 48 (20 MHz), 81 = 2.4 GHz channels 1 to 13 (from memory of the regulatory table); the candidate list uses these two numbers to say where the station should look
-request mode bits used: 0x05 = preferred candidate list included (bit 0) + disassociation imminent (bit 2); disassociation timer 100 TU = 102.4 ms; validity interval 10 beacon intervals
-a transition request is advice, the response status 0 (accept) is a promise from the client and is not binding in time: the AP must still disassociate the client if it does not move (that is the disassociation timer)
+**What is the budget?** Voice is the tightest user. A common design target is a roam outage of about **50 ms** (a design target, not a standard; the ITU G.114 limit on one-way delay is 150 ms, and a gap shows up as lost voice packets that a codec conceals for a short time). Data traffic tolerates more, but TCP is touchy: a gap of a few hundred milliseconds can trigger a retransmission timeout, and the flow then recovers slowly. So the **order of work** is: make the roam cheap (keys and scan), and only then tune the thresholds (section 3).
 
-**RCPI and RSNI.** The beacon report returns what the station heard. **RCPI** (received channel power indicator) is `2 x (dBm + 110)` in one byte (so **-62 dBm is 96**, with a range of -110 to 0 dBm), and **RSNI** (received signal to noise indicator) is `2 x (SNR + 10)` (**25 dB is 70**). The decode shows both values. Three ways to measure are defined, **passive** (listen), **active** (probe) and **beacon table** (report the beacons already heard, with no new scan), and the table mode is what lets an access point learn how the station sees the network without disturbing it.
+## 3. The roam decision: when and where to go
 
-**What else 802.11k can measure (from memory):** the **channel load** (how busy a channel is), the **noise histogram** (the distribution of the noise power), **station statistics** (the counters of the station), the **link measurement** (the path loss and margin between a station and its access point) and the **transmit stream measurement** (the delay of a voice stream), and the **location** requests. The **RM enabled capabilities element** in the association request says which of them a station supports, and support in practice is partial: many phones implement the neighbor report request and the beacon report and not the rest, so a design should not rely on the rest.
+The standard says nothing about when a station roams, so every vendor chooses. The common triggers:
 
-**How the network uses it.** A client that supports it asks for the neighbor report (usually when its RSSI falls), and the access point builds the list from its own knowledge or from the controller (the RF group of section 9). A bad list is worse than none: if the access point lists neighbours that are far away or on a wrong channel, the station spends its scan time on them.
+- an **RSSI threshold** (Apple documents that Macs start looking for a candidate at about -75 dBm and iPhone, iPad and Apple Vision Pro at about -70 dBm);
+- a **rate or retry** drop, or **missed beacons**;
+- a **BTM request** from the access point;
+- an application hint on some clients (an active voice call roams earlier).
 
-## 3. 802.11v: asking the station to move
+The selection compares candidates, mostly by RSSI, with a bonus for 5 GHz and 6 GHz and a penalty for high channel utilisation (the BSS load element) and for many associated clients. Apple documents that a candidate must be about **12 dB stronger** than the current access point for a Mac, or for an idle iPhone, and about **8 dB stronger** for a phone that is sending data, which is a deliberate hysteresis. Windows, Android and Linux (`wpa_supplicant` with its bgscan modules) each have their own logic and defaults.
 
-802.11v (**wireless network management**, WNM, action frames of **category 10**) contains the tool that fixes the sticky client: the **BSS transition management (BTM) request**. The frame in the decode above carries:
+### 3.1 The two failure modes
 
-- a **request mode** byte: bit 0 **preferred candidate list included**, bit 1 **abridged** (the candidates not listed are less preferred), bit 2 **disassociation imminent**, bit 3 BSS termination included, bit 4 **ESS disassociation imminent**, and a **link removal imminent** bit for multi-link devices ([WF 12](12_wifi7_eht_and_mlo.md));
-- a **disassociation timer** in TU (100 TU is 102.4 ms in the decode: the access point will disassociate the station after this time if it has not moved) and a **validity interval** for the candidate list (10 beacon intervals);
-- the **candidate list**: neighbor report elements with a **preference** sub-element, so the access point can rank them. (`tshark` shows the list as raw bytes in my frame.)
+- **Sticky client.** A client that waits too long (-80 dBm or worse) sits at a low rate on a far access point while a nearby one is much louder. It is slow itself, and by the airtime anomaly of [WF 03](03_wifi_mac.md) it slows everyone in the cell. The first line of defence is a network that makes the far access point **less attractive**: lower transmit power, a higher minimum basic rate so that the far cell edge disappears, and a minimum RSSI to stay associated.
+- **Ping-pong.** A client that roams as soon as another access point looks better flips back and forth near the midpoint, because shadowing makes the two RSSI values wobble by several dB. Each flip is a roam, and each roam costs an outage. The cure is **hysteresis**: a margin of about 8 to 12 dB between the serving and the target access point. It is the reason Apple's margin is 8 to 12 dB.
 
-The **BTM response** carries a **status code** and, for status 0 (accept), the **target BSSID** (the decode shows `02:00:00:00:00:02`). The other status codes tell why the station refused (no suitable candidate, the list is stale, the station is busy with a call), **from memory** of the table. The key property is in the standard and often missed: **a BTM request is advice**. A station may refuse, and the access point has only its disassociation timer to make a point, which is why a design that depends on it is only as strong as the client population. The station can also **ask** (a BTM query, action 6, **from memory**) with its reason for wanting to leave.
+A quick way to see why the margin has that size: the difference of two noisy RSSI values is noisier than either. With shadowing of about 4 dB on each, the difference wobbles by about 5.7 dB, so with no margin the "better" access point flips about half the time near the midpoint, and a margin of 8 to 12 dB brings spurious flips down to a few percent.
 
-**Other WNM tools (from memory)** that matter in a design: **proxy ARP** (the access point answers ARP for its stations so that sleeping devices need not wake), **DMS** (directed multicast: convert multicast to unicast for each station), **BSS max idle** (how long the access point keeps a silent station, which sets the keepalive of a phone), **WNM sleep mode** (a longer sleep than the listen interval of [WF 03](03_wifi_mac.md)) and the **collocated interference** report.
+### 3.2 What the network can do about it
 
-## 4. 802.11r: the key hierarchy that makes the roam short
+Because the client controls the decision, the network works on the inputs:
 
-[WF 04](04_wifi_security.md) priced the full authentication: an EAP exchange with a server (7 to 10 rounds) and a 4-way handshake. 802.11r (**fast BSS transition, FT**) removes both from the roam by putting a **key hierarchy** above the PTK and letting the target access point derive its key **before** the station arrives.
+| Tool | What it does | Cost |
+|---|---|---|
+| Lower transmit power | Shrinks cells so overlap is moderate and the far access point is not louder than needed | Too low and coverage holes appear (section 9) |
+| Raise the minimum basic and mandatory rate | Removes the lowest rates so the cell edge is short and a sticky client falls off | A client at the edge may not even hear the beacon |
+| Minimum RSSI or low-ack disconnect | The access point disassociates a station below a threshold | Aggressive settings cause reconnect loops; clients may mark the SSID bad |
+| BTM request (section 5) | Advice to move, optionally with a candidate list and a deadline | Only works on clients that implement it |
+| Probe and authentication suppression | Ignore a client below a threshold so it looks elsewhere | Older trick; poor clients blacklist the SSID |
 
---- the key hierarchy: one authentication gives PMK-R0, each AP then gets its own PMK-R1, each association its own PTK
-XXKey (first 256 bits of the MSK)  000102030405060708090a0b...
-PMK-R0      6cc86edab4b94fc82ebafdf8...   PMKR0Name dcddd090c3c909b2f17463e61e952432
-AP1  PMK-R1 03d8cdef27b2df62...  PMKR1Name e0a9eaf2b38c76c0  PTK KCK 7eb858e4f6e9433b... TK 7e511f64734bea9b...
-AP2  PMK-R1 6329c7a3ca95bc83...  PMKR1Name 8576299a8d73c0a8  PTK KCK f4410e5870fbb33b... TK a70ab52c8b116537...
-AP3  PMK-R1 2dc7a697a3278ee6...  PMKR1Name 9f53e2ac764a31a6  PTK KCK ccf63edf0a97c328... TK 04d0bbca1531009f...
-all three PMK-R1 differ: True; the same PMK-R0 would give a different PTK if either nonce changes: True
-another SSID gives another PMK-R0: True; another mobility domain: True
-what the R0 key holder (the controller or a cloud key server) must do on a roam: derive PMK-R1 for the target AP and hand it over (over the DS or the air); the AP never sees PMK-R0, so a stolen AP exposes only its own sessions
-key sizes: PMK-R0 32 bytes, PMK-R1 32 bytes, PTK 48 bytes (KCK 16, KEK 16, TK 16); names are 16 bytes
+**The honest summary for an interview:** you cannot make a client roam, you can only make staying worse and moving cheaper.
 
-The roles (from memory of the standard; the script implements them):
+## 4. 802.11k: telling the station where to look
 
-- **PMK-R0** is derived once per authentication from the XXKey (the first 256 bits of the MSK in 802.1X, or the PMK for FT-PSK) with the SSID, the **mobility domain identifier (MDID)** and the identities of the **R0 key holder** and the station. It lives at the **R0KH**: a controller, or a cloud key server. **No access point holds it.**
-- **PMK-R1** is derived from PMK-R0 and the identities of an access point (the **R1KH-ID**) and the station. **Each access point of the mobility domain gets its own PMK-R1**, pushed to it by the R0 key holder (or pulled by it on a roam). The names, PMKR0Name and PMKR1Name (16 bytes), are what appear in frames so that the keys are never sent.
-- The **PTK** is derived from PMK-R1 with the two nonces and both addresses, as in [WF 04](04_wifi_security.md), but now **the exchange that carries the nonces is the authentication and reassociation of the roam itself**.
+802.11k (**radio resource measurement**) lets an access point and a station ask each other for measurements, and gives the station a **neighbor report**: the list of nearby access points of the same ESS with their channels. Its value is the scan: with the list the station visits 3 or 4 channels, not 30.
 
-The output shows the property that matters: three access points get **three different PMK-R1** and so three different PTKs, another SSID or another mobility domain gives another PMK-R0, and a new nonce changes the PTK. Consequences: **a stolen access point exposes only its own sessions** (it never held the R0), and **a station cannot use a key at an access point that does not hold the R1 for it**: the roam fails if the key holder has not pushed the key.
+The frames are **action frames of category 5** (radio measurement).
 
-**The four frames.** The station sends an **authentication frame with algorithm 2 (FT)** carrying its nonce, the **mobility domain element** (id 54: the MDID and the FT capability and policy byte), the **RSN element with the PMKR0Name** and the **fast transition element** (id 55: the MIC control, the MIC, ANonce, SNonce and sub-elements with the R1KH-ID and R0KH-ID). The access point answers in kind with its ANonce. Then comes the **reassociation request and response**, carrying the same elements and a MIC over the exchange, and the keys are installed.
+| Action | What it does |
+|---|---|
+| Neighbor report request (4) and response (5) | The station asks, the access point lists nearby BSSes |
+| Radio measurement request (0) and report (1) | The access point asks the station to measure something (beacon, channel load, noise histogram, station statistics, location) and the station answers |
+| Link measurement request and report | Path loss and margin between a station and its access point |
 
---- the four frames of an over-the-air fast transition (authentication algorithm 2, then reassociation), decoded by tshark
-frame  size  subtype                    auth alg  seq     mobility domain  FT capability  AKM  PMKIDs  SNonce        ANonce        R0KH-ID
-  1     177  authentication request     2         0x0001  0x3412           0x01           3    1       111111111111  000000000000  r0kh-001
-  2     177  authentication response    2         0x0002  0x3412           0x01           3    1       111111111111  222222222222  r0kh-001
-  3     187  reassociation request      -         -       0x3412           0x01           3    1       111111111111  222222222222  r0kh-001
-  4     177  reassociation response     -         -       0x3412           0x01           3    1       111111111111  222222222222  r0kh-001
-the station sends the nonce SNonce in frame 1 and the AP answers with ANonce in frame 2: with PMK-R1 held by the target AP both can derive the PTK before reassociation; the MIC in the reassociation frames (the FT element) proves it
-no EAP, no RADIUS exchange and no separate 4-way handshake: the exchange is 4 frames of 177, 177, 187 and 177 bytes
+### 4.1 The neighbor report element
 
-`tshark` decodes the mobility domain **0x3412**, the capability byte, the AKM (**3**, FT over 802.1X), the **PMKID count** (1: the PMKR0Name), the nonces and the R0KH-ID. (My frames have a zero MIC, limit 3.) There is **no EAP, no RADIUS exchange and no separate 4-way handshake**.
+Element ID 52. Each candidate is: the **BSSID** (6 bytes), the **BSSID information** (4 bytes), the **operating class** (1), the **channel number** (1) and the **PHY type** (1), plus optional sub-elements (for example a preference). The BSSID information word carries: AP reachability, whether security matches, key scope, a group of capability bits (spectrum management, QoS, APSD, radio measurement, block ack), the **mobility domain bit** (the target is in the same 802.11r domain, so a fast transition is possible), and the HT, VHT, FTM and HE bits.
 
-**Over the air against over the DS.** In the **over-the-air** variant the station talks directly to the target. In the **over-the-DS** variant it sends the FT frames to its current access point in an **action frame** (FT request and response), which forwards them over the wired side to the target: the station need not leave the channel until it is ready, at the price of two extra hops on the wired network and a dependence on it (the model in section 5 adds 4 ms).
+```python
+import struct
 
-**The AKMs and the resource request.** The FT suites are **FT-802.1X (AKM 3)**, **FT-PSK (4)**, **FT-SAE (9)** and the SHA-384 variants for 192 bit networks (from the AKM list of [WF 04](04_wifi_security.md)). The FT exchange can also carry a **resource request** so that a TSPEC ([WF 03](03_wifi_mac.md)) is admitted at the target in the same exchange, which is what makes voice roams complete with their QoS.
+def parse_neighbor_report(ie):
+    """Decode one neighbor report element (id 52) given as bytes."""
+    assert ie[0] == 52
+    body = ie[2:2 + ie[1]]
+    bssid = ":".join("%02x" % b for b in body[:6])
+    info = struct.unpack("<I", body[6:10])[0]
+    return dict(bssid=bssid, opclass=body[10], channel=body[11], phy=body[12],
+                reachable=info & 3, security=bool(info & 4), key_scope=bool(info & 8),
+                mobility_domain=bool(info & 0x400), ht=bool(info & 0x800),
+                vht=bool(info & 0x1000), ftm=bool(info & 0x2000), he=bool(info & 0x4000))
 
-**The bookkeeping** is a design cost, and the script prices it:
+ie = bytes([52, 13]) + bytes.fromhex("020000000002") + struct.pack("<I", 0x00000c0f) + bytes([115, 36, 9])
+print(parse_neighbor_report(ie))
+# {'bssid': '02:00:00:00:00:02', 'opclass': 115, 'channel': 36, 'phy': 9, 'reachable': 3,
+#  'security': True, 'key_scope': True, 'mobility_domain': True, 'ht': True, ...}
+```
 
-PMK-R0 23aaf960d63a75d6177b91202d73db65...  PMKR0Name 3ff3b904f1983469b330bd5ab93a238c
-R1KH-ID 02:00:00:00:01:01: PMK-R1 2ea9e1320658d2bf63b1bd50dfff80e9...  PMKR1Name ba5a875ccb1d514c9c60327ad65ccc3d
-R1KH-ID 02:00:00:00:01:02: PMK-R1 fa54cdcf0be2707ace8a6c0f00ec9331...  PMKR1Name 48e354f54c7996500cd8f8f2dab519ec
-R1KH-ID 02:00:00:00:01:03: PMK-R1 33199ff444800dac2b866976de188bff...  PMKR1Name e44d85915e19c1e3accc00ab6f608e4a
-a target AP that derives R1 with the wrong R1KH-ID gets a different key: True (the PTK is then different and the MIC of the reassociation fails)
-the PTK for the same nonces differs for each AP: True
---- bookkeeping at the R0 key holder: pre-deriving every PMK-R1 for every client against deriving on demand
-  100 APs x   1000 clients = 1.00e+05 pairs x 48 bytes (key and name) = 4.8 MB; on demand: one derivation per roam, 2 HMAC-SHA256 blocks (about 1.5 us)
- 1000 APs x  10000 clients = 1.00e+07 pairs x 48 bytes (key and name) = 480.0 MB; on demand: one derivation per roam, 2 HMAC-SHA256 blocks (about 1.5 us)
- 5000 APs x  50000 clients = 2.50e+08 pairs x 48 bytes (key and name) = 12000.0 MB; on demand: one derivation per roam, 2 HMAC-SHA256 blocks (about 1.5 us)
-a client in the mobility domain roams to a handful of neighbours (say 8): 8 keys per client, 3.8 MB for 10,000 clients (against 480 MB for all 1,000 APs)
+The **operating class** and **channel** together say where to look: class 115 is 5 GHz channels 36 to 48 (20 MHz), class 81 is 2.4 GHz channels 1 to 13. A client reading the list probes only those channels.
 
-Pre-deriving all pairs for **1,000 access points and 10,000 clients** is **480 MB** and **12,000 MB** for 5,000 and 50,000, so real systems derive **on demand** (two HMAC-SHA256 blocks per derivation, about 1.5 µs, the figure in the output being my estimate) or push the keys of the handful of neighbours a client is likely to visit (8 keys per client: **3.8 MB** for 10,000 clients).
-
-**Where 802.11r goes wrong (from memory of common field reports).** The cryptography is not the problem. The problems are **client support** (some older clients fail to join an SSID that advertises the FT AKM, so many networks list both the FT and the plain suite, the mixed mode of [WF 04](04_wifi_security.md)), a **mobility domain that is not consistent** across access points (the MDID or the key holder differs, so the key never arrives), **key push latency** (the R1 must reach the target before the station does), and **time** (the reassociation deadline of the FT exchange).
+### 4.2 Beacon requests and reports
 
-## 5. Key caching without 802.11r: PMKSA, OKC and preauthentication
+An access point can ask a station to measure the beacons it hears, in three modes: **passive** (listen), **active** (probe) and **beacon table** (report what is already in the table, with no new scan). The station answers with a **beacon report** per BSS: channel, BSSID, and two quality values.
 
-802.11r is not the only way to skip the EAP exchange. Three older mechanisms, all from memory of the standard and the vendor practice, trade complexity against coverage:
+- **RCPI** (received channel power indicator) is `2 x (dBm + 110)` in one byte, so -62 dBm is 96.
+- **RSNI** (received signal to noise indicator) is `2 x (SNR + 10)`, so 25 dB is 70.
 
-- **PMKSA caching**: after a full 802.1X success the access point and the station keep the **PMK** (a PMKSA) for its lifetime and name it by the **PMKID**. When the station comes back to **the same access point** it puts the PMKID in the reassociation and skips EAP: only the 4-way handshake runs. It does nothing for the first visit to a new access point.
-- **Opportunistic key caching (OKC)**: a vendor extension in which the PMK is derived so that **every access point under the same controller** can use it. The station presents the PMKID for the **target** access point and the controller already holds the key. The station must support it (it computes the target PMKID), and the access points must share a key holder.
-- **Preauthentication**: the station authenticates to the neighbour **through the current access point** before it moves, so the PMKSA is waiting at the target. It is in the standard and rarely used, because the exchange is the full EAP one and the station must know which neighbour is next.
+```python
+def rcpi(dbm): return max(0, min(220, round(2 * (dbm + 110))))
+def rsni(snr): return max(0, min(255, round(2 * (snr + 10))))
+print(rcpi(-62), rsni(25))   # 96 70
+```
 
-Priced by the model, the exchange after the scan:
+The beacon table mode is what lets an access point or controller learn **how the station sees the network** without disturbing it. That is the raw material for client-aware steering, and also the reason privacy researchers worry: repeated beacon requests reveal what surrounds a device and, over time, where it moves.
 
---- model inputs (assumptions, not measurements)
-management frames at 6 Mbit/s; one frame costs DIFS 34 + mean backoff 7.5 x 9 + preamble 20 + bits/rate + SIFS 16 + ACK; 1000 us processing per frame at each end
-frame costs (ms, idle medium): authentication pair 2.43, association pair 2.75, 4-way handshake 5.34, FT over the air (4 frames) 5.66
-
---- the exchange after the scan, by mechanism (ms)
-RADIUS round trip       5 ms (same site)   40 ms (cloud)   100 ms (far)
-full 802.1X, EAP-TLS (7 rounds)                        66.5          311.5           731.5
-full 802.1X, PEAP (10 rounds)                          89.4          439.4          1039.4
-PMKSA or OKC (no EAP, 4-way kept)                      10.6           10.6            10.6
-WPA2-PSK (4-way only)                                  10.5           10.5            10.5
-802.11r over the air                                    5.7            5.7             5.7
-802.11r over the DS (+ 4 ms for the DS hops)            9.7            9.7             9.7
-
-Read the table. A **full EAP roam depends on the server distance**: EAP-TLS costs **66.5 ms** with a RADIUS server on the same site (5 ms round trip), **311.5 ms** at 40 ms (a cloud service) and **731.5 ms** at 100 ms, and PEAP, which needs 10 rounds, **89.4, 439.4 and 1,039.4 ms**. **PMKSA or OKC removes the dependence** (**10.6 ms**), and **802.11r is the shortest at 5.7 ms**, with the over-the-DS variant at **9.7 ms**. The 4-way handshake still costs about **5.3 ms**, the difference between 802.11r (which folds it into the roam) and OKC. The lesson for a cloud managed network is that the server round trip multiplies by the number of EAP rounds, so **a cloud RADIUS without key caching makes every roam a perceptible event**.
-
-
-## 6. The roam time budget: the scan is the cost
+### 4.3 Other measurements and the real world
 
-The exchange after the scan is small. The scan before it is not. A station that has no list visits every channel it supports, and each channel costs a dwell time (a passive scan waits for a beacon, so at least one beacon interval of 102.4 ms, and an active scan sends a probe request and waits for responses, often 20 to 40 ms). The model uses 30 ms per channel and prices the scan:
+802.11k also defines **channel load** (how busy a channel is), **noise histogram**, **station statistics** (counters), **link measurement** and **transmit stream measurement**. A station advertises what it supports in the **RM enabled capabilities** element at association. In practice **support is partial**: many phones implement the neighbor report request and the beacon report, and little else, so a design should not rely on the rest.
 
---- the scan before it (ms), active scan with 30 ms per channel (assumed) and the channel count
-all 2.4 and 5 GHz channels, no help (13 + 25)      38 channels     1140 ms
-5 GHz only, non-DFS (9)                            9 channels      270 ms
-802.11k neighbor list (3 channels)                 3 channels       90 ms
-the same band, one channel (known target)          1 channels       30 ms
-
-**38 channels cost 1,140 ms, 9 channels 270 ms, the 3 channels of a neighbor report 90 ms and 1 channel 30 ms** (modelled, 30 ms dwell). Put the two halves together:
-
---- a complete roam: scan + exchange, and the voice packets lost at 20 ms packetisation (frames lost = gap / 20 ms)
-case                                                             total ms       lost
-no help, full scan, EAP-TLS, RADIUS 40 ms                            1451         72
-no help, full scan, PSK                                              1151         57
-neighbor list (3 ch), PMKSA or OKC                                    101          5
-neighbor list (3 ch), 802.11r over the air                             96          4
-target known (1 ch), 802.11r over the air                              36          1
-target known, 802.11r, scan skipped (probe-less, 0 ms)                  6          0
-a voice call tolerates about 50 ms of gap (from memory of the usual target); the rows that fit are the ones that skip both the scan and the EAP exchange
-
-The result in one table (modelled, section 5 inputs, voice packets every 20 ms):
-
-| Roam | Time | Lost voice packets |
-| --- | --- | --- |
-| Full EAP-TLS roam, full scan, RADIUS at 40 ms | 1,451 ms | 72 |
-| PSK roam, full scan | 1,151 ms | 57 |
-| Neighbor list plus PMKSA or OKC | 101 ms | 5 |
-| Neighbor list plus 802.11r | 96 ms | 4 |
-| Station knows the target (one channel) plus 802.11r | 36 ms | 1 |
-| Scan skipped (target already known and measured) plus 802.11r | 6 ms | 0 |
-
-Three conclusions follow, and they decide what to build first.
-
-1. **The scan is 79 percent of the worst case and most of the best realistic one.** Fixing the key exchange alone (802.11r with a full scan) still leaves over a second. The neighbor report (802.11k) is as important as 802.11r, and the two together are what the Candela course means by the 11k, 11v and 11r set.
-2. **A voice call tolerates about 50 ms of outage** (the usual design target, from memory), and the only rows that meet it are the last two. A neighbor list plus 802.11r (96 ms) is close, and the gap closes only if the station skips the scan.
-3. **A station can skip the scan** if it already measured the target recently (its background scan, which the next section's decision depends on) or if the network gives it a short list with the channel and the time of the last beacon. That is why a good client scans in the background while it is still connected, and why **a client that does no background scanning is the one that roams badly whatever the network does**.
-
-**Budget by arithmetic.** For a target outage the question is how many channels a scan may visit and how far the RADIUS server may be. The script computes both:
-
-exchange costs (ms): auth 2.43, assoc 2.75, reassoc 2.83, 4-way 5.34, FT 5.66
---- largest RADIUS round trip for a full EAP roam to fit a budget (no scan, rounds of 2 frames + the server each)
-one EAP round on the air: 2.65 ms; Start and Success 2.43 ms
-EAP-TLS, 7 rounds  budget  50 ms: RADIUS round trip at most 2.6 ms
-EAP-TLS, 7 rounds  budget 150 ms: RADIUS round trip at most 16.9 ms
-EAP-TLS, 7 rounds  budget 300 ms: RADIUS round trip at most 38.4 ms
-PEAP, 10 rounds    budget  50 ms: RADIUS round trip at most 1.1 ms
-PEAP, 10 rounds    budget 150 ms: RADIUS round trip at most 11.1 ms
-PEAP, 10 rounds    budget 300 ms: RADIUS round trip at most 26.1 ms
---- how many channels a scan may visit inside the budget, by dwell time per channel (after subtracting the exchange)
-budget  50 ms, FT over the air : dwell 10 ms:  4 channels; dwell 20 ms:  2 channels; dwell 30 ms:  1 channels; dwell 40 ms:  1 channels; dwell 110 ms:  0 channels;
-budget  50 ms, PMKSA or OKC    : dwell 10 ms:  3 channels; dwell 20 ms:  1 channels; dwell 30 ms:  1 channels; dwell 40 ms:  0 channels; dwell 110 ms:  0 channels;
-budget  50 ms, WPA2-PSK full   : dwell 10 ms:  3 channels; dwell 20 ms:  1 channels; dwell 30 ms:  1 channels; dwell 40 ms:  0 channels; dwell 110 ms:  0 channels;
-budget 150 ms, FT over the air : dwell 10 ms: 14 channels; dwell 20 ms:  7 channels; dwell 30 ms:  4 channels; dwell 40 ms:  3 channels; dwell 110 ms:  1 channels;
-budget 150 ms, PMKSA or OKC    : dwell 10 ms: 13 channels; dwell 20 ms:  6 channels; dwell 30 ms:  4 channels; dwell 40 ms:  3 channels; dwell 110 ms:  1 channels;
-budget 150 ms, WPA2-PSK full   : dwell 10 ms: 13 channels; dwell 20 ms:  6 channels; dwell 30 ms:  4 channels; dwell 40 ms:  3 channels; dwell 110 ms:  1 channels;
-budget 300 ms, FT over the air : dwell 10 ms: 29 channels; dwell 20 ms: 14 channels; dwell 30 ms:  9 channels; dwell 40 ms:  7 channels; dwell 110 ms:  2 channels;
-budget 300 ms, PMKSA or OKC    : dwell 10 ms: 28 channels; dwell 20 ms: 14 channels; dwell 30 ms:  9 channels; dwell 40 ms:  7 channels; dwell 110 ms:  2 channels;
-budget 300 ms, WPA2-PSK full   : dwell 10 ms: 28 channels; dwell 20 ms: 14 channels; dwell 30 ms:  9 channels; dwell 40 ms:  7 channels; dwell 110 ms:  2 channels;
---- a passive scan (110 ms dwell) of all 25 channels of 5 GHz plus 13 of 2.4 GHz: 4.2 s; with the 11k list of 3 channels: 330 ms
-
-For a **50 ms budget** a full EAP-TLS roam survives only a RADIUS round trip of **2.6 ms** (PEAP: **1.1 ms**), which is a server in the same rack, so **a roam that must stay below 50 ms cannot include an EAP exchange** and the choice is key caching or 802.11r. For 150 ms the EAP-TLS server may be **16.9 ms** away, and for 300 ms **38.4 ms**. With FT at 30 ms per channel, **a 150 ms budget allows 4 channels and a 50 ms budget 1**. A **passive scan of 38 channels at 110 ms** is **4.2 s** and a passive scan of the 3 channels of a list **330 ms**, so the list must also say which channels are worth an **active** probe.
-
-**6 GHz makes the scan worse and gives new tools (from memory).** The 6 GHz band has up to **59 channels of 20 MHz** and a station may not probe on a channel before it has heard an access point there (the rules of [WF 01](01_wifi_landscape_and_ap_anatomy.md)), so a full scan is slow. The standard added three discovery aids, all in 802.11ax and 802.11-2024:
-
-- the **reduced neighbor report (RNR) element**, carried in the beacons and probe responses of the 2.4 GHz and 5 GHz radios of an access point, which lists the **6 GHz** BSSIDs, their channels and a short SSID, so a station learns the 6 GHz neighbours while it is on another band;
-- **preferred scanning channels (PSC)**: of the 59 channels, every fourth (starting at channel 5) is a PSC, and an access point whose primary channel is not a PSC is expected to be found through the RNR instead, so a station scans the 15 PSCs only (from memory of the count);
-- **FILS discovery frames** (fast initial link setup): a short broadcast frame (smaller than a beacon) sent every 20 TU or less on a PSC, which lets a station find an access point in about 20 ms and not 102.4 ms, and **unsolicited probe responses** as an alternative.
-
-All three are the same idea as the neighbor report: tell the station where to look so that it does not scan everything.
-
-## 7. The roam decision: when and where to go
-
-The standard says nothing about **when** a station roams, so every vendor chooses. The common triggers are an **RSSI threshold** (-70 to -75 dBm is typical for a phone, **from memory** of vendor documents; a laptop is often later), a **retry or rate drop**, **missed beacons**, a **BTM request**, and, on some clients, an **application hint** (a voice call). The selection looks at RSSI first and adds a bias for 5 GHz and 6 GHz and a penalty for a high **channel utilization** (the BSS load element of [WF 03](03_wifi_mac.md)).
-
-The script walks 200 stations along a corridor of **9 access points 25 m apart** (17 dBm, shadowing 4 dB with a decorrelation distance of 5 m, speed 1.2 m/s) and compares four policies, with a roam outage of 50 ms (802.11r with a list) and of 1,450 ms (full EAP roam, full scan):
-
---- a walk along 9 access points 25 m apart (200 m), there and back at 1.2 m/s, shadowing 4 dB with 5 m decorrelation, 200 walks per row (a model)
---- FT roam, outage 50 ms
-policy                                           roams/100m pingpong/100m   time < -75 mean Mbit/s   outage % Mbit/s after outage
-best AP always (no hysteresis)                         5.12         1.44         0.0%      142.8      0.31%          142.4
-roam below -80 dBm to the best (sticky)                1.59         0.00        12.3%      106.8      0.10%          106.7
-roam below -70 dBm and the target 8 dB better          3.38         0.00         0.0%      130.8      0.20%          130.5
-roam below -65 dBm and the target 5 dB better          3.53         0.01         0.0%      139.9      0.21%          139.6
---- full scan and EAP roam, outage 1450 ms
-policy                                           roams/100m pingpong/100m   time < -75 mean Mbit/s   outage % Mbit/s after outage
-best AP always (no hysteresis)                         5.08         1.42         0.0%      142.8      8.83%          130.2
-roam below -80 dBm to the best (sticky)                1.60         0.00        12.2%      107.3      2.78%          104.3
-roam below -70 dBm and the target 8 dB better          3.35         0.00         0.0%      130.6      5.81%          123.0
-roam below -65 dBm and the target 5 dB better          3.54         0.02         0.0%      139.8      6.15%          131.2
-
-Read the policies, because the table has a trap in it.
-
-- **Best access point always** (roam as soon as another is stronger) gives the **best throughput (142.8 Mbit/s) and the worst behaviour**: **5.12 roams per 100 m and 1.44 ping-pong roams per 100 m** (a roam back to the previous access point). With a 50 ms outage it costs **0.31 percent** of the time, and with the full 1,450 ms roam **8.83 percent**.
-- **Sticky** (roam only below -80 dBm) has the **fewest roams (1.59 per 100 m, no ping-pong) and the worst radio**: **12.3 percent of the time below -75 dBm**, and **106.8 Mbit/s**. It costs the least outage (2.78 percent at 1,450 ms) and the most capacity, which is the **sticky client** of [WF 03](03_wifi_mac.md).
-- **Threshold plus margin** (roam below -70 dBm and only to an access point 8 dB better) gives **3.38 roams per 100 m, no ping-pong, 0 percent of time below -75 dBm and 130.8 Mbit/s**. The variant with -65 dBm and 5 dB gives 3.53 roams, **139.9 Mbit/s** and 0.01 ping-pong, at a slightly higher outage at 1,450 ms (6.15 percent against 5.81).
-
-So **the best policy depends on the roam cost**. When a roam costs 50 ms, roaming early is nearly free, and the throughput is best with a high threshold and a small margin. When a roam costs 1.45 s, every avoided roam is worth 1.45 s, and a larger margin and a lower threshold win. **This is why the order of the work is: make the roam cheap (sections 4 to 6), and only then tune the thresholds.**
-
-**Why hysteresis works.** The difference between two shadowed RSSI values is itself noisy (the model has **sigma 5.66 dB** for the difference of two 4 dB values), so near the midpoint between two access points the station sees the "better" access point flip at random. The script computes the chance that noise alone exceeds a margin:
-
-RSSI of the serving AP and of the neighbour each carry shadowing of sigma 4 dB; the difference has sigma 5.66 dB
-hysteresis (dB)        P(noise alone exceeds it)  samples per hour at 1 Hz (independent draws, an upper bound)
-0                      0.5000                     1800
-2                      0.3618                     1303
-4                      0.2398                     863
-6                      0.1444                     520
-8                      0.0786                     283
-10                     0.0385                     139
-12                     0.0169                     61
---- the midpoint between two APs 25 m apart: log distance loss 40 + 32 log10(d); AP power 17 dBm
-distance   5.0 m: RSSI  -45.4 dBm
-distance  10.0 m: RSSI  -55.0 dBm
-distance  12.5 m: RSSI  -58.1 dBm
-distance  20.0 m: RSSI  -64.6 dBm
-distance  30.0 m: RSSI  -70.3 dBm
-distance  40.0 m: RSSI  -74.3 dBm
---- what a threshold costs: the distance at which RSSI crosses it, and the SNR it leaves above a noise floor of -95 dBm
-roam threshold  -60 dBm: reached at  14.3 m from the AP, SNR 35 dB
-roam threshold  -65 dBm: reached at  20.5 m from the AP, SNR 30 dB
-roam threshold  -70 dBm: reached at  29.4 m from the AP, SNR 25 dB
-roam threshold  -75 dBm: reached at  42.2 m from the AP, SNR 20 dB
-roam threshold  -80 dBm: reached at  60.4 m from the AP, SNR 15 dB
-roam threshold  -85 dBm: reached at  86.6 m from the AP, SNR 10 dB
-with 25 m spacing the midpoint between two APs (12.5 m from each) is at -58.1 dBm; a client that waits for -80 dBm would be 60 m from its AP, which in this corridor is beyond the next two access points: it would have gone through their cells long before, so a sticky client sits on a far AP with much louder neighbours near it
-
-With **no margin the chance is 0.5**, and the margin that makes a spurious roam unlikely is **8 to 12 dB** (0.0786 at 8 dB, 0.0169 at 12 dB). The same output gives the geometry: the midpoint RSSI at 12.5 m is **-58.1 dBm** and the thresholds -60, -65, -70, -75, -80 and -85 dBm are reached at **14.3, 20.5, 29.4, 42.2, 60.4 and 86.6 m**, with **35, 30, 25, 20, 15 and 10 dB** of SNR left (against a noise floor of -95 dBm, modelled). At -80 dBm a station has an SNR of 15 dB, which is the **lowest MCS** territory of [WF 02](02_wifi_phy.md), so a station that waits for -80 dBm is already at a quarter of its rate.
-
-**Roam cost for the other users.** A station that stays at a low rate steals airtime: section 8 prices it. A roam also hurts at the **application** layer: TCP sees a gap of the length of the outage and may go into a retransmission timeout (the minimum RTO of Linux is 200 ms, [NET 03](../03_tcp_udp_and_transport.md), **from memory**), so a 100 ms roam is a stall of at least 200 ms for a TCP flow that was sending at that moment.
-
-## 8. Steering: band steering, client steering and load balancing
-
-Roaming moves a station between access points. **Steering** is the network's attempt to choose which radio and which access point a station uses, with the tools it has: the BSS transition request (section 3), and the older tricks of **withholding responses** (an access point ignores the probe requests and authentication of a dual band station on 2.4 GHz for a while, so that it joins 5 GHz) and **deauthenticating** a station with a status code that asks it to try elsewhere (a vendor feature, **from memory**).
-
-- **Band steering** moves dual band stations to 5 GHz or 6 GHz, because 2.4 GHz has 3 non-overlapping channels and slow, long frames ([WF 01](01_wifi_landscape_and_ap_anatomy.md)).
-- **Client steering** (or load balancing) moves stations between access points, to even the load or to push a sticky station away.
-- **Load balancing** in controller products (from memory) refuses an association when the access point has more than a set number of clients compared with its neighbours. It trades some association failures for an even load and can strand a client that has no other access point to go to.
-
-The script simulates **40 stations** (70 percent dual band, 20 MHz channel on 2.4 GHz and 80 MHz on 5 GHz, demand 1.5 Mbit/s each, 400 random draws) with four scenarios:
-
---- 40 clients in one cell, 70 % dual band, 20 MHz on 2.4 GHz and 80 MHz on 5 GHz, 400 random draws (a model); each client wants 1.5 Mbit/s of 1500 byte frames
-policy                                                 % on 5G 2.4G airtime 5G airtime  mean Mbit/s   10th pct   demand met
-no steering (35 % of capable clients find 5 GHz)         20.8%          95%        20%         1.37       1.34          27%
-band steering, all clients comply                        58.0%          53%        54%         1.50       1.50         100%
-band steering, 30 % of clients ignore it                 40.2%          73%        38%         1.49       1.49          92%
-band steering, only 30 % dual band                       24.8%          90%        23%         1.42       1.40          41%
-airtime above 85 % cannot be served: every client then gets the same fraction of its demand (DCF shares packets), so one slow client costs all the others
-example, 20 clients at 54 Mbit/s wanting 1.5 Mbit/s: airtime 88 %, each gets 1.45; replace one by a 1 Mbit/s client: airtime 235 %, each gets 0.54 (63 % lost)
-
-| Scenario | On 5 GHz | 2.4 GHz airtime | 5 GHz airtime | Demand met |
-| --- | --- | --- | --- | --- |
-| No steering | 20.8 % | 95 % | 20 % | 27 % of draws |
-| Steering, all comply | 58.0 % | 53 % | 54 % | 100 % |
-| Steering, 30 % ignore it | 40.2 % | 73 % | 38 % | 92 % |
-| Only 30 % are dual band | 24.8 % | 90 % | 23 % | 41 % |
-
-The result is what the theory predicts and it contains a warning. Steering turns an overloaded 2.4 GHz channel (95 percent busy, 27 percent of the draws meeting demand) into a balanced network (53 and 54 percent, all draws met). **The gain depends on compliance and on the client mix**: if 30 percent of the stations ignore the advice only **40.2 percent** end up on 5 GHz and the demand is met in 92 percent of the draws, and if only 30 percent of the stations are dual band, steering moves very little (24.8 percent), because the stations that cannot move are the ones that are left.
-
-**The airtime example from the output** is the reason to care about slow stations: **20 stations at 54 Mbit/s that each want 1.5 Mbit/s use 88 percent of the airtime and each gets 1.45 Mbit/s**. **Replace one of them by a station at 1 Mbit/s and the demand is 235 percent of the airtime, and each gets 0.54 Mbit/s, a loss of 63 percent**, which is the anomaly of [WF 03](03_wifi_mac.md) section 7 and the reason to **remove the low rates from the basic rate set** (which also removes the 1 Mbit/s beacons of section 9) and to roam sticky clients away.
-
-**Where steering fails (from memory of field reports).** A station that **blacklists** an SSID after a rejected association; a **voice or IoT** device that is not designed for repeated rejection; a station that is dual band but **does not support the band** it is sent to (a 5 GHz channel in the DFS range that it cannot use); and **mixed signalling**, where the network rejects the station on one access point and a neighbour accepts it on a worse channel. Steering is a policy with side effects, so it must be **measured** (the share of stations that really move, the time to join, the rejections) before it is trusted.
+### 4.4 How a network uses it
 
+A client that supports it asks for the neighbor report when its RSSI falls, and the access point builds the list from its own knowledge or from a controller. **A bad list is worse than none**: if the list holds access points that are far away or on a channel plan that changed, the client spends its scan time on them. The list has to stay in step with the RRM plan, which is a quiet integration problem in products. Apple's guidance is blunt: with 802.11k enabled the roam scan "runs more quickly", and without it clients scan more methodically, which can add seconds.
+
+## 5. 802.11v: asking the station to move
+
+802.11v (**wireless network management**, WNM, action frames of **category 10**) contains the tool that fixes the sticky client: the **BSS transition management (BTM) request**.
+
+| Field | Meaning |
+|---|---|
+| Request mode, bit 0 | **Preferred candidate list included** |
+| bit 1 | **Abridged**: candidates not listed are less preferred than those listed |
+| bit 2 | **Disassociation imminent**: the access point will disassociate the station soon |
+| bit 3 | **BSS termination included** |
+| bit 4 | **ESS disassociation imminent** |
+| Disassociation timer | In TU (1 TU = 1.024 ms); the deadline after which the access point disassociates the station if it has not moved |
+| Validity interval | How many beacon intervals the candidate list stays valid |
+| Candidate list | Neighbor report elements, each with a **preference** sub-element so the access point can rank them |
+
+The **BTM response** carries a status code and, on accept, the target BSSID.
+
+| Status | Meaning |
+|---|---|
+| 0 | Accept |
+| 1 | Reject, unspecified |
+| 2 | Reject, insufficient beacon or probe responses (the client has no fresh data on the candidates) |
+| 3 | Reject, insufficient capacity at the candidates |
+| 4 | Reject, BSS termination undesired |
+| 5 | Reject, BSS termination delay requested |
+| 6 | Reject, the station's own candidate list is provided |
+| 7 | Reject, no suitable candidates |
+| 8 | Reject, leaving the ESS |
+
+A BTM request can be built and decoded in a few lines. The bytes below are the action frame body, category 10, action 7, token 3, request mode 0x05 (candidate list included plus disassociation imminent), a 100 TU timer and a validity interval of 10:
+
+```python
+import struct
+def btm_request(token, mode, timer_tu, validity, cands=b""):
+    return bytes([10, 7, token, mode]) + struct.pack("<HB", timer_tu, validity) + cands
+print(btm_request(3, 0x05, 100, 10).hex())   # 0a07030564000a
+```
+
+Wrapped in a Dot11 management frame (type 0, subtype 13) and decoded by `tshark`, the fields appear as `Preferred Candidate List Included: 1`, `Disassociation Imminent: 1`, `Disassociation Timer: 100`, `Validity Interval: 10`.
+
+**The key property, often missed: a BTM request is advice.** The client can refuse, and the access point has only its disassociation timer to make a point. So a design that depends on BTM is as strong as the client population. The client can also ask first, with a **BTM query** (action 6) saying why it wants to leave.
+
+**Other WNM tools that matter in a design:**
+
+- **Proxy ARP**: the access point answers ARP (and neighbor discovery) for its sleeping stations, which lets a large layer 2 domain work without broadcast storms waking every phone.
+- **DMS** (directed multicast service): convert multicast to unicast per station.
+- **BSS max idle period**: how long the access point keeps a silent station, which sets the keepalive interval of a phone and so its battery life.
+- **WNM sleep mode**: a longer sleep than the listen interval of [WF 03](03_wifi_mac.md).
+
+**Security note.** A BTM request is a robust action frame, so protected management frames ([WF 04](04_wifi_security.md)) protect it once the keys are installed. A forged BTM request from a rogue access point, before the keys exist, can steer a client toward it. This is one of the reasons a roam toward an unknown BSSID in a BTM list should still go through normal authentication.
+
+## 6. Key caching: how a roam skips the slow part
+
+The slow part of a secured roam is the key setup. Four mechanisms remove it, from old to new. For the key vocabulary see [WF 04](04_wifi_security.md).
+
+| Mechanism | How it works | Needs | Failure mode |
+|---|---|---|---|
+| Full 802.1X | EAP with a RADIUS server, then the 4-way handshake | Nothing | Slow, depends on server distance |
+| **PMKSA caching** | After a full success both sides keep the PMK, named by the **PMKID**. Returning to the **same** access point, the station presents the PMKID in the reassociation and skips EAP | Client and AP support (almost universal) | Only helps a return visit, not a first visit to a new access point |
+| **OKC** (opportunistic key caching) | A vendor extension. The PMK is derived so that every access point under the same controller or key holder can use it. The station computes the PMKID for the target and presents it | Same controller or key holder, client support | Not in the standard; clients that do not compute the target PMKID fall back to a full exchange |
+| **Preauthentication** | The station authenticates to a neighbour through the current access point before moving, so the PMKSA is waiting at the target | Client support, a wired path | In the standard but rarely used: the exchange is a full EAP and the client must know the next access point |
+| **802.11r (FT)** | A key hierarchy, so the target derives its key before the station arrives and the roam folds the 4-way handshake into the authentication and reassociation | Client and AP support, a mobility domain, a key holder | Client compatibility, key distribution (section 7) |
+
+For a PSK network there is no EAP to skip, so the roam costs the 4-way handshake (4 frames), and 802.11r with FT-PSK removes that too. Windows documents a related fallback: if 802.11r is not available it uses OKC. Apple documents that all its devices support PMKID caching even without 802.11r.
+
+## 7. 802.11r: the key hierarchy that makes the roam short
+
+802.11r (**fast BSS transition, FT**) puts a **key hierarchy above the PTK** and lets the target access point derive its key before the station arrives. The roam then needs no EAP and no separate 4-way handshake: the handshake material rides in the authentication and reassociation frames of the roam itself.
+
+### 7.1 The hierarchy
+
+```mermaid
+flowchart TD
+    MSK["MSK from 802.1X, or the PMK for FT-PSK (the XXKey)"] --> R0["PMK-R0 - one per authentication, held by the R0KH"]
+    R0 --> R1a["PMK-R1 for AP1 - held by the R1KH of AP1"]
+    R0 --> R1b["PMK-R1 for AP2"]
+    R0 --> R1c["PMK-R1 for AP3"]
+    R1a --> PTKa["PTK for the AP1 association"]
+    R1b --> PTKb["PTK for the AP2 association"]
+    R1c --> PTKc["PTK for the AP3 association"]
+```
+
+- **PMK-R0** is derived once per authentication from the XXKey (the first 256 bits of the MSK in 802.1X, or the PMK in FT-PSK), the SSID, the **mobility domain identifier (MDID)**, and the identities of the **R0 key holder (R0KH)** and the station. It lives at the R0KH: a controller or a cloud key server. **No access point holds it** unless the access point is itself the R0KH.
+- **PMK-R1** is derived from PMK-R0 and the identity of an access point (the **R1KH-ID**) and the station. **Each access point in the mobility domain gets its own PMK-R1**, pushed to it by the R0 key holder, or pulled on a roam. The **names** (PMKR0Name and PMKR1Name, 16 bytes) appear in frames so that the keys never do.
+- The **PTK** is derived from PMK-R1 with the two nonces, both addresses and PMKR1Name. The nonces travel in the roam's own authentication frames.
+- **Key holders:** the R0KH and R1KH on the network side, the **S0KH and S1KH** on the station side. A controller that does all the encryption is both R0KH and R1KH.
+
+Why two levels? One level (a PMK shared by all access points) would let a stolen access point impersonate the station to any other. With PMK-R1 per access point, **a stolen access point exposes only its own sessions** (it never held the R0), and a station cannot use a key at an access point that has not been given its R1: the roam fails if the key holder has not pushed the key.
+
+### 7.2 A working derivation
+
+The labels (`FT-R0`, `FT-R1`, `FT-PTK`, `FT-R0N`, `FT-R1N`) also appear as strings inside the installed `hostapd` and `wpa_supplicant` binaries, which confirms the names. The code follows the 802.11 KDF (a counter-mode HMAC-SHA256 key derivation) as I understand the standard; it was not cross-checked against hostapd's output, so treat it as an aid to reasoning, not a reference implementation.
+
+```python
+import hashlib, hmac, struct
+
+def kdf256(key, label, context, bits):
+    out, i = b"", 1
+    while len(out) * 8 < bits:
+        out += hmac.new(key, struct.pack("<H", i) + label + context + struct.pack("<H", bits),
+                        hashlib.sha256).digest()
+        i += 1
+    return out[: bits // 8]
+
+def pmk_r0(xxkey, ssid, mdid, r0kh_id, s0kh_id):
+    ctx = bytes([len(ssid)]) + ssid + mdid + bytes([len(r0kh_id)]) + r0kh_id + s0kh_id
+    okm = kdf256(xxkey, b"FT-R0", ctx, 384)           # 256-bit key, 128-bit name salt
+    return okm[:32], hashlib.sha256(b"FT-R0N" + okm[32:]).digest()[:16]
+
+def pmk_r1(r0, r0name, r1kh_id, s1kh_id):
+    key = kdf256(r0, b"FT-R1", r1kh_id + s1kh_id, 256)
+    return key, hashlib.sha256(b"FT-R1N" + r0name + r1kh_id + s1kh_id).digest()[:16]
+
+def ft_ptk(r1, snonce, anonce, bssid, sta, r1name, bits=384):
+    return kdf256(r1, b"FT-PTK", snonce + anonce + bssid + sta + r1name, bits)
+```
+
+Running it with three access points gives three different PMK-R1, three different PTKs, and a different PMK-R0 if the SSID or the mobility domain changes (all checked). Sizes: PMK-R0 32 bytes, PMK-R1 32 bytes, PTK 48 bytes (KCK 16, KEK 16, TK 16 for CCMP), names 16 bytes.
+
+**The bookkeeping is a real design cost.** Pre-deriving a key for every access point and client pair grows as access points times clients, which is large at campus scale. Real systems **derive on demand** (a couple of HMAC-SHA256 blocks, microseconds) or **push the keys of the handful of neighbours a client is likely to visit**.
+
+### 7.3 The exchange
+
+**Initial mobility domain association.** The first association to the domain is a normal one: the station sees the **mobility domain element** (id 54, carrying the MDID and the FT capability and policy byte) in the beacon, and the AKM in the RSN element is an FT suite. It authenticates with open system, associates, and then does a full 802.1X or PSK exchange and a 4-way handshake, in which the FT elements establish PMK-R0 and PMK-R1 at the first access point.
+
+**The roam, over the air.** Four frames, as mrncciew's capture of a Cisco roam shows:
+
+1. **Authentication request** (algorithm 2, FT): the station's RSN element with the **PMKR0Name** as a PMKID, the mobility domain element, and the **FT element** (id 55) with the **SNonce** and the R0KH-ID.
+2. **Authentication response**: the target access point answers with its **ANonce**, the R1KH-ID and R0KH-ID. Both sides can now derive the PTK.
+3. **Reassociation request**: the same elements plus a **MIC** over the exchange, proving the station holds the key.
+4. **Reassociation response**: the same plus the **group key** (GTK) wrapped for the station.
+
+No EAP, no RADIUS exchange, no separate 4-way handshake. In the mrncciew capture the exchange completes in about 14 ms including real-world delays, and the model of four management frames at a low rate is in the single-digit milliseconds.
+
+**The roam, over the DS.** The station sends the FT frames to its **current** access point inside **action frames** (FT request, FT response), which forward them over the wired side to the target. The station can stay on the old channel until the key material is ready, at the price of two extra wired hops and a dependency on the wired path. The beacon's mobility domain element carries an "over the DS" capability bit, which the administrator can disable (on a Cisco controller, `no security ft over-the-ds`).
+
+**Resource request.** The FT exchange can carry a **resource request** so a TSPEC ([WF 03](03_wifi_mac.md)) is admitted at the target in the same exchange. That is what makes voice roams complete with their QoS.
+
+### 7.4 The AKMs and the deployments
+
+| AKM | Name | Notes |
+|---|---|---|
+| 3 | FT over 802.1X | Needs EAP; Windows documents 802.1X-only FT support |
+| 4 | FT-PSK | Works without a controller if the access points can derive PMK-R1 locally |
+| 9 | FT-SAE | WPA3 personal with fast transition |
+| 13 | FT over 802.1X SHA-384 | 192-bit mode |
+
+For a **controllerless PSK deployment** with hostapd, each access point is its own key holder and derives PMK-R1 from the PSK, so no key push is needed:
+
+```
+# hostapd.conf fragment (hostapd 2.10 option names; OpenWrt's UCI names ieee80211r and ieee80211k
+# are wrappers that generate these)
+wpa=2
+wpa_key_mgmt=FT-PSK
+mobility_domain=a1b2        # identical on every AP of the domain
+ft_psk_generate_local=1     # derive PMK-R0/R1 locally from the PSK
+ft_over_ds=0                # over the air
+nas_identifier=ap1.example.com
+rrm_neighbor_report=1
+rrm_beacon_report=1
+bss_transition=1
+```
+
+With 802.1X the keys must be pushed between access points or held by a controller or cloud key server (hostapd's `r0kh=` and `r1kh=` entries list the peers).
+
+### 7.5 Where 802.11r goes wrong
+
+The cryptography is not the problem. The problems are all operational:
+
+- **Client support.** Some older or embedded clients fail to join an SSID that advertises an FT AKM because they do not parse the element. The workaround is **mixed mode** (both the FT and the plain suite in one SSID, [WF 04](04_wifi_security.md)), or Cisco's **adaptive 802.11r**, or a separate SSID for legacy devices.
+- **Inconsistent mobility domain.** If the MDID or the key-holder configuration differs between access points, the key never arrives and the roam fails over to a full authentication.
+- **Key push latency.** The R1 must reach the target before the station does. A cloud key holder with a slow link breaks this.
+- **Timing.** The FT exchange has a reassociation deadline; a slow target can miss it.
+- **Over-the-DS support.** Many clients only use over the air, so a design must work with it.
+
+## 8. Steering: band, client and load balancing
+
+Roaming moves a station between access points on its own initiative. **Steering** is the network's attempt to choose the radio and the access point, with the tools it has: the **BSS transition request** (section 5), and older tricks such as **withholding responses** (an access point ignores the probes and authentication of a dual-band station on 2.4 GHz for a while, so it joins 5 GHz) and **deauthenticating** with a reason that asks the station to try elsewhere.
+
+- **Band steering** moves dual-band stations to 5 GHz or 6 GHz, because 2.4 GHz has 3 non-overlapping channels, slow rates and long frames ([WF 01](01_wifi_landscape_and_ap_anatomy.md)).
+- **Client steering** or **load balancing** moves stations between access points to even the load or to push a sticky station away.
+- **Load balancing in controller products** refuses an association when an access point has more clients than its neighbours. It trades some association failures for an even load, and can strand a client that has no other access point.
+
+**Why steering matters in airtime terms.** DCF shares transmission opportunities, not time ([WF 03](03_wifi_mac.md)). If twenty stations at a good rate each want a modest load, the cell is comfortable. Replace one with a station at the lowest rate and the airtime demand more than doubles, so **every** station gets a fraction of what it wanted. One slow station costs all the others, which is why the rule list is: remove the low rates from the basic rate set, keep dual-band stations on the fast band, and roam sticky stations away.
+
+**Where steering fails** (all common field reports):
+
+- A station **blacklists an SSID** after a rejected association and then refuses to try again.
+- **Voice or IoT devices** that were not designed for repeated rejection.
+- A station that claims dual band but **cannot use the channel** it is sent to (a DFS channel its radio does not allow).
+- **Mixed signalling**: the network rejects the client on one access point and a neighbour accepts it on a worse channel.
+- **Compliance**: steering only moves the clients that listen. With a population in which a large share ignores BTM, the benefit shrinks, and if few clients are dual band there is little to move.
+
+Steering is a policy with side effects, so it must be **measured**: the share of clients that really move, the time to join, the number of rejections, and complaints. Roll it out with a counter and a rollback.
 
 ## 9. Radio resource management: channels, power and coverage
 
-**RRM** is the name for the controller or cloud function that sets the **channel**, the **transmit power** and the **channel width** of every access point and reacts to change. Vendors use different names (DCA and TPC in controller products, ARM and AutoRF in others, from memory) and the same three jobs. The script uses a model of **20 access points** on a jittered 5 by 4 grid in 100 m by 100 m (20 dBm, loss 40 dB plus 32 log10 of the distance in metres: a model, not a measurement) to show what the algorithms do and what they cannot do.
+**RRM** is the name for the controller or cloud function that sets the **channel**, the **transmit power** and the **channel width** of every access point and reacts to change. Vendors name it differently (Cisco RRM with DCA and TPC, Aruba ARM and AirMatch, Ruckus ChannelFly with background scanning, Meraki Auto RF, Mist RRM) but the three jobs are the same.
 
---- 20 access points on a jittered 5 x 4 grid in 100 m x 100 m, transmit power 20 dBm, loss 40 dB + 32 log10(d) (a model)
-pairs of APs that hear each other: 182 above -82 dBm, 60 above -70 dBm, 8 above -60 dBm (of 190 pairs); mean APs heard above -82 dBm per AP: 18.2
+### 9.1 What it does, using Cisco's published design as the reference
 
-**Most access points hear most others.** Of 190 pairs, **182 are above -82 dBm** (a level at which the preamble is detected and the channel is deferred, [WF 03](03_wifi_mac.md)), 60 above -70 dBm and 8 above -60 dBm, which is **18.2 neighbours per access point** in a floor of 100 m by 100 m. That is the case for a careful channel plan: in an office, the "cell" picture of one access point per channel does not exist.
+Cisco's RRM technical note describes the design in detail, and it is a good template for the vocabulary of any system (the numbers are from older controller releases; verify against current documentation before relying on them):
 
-**Channel assignment.** The problem is a colouring problem on a graph in which two access points are linked if they hear each other, and the aim is to keep linked access points on different channels. The script compares a random plan, a greedy plan and a local search:
+- **RF group.** Controllers that share an RF group name and whose access points **hear each other's neighbor messages** form a group. Access points send neighbor messages on all serviced channels at a regular interval (60 seconds by default), and neighbours are added above about -80 dBm.
+- **Leader.** One controller is elected leader (by group identifier). It runs **DCA** and **TPC** for the group, polling the others, and coverage hole detection runs locally on each controller.
+- **DCA (dynamic channel assignment).** Inputs: load, noise, interference and signal strength of the neighbours. It is conservative on purpose: a change is considered only if it improves the worst access point by a margin (the **sensitivity** setting, a hysteresis in dB), changes favour local adjustments to avoid cascades across the site, and an **anchor time** and interval make the changes predictable (typically at night). A channel change disconnects or interrupts clients, so stability matters more than optimality.
+- **TPC (transmit power control).** The classic rule: set the power so that the **third strongest neighbour** is heard at a threshold (the default is about -70 dBm). The formula is `Tx_max + (threshold - third-neighbour RSSI)`. It lowers power only if it has a margin of several dB, and raises it only with a smaller one. It only **reduces** power; increases come from coverage hole logic.
+- **Coverage hole detection.** If the average client SNR on a radio stays below a cutoff (a function of transmit power and a coverage profile) for a minimum time and a minimum number of clients, the radio raises its power one step at a time, and neighbours raise power when an access point fails.
+- **Limits.** The document itself says RRM does not replace RF design, that scale limits the size of a group, that frequent neighbour changes cause leader re-elections and instability, and that off-channel scanning costs a little throughput.
 
---- channel assignment: co-channel pairs that hear each other, and the total interference between them (dBm)
-co-channel pairs: pairs of access points on one channel that hear each other above -82 dBm; interference: the power sum at the receivers of those pairs
-2.4 GHz, 3 channels                          random  60.4 pairs   -45.5 dBm | greedy 54 pairs   -50.7 dBm | local search 54 pairs   -50.7 dBm
-5 GHz, 9 non-DFS channels                    random  20.1 pairs   -50.8 dBm | greedy 13 pairs   -63.0 dBm | local search 13 pairs   -63.5 dBm
-5 GHz, 25 channels with DFS                  random   7.3 pairs   -56.5 dBm | greedy  0 pairs  -200.0 dBm | local search  0 pairs  -200.0 dBm
+### 9.2 Channels: a colouring problem on a dense graph
 
-- **2.4 GHz with 3 channels** is hopeless: **60.4 co-channel pairs at random, 54 after the best search** (a graph this dense cannot be coloured with 3 colours). The only real tools are to **turn off** some 2.4 GHz radios and to lower their power.
-- **5 GHz with 9 non-DFS channels**: **20.1 pairs at random, 13 after optimisation**.
-- **5 GHz with 25 channels (DFS included): 7.3 at random and 0 after optimisation.** DFS channels are what make a clean plan possible, at the price of radar events (section 10).
+Draw access points as nodes and link two if they hear each other above the carrier-sense threshold (about -82 dBm for the preamble). The aim is to give linked nodes different channels. In an office floor **most access points hear most others** (in one simulated floor of 20 access points in 100 m by 100 m, 182 of 190 pairs heard each other above -82 dBm), so the picture of "one access point per channel cell" does not exist.
 
-So **channel count is the resource**, and an algorithm cannot create it. A designer who bans the DFS channels (for the voice reasons of section 10) gives up the plan that has no co-channel neighbours, and has to accept 13 pairs of mutual interference in this model.
+| Band | Reality |
+|---|---|
+| 2.4 GHz | 3 non-overlapping channels: a dense graph cannot be coloured with 3 colours. The real tools are to **turn off** some 2.4 GHz radios and to lower their power |
+| 5 GHz without DFS | About 9 channels at 20 MHz: workable with care |
+| 5 GHz with DFS | About 25 channels at 20 MHz in some regions: a clean plan is possible, at the price of radar events (section 10) |
+| 6 GHz | Many 20 MHz channels, but wide channels use them up fast |
 
-**Transmit power.** Lower power shrinks the cells and the interference but also the coverage and the overlap that roaming needs. The script measures both on a grid of points (a client needs at least -67 dBm for a good rate, a hole is a point below -75 dBm):
+**Channel count is the resource**; an algorithm cannot create it. Wider channels (40, 80, 160 MHz) multiply the rate of one link and divide the number of channels, so in a **dense** deployment 20 MHz (or at most 40) is often the right answer even though the data sheet lists 160. Two kinds of interference to keep apart: **co-channel** (same channel: the access points defer to each other, which costs airtime but is polite) and **adjacent-channel** (overlapping channels such as 2.4 GHz channels 1 and 4: the signals are not decoded, only noise, which is worse). That is why 1, 6 and 11 are the plan in 2.4 GHz.
 
---- transmit power: coverage against overlap (a client needs at least -67 dBm for a good rate; a hole is a point below -75 dBm; 20 m grid of points; client uplink power is not modelled)
-transmit power plan                good cov %    holes % second AP >= -67 % APs per point >= -75
-all 20 dBm                              100.0        0.0               97.9                10.80
-all 14 dBm                               98.2        0.0               71.7                 5.70
-all 8 dBm                                77.3        0.2               16.2                 2.68
-all 2 dBm                                37.8       12.2                2.2                 1.23
-TPC: 3rd neighbour at -70 dBm            98.2        0.0               75.8                 5.91
-TPC result powers (dBm): min 10.9, median 14.2, max 20.0; mean power of the 12 access points on the outer ring 15.2 dBm, of the 8 inside 13.2 dBm
-pairs that hear each other above -82 dBm after TPC: 139 (before: 182)
+### 9.3 Power: coverage against overlap
 
-| Power plan | Good coverage | Holes | Second AP at -67 dBm or better | APs heard at -75 dBm or better |
-| --- | --- | --- | --- | --- |
-| All 20 dBm | 100.0 % | 0.0 % | 97.9 % | 10.80 |
-| All 14 dBm | 98.2 % | 0.0 % | 71.7 % | 5.70 |
-| All 8 dBm | 77.3 % | 0.2 % | 16.2 % | 2.68 |
-| All 2 dBm | 37.8 % | 12.2 % | 2.2 % | 1.23 |
-| TPC (third neighbour at -70 dBm) | 98.2 % | 0.0 % | 75.8 % | 5.91 |
+Lower power shrinks cells and interference and also shrinks coverage and the overlap that roaming needs. A simulation on the same floor shows the shape: at full power every point hears about 11 access points above -75 dBm, at a moderate power coverage is still near 98 percent while the number heard halves, and at low power coverage collapses. The right target is **enough overlap to roam and no more**, which is the second-strongest access point at roughly -67 dBm, not 20 dBm everywhere.
 
-At **14 dBm coverage is still 98.2 percent**, and the number of access points a point hears at -75 dBm or better falls from **10.8 to 5.7**, which is half the contention. At 8 dBm coverage collapses to **77.3 percent**. **TPC** with the classic rule (set the power so that the third strongest neighbour is heard at -70 dBm, the controller rule, from memory) gives **98.2 percent coverage with 75.8 percent second-AP overlap and a power spread of 10.9 to 20.0 dBm (median 14.2)**. The mean power of the **12 outer access points is 15.2 dBm and of the 8 inside 13.2 dBm**: the edge keeps more because it has fewer neighbours. After TPC, **139 pairs hear each other, down from 182**.
+Two client-side limits shape the choice:
 
-**The client side of power.** Two limits the model leaves out. A client transmits at 14 to 20 dBm (a phone often less), so an access point at 20 dBm that a client hears at -75 dBm is a link where the **uplink is the weak direction** (the asymmetric link of [WF 01](01_wifi_landscape_and_ap_anatomy.md) and [WF 11](11_rf_fundamentals_and_link_budget.md)). And **raising the power does not help the client hear better**: it makes the access point look strong and keeps a sticky client attached. **The access point power is a design choice for the uplink, and a good design lowers it.**
+- A client transmits at 14 to 20 dBm (a phone often less), so an access point that is loud and a client that is quiet make a link where the **uplink is the weak direction** ([WF 01](01_wifi_landscape_and_ap_anatomy.md), [WF 11](11_rf_fundamentals_and_link_budget.md)).
+- **Raising access point power does not help the client hear better**. It makes the access point look strong and keeps a sticky client attached. Access point power is a design choice for the uplink, and a good design lowers it.
 
-**Coverage holes and failure.** RRM reacts to a failed or removed access point, which is its coverage hole mitigation (from memory): when clients are seen at a low SNR, the neighbours raise power. The script removes one access point and then lets the four nearest neighbours add 6 dB:
+**Redundancy is a trade.** A plan tuned for the lowest interference has no overlap to hide a failed access point. A plan with redundancy has more interference. Decide the redundancy explicitly (N+1 coverage for critical areas) instead of discovering it during an outage. Coverage hole logic, which raises neighbours' power when an access point fails, closes only part of the gap.
 
---- a coverage hole: AP 7 fails; the plan at 8 dBm has no overlap to hide it, the plan at 14 dBm does; the four nearest neighbours then add 6 dB (the idea of RRM coverage hole mitigation, from memory)
-plan                    holes, all up      AP 7 down  AP 7 down, +6 dB nearby
-all 14 dBm                       0.0%           0.0%                     0.0%
-all 8 dBm                        0.2%           2.1%                     0.2%
-all 5 dBm                        3.0%           7.2%                     3.0%
+### 9.4 Beacon overhead: the cost of many SSIDs
 
-With **14 dBm everywhere the failure leaves no hole (0.0 percent)** because the overlap covers it. With **8 dBm the failure opens 2.1 percent holes** and the +6 dB reaction closes them back to 0.2 percent; at 5 dBm **7.2 percent** shrinks to 3.0 percent, which is the hole that was there before the failure. The lesson is a **trade**: a plan tuned for the lowest interference has no redundancy, and a plan with redundancy has more interference. A designer should decide the redundancy explicitly (N+1 coverage) and not discover it in an outage.
+Every access point sends a beacon for every SSID every 102.4 ms at the lowest basic rate. A 300 byte beacon occupies the air for about 2.6 ms at 1 Mbit/s, about 0.42 ms at 6 Mbit/s and about 0.22 ms at 12 Mbit/s. For **one** access point with one SSID that is roughly 2.5 percent, 0.4 percent and 0.2 percent of the air. The part that surprises designers is the **sum over the access points that hear each other** on a channel: four SSIDs with beacons at 1 Mbit/s and ten access points on one channel need about as much airtime as the channel has. At 6 Mbit/s it is about 16 percent, which is still a lot.
 
-**What RRM does not do.** It does not know the building, it reacts on a time scale of minutes to hours (so it cannot follow a crowd), a change of channel **disconnects or interrupts** stations (the CSA of section 10 is the polite way, and not every client follows it), and its input is mostly what the access points hear of each other and of the clients. The CleanAir style of products (section 11) adds a spectrum view for non-Wi-Fi interference.
+So **raising the lowest basic rate from 1 to 6 or 12 Mbit/s is the cheapest capacity upgrade in Wi-Fi**, with the cost that a client at the cell edge needs a decent link to hear the beacon (so lower the power at the same time). The other levers: **fewer SSIDs** (every SSID costs beacons and probe responses on every access point), and **multiple BSSID** for 6 GHz and 802.11ax, in which one beacon carries the information of several SSIDs ([WF 06](06_wifi6_6e_7_features.md)).
 
-**Beacon overhead, the cost of a plan with many SSIDs.** Every access point sends a beacon for every SSID, at the lowest basic rate, every 102.4 ms. The script prices it:
+### 9.5 What RRM does not do
 
-a beacon is about 300 bytes (the elements of an HE AP are 250 to 400 bytes, from WF 01); one every 102.4 ms per SSID
-beacon rate (Mbit/s)       us per beacon  1 SSID       4 SSIDs      8 SSIDs
-1                          2592           2.53 %       10.12 %      20.25 %
-2                          1392           1.36 %       5.44 %       10.88 %
-6                          420            0.41 %       1.64 %       3.28 %
-12                         220            0.21 %       0.86 %       1.72 %
-24                         120            0.12 %       0.47 %       0.94 %
---- all the APs of one channel hear each other: the sum for N APs on a channel, 4 SSIDs each, beacon at 1, 6 and 12 Mbit/s
-beacon at  1 Mbit/s: 1 APs:  10.1 %, 3 APs:  30.4 %, 5 APs:  50.6 %, 10 APs: 101.2 %, 20 APs: 202.5 %
-beacon at  6 Mbit/s: 1 APs:   1.6 %, 3 APs:   4.9 %, 5 APs:   8.2 %, 10 APs:  16.4 %, 20 APs:  32.8 %
-beacon at 12 Mbit/s: 1 APs:   0.9 %, 3 APs:   2.6 %, 5 APs:   4.3 %, 10 APs:   8.6 %, 20 APs:  17.2 %
---- the airtime left for data
-10 APs, 4 SSIDs, beacons at  1 Mbit/s: 101.2 % of the air is beacons; 0.0 % remains for data
-10 APs, 4 SSIDs, beacons at  6 Mbit/s:  16.4 % of the air is beacons; 83.6 % remains for data
-20 APs, 4 SSIDs, beacons at  6 Mbit/s:  32.8 % of the air is beacons; 67.2 % remains for data
---- the same figures per AP when SSIDs are merged into one with a multi-BSSID element (one beacon carries the others, from memory of 802.11ax 6 GHz rules): 1 beacon per AP
-beacon of 450 bytes at 6 Mbit/s: 0.61 % per AP; 10 APs: 6.1 %
+It does not know the building. It reacts on a time scale of minutes to hours, so it cannot follow a crowd. A channel change interrupts stations (a channel switch announcement is the polite way, and not every client follows it). Its inputs are mostly what access points hear of each other and of clients, so non-Wi-Fi interference needs a spectrum view (Cisco's CleanAir, similar features in other products, [WF 08](08_wifi_capture_tools_and_debug.md)). And aggressive RRM can **hurt**: a network that changes channels all day annoys voice clients more than a fixed, mediocre plan.
 
-A 300 byte beacon takes **2,592 µs at 1 Mbit/s, 1,392 µs at 2, 420 µs at 6, 220 µs at 12 and 120 µs at 24 Mbit/s**. For one access point the air share is **2.53 percent for 1 SSID and 10.12 percent for 4 SSIDs at 1 Mbit/s**, against **0.41 and 1.64 percent at 6 Mbit/s**. The part that surprises designers is the **sum over the access points that hear each other** on one channel: **4 SSIDs, beacons at 1 Mbit/s, 10 access points on one channel is 101.2 percent of the air** (the model counts airtime, and a value over 100 means the beacons do not fit, which in practice means collisions and lost beacons), and at **6 Mbit/s it is 16.4 percent**, at 12 Mbit/s **8.6 percent**. **Raising the lowest basic rate from 1 to 6 or 12 Mbit/s is the cheapest capacity upgrade in Wi-Fi**, with the cost that a station at the cell edge needs a good link to even hear the beacon, which is a reason to lower the transmit power at the same time. **Multiple BSSID** (the 6 GHz and 802.11ax mechanism of [WF 06](06_wifi6_6e_7_features.md), one beacon for several SSIDs) reduces it: **0.61 percent per access point for a 450 byte beacon at 6 Mbit/s and 6.1 percent for 10 access points**, from the model.
+### 9.6 6 GHz and discovery
+
+On 6 GHz a client cannot scan blindly (there are many channels, and scanning 59 of them wastes time), and a 6 GHz access point cannot answer wildcard probes freely. So discovery uses: the **reduced neighbor report** (RNR) element in 2.4 and 5 GHz beacons that points to the 6 GHz BSS, the **preferred scanning channels** (PSC, every fourth channel), **FILS discovery frames** and unsolicited probe responses sent frequently by the 6 GHz access point. The practical rule: **co-locate the 6 GHz radio with 2.4 or 5 GHz radios** that advertise it, so clients find it through RNR ([WF 06](06_wifi6_6e_7_features.md)).
 
 ## 10. DFS and channel switching
 
-In the 5 GHz bands that radar shares (UNII-2A, 2C and the weather band, the rules of [WF 01](01_wifi_landscape_and_ap_anatomy.md) and regulatory limits from memory), an access point must run **dynamic frequency selection**: listen for a **channel availability check (CAC, 60 s, and 600 s on the weather channels)** before using a channel, listen all the time, and **leave within a closing transmission time of 260 ms** when it detects radar, and not return for a **non-occupancy period of 30 minutes** (the numbers are from memory of the regulations, and the standard's timers are the same ones). The access point announces the move to its stations with a **channel switch announcement (CSA)**: an element (id 37) in beacons, probe responses and an action frame, with a **mode** (1 means stop transmitting until the switch, which is required after radar), the **new channel** and a **count of beacons** until the switch. The **extended** form (id 60) adds the operating class. The script builds all of them, and `tshark` decodes them:
+In the 5 GHz sub-bands that radar shares (UNII-2A, 2C and the weather band), an access point must run **dynamic frequency selection**:
 
---- the channel switch announcement: an element in the beacon (and in probe responses and an action frame) that counts beacons until the move; built here, decoded by tshark
-frame  size  frame                                         mode  new channel  beacons left  DS channel
-  1      60  beacon with CSA element (id 37)              1     36           5             100
-  2      60  beacon, count 4                              1     36           4             100
-  3      61  beacon with extended CSA (id 60)             -     -            0x00000003    100
-  4      31  action frame, spectrum management, CSA       1     36           0             -
-mode 1 = stop transmitting until the switch (required after radar); the count decrements in each beacon, 0 means the next beacon is on the new channel; an extended announcement also carries the operating class (115 = 5 GHz 36 to 48)
-a station that decodes the element can move at once; a station that misses every beacon of the countdown (asleep, off channel scanning) learns only when the AP is gone: it scans (see the table below)
+- a **channel availability check (CAC)** before using a channel, typically 60 seconds (10 minutes on weather channels in some regions);
+- continuous listening for radar while operating;
+- on detection, **leave within a closing transmission time** (about 260 ms of activity, 10 s total move time in the rules) and do not return for a **non-occupancy period** of 30 minutes.
 
-The decode shows mode 1, the new channel 36 and the counts 5 and 4 in two beacons, an extended announcement with a count of 3 (the field `wlan.extchansw.switchcount`) and the spectrum management action frame with a count of 0, which is the frame an access point can send to a single station that missed the beacons.
+The access point announces a move with a **channel switch announcement (CSA)**: an element (id 37) carried in beacons, probe responses and an action frame. It has a **mode** (1 means stop transmitting until the switch, required after radar), the **new channel** and a **count of beacons** until the switch. The **extended** form (id 60) adds the operating class. A client that decodes it can move at once. A client that misses it (asleep, off-channel scanning) finds the access point gone and must scan.
 
-**The cost of a radar event** depends on **the policy**, and on whether the client received the announcement:
+**The cost of a radar event** depends on the policy, not the detector:
 
---- time costs (assumed, from memory of the typical regulatory numbers): channel move time 10 s, closing transmission 260 ms, channel availability check 60 s (600 s on the weather channels), non-occupancy 30 min
+| Policy | Outage per event (order of magnitude) |
+|---|---|
+| Switch at once to a pre-selected **non-DFS** channel, announced by CSA | About a second |
+| Switch to another DFS channel (CAC must run first) | About a minute |
+| No pre-selected channel: scan for a free channel, then CAC | More than a minute |
+| Two 5 GHz radios, one stays on a non-DFS channel | The client roams: about 0.1 s |
 
---- outage per radar event, by recovery policy (seconds a client has no service)
-policy                                                       client has CSA client misses CSA
-switch at once to a non-DFS channel announced by CSA                    1.0              9.1
-switch to another DFS channel (CAC must run first)                     60.5             68.6
-no pre-selected channel: AP scans for a free channel, then CAC           70.0             78.6
-dual 5 GHz radios: one stays on a non-DFS channel (the client roams)            0.1              1.2
+Add a **client that misses the CSA** and each figure grows by several seconds. A **false detection costs exactly what a real one costs**, and the non-occupancy period is 30 minutes per channel, so a site with dozens of events a day on one channel loses most of the day on it. False triggers come from microwave ovens, badly shielded radios and some video bridges.
 
-| Policy | Client has the CSA | Client misses the CSA |
-| --- | --- | --- |
-| Switch at once to a non-DFS channel announced by CSA | 1.0 s | 9.1 s |
-| Switch to another DFS channel (CAC first) | 60.5 s | 68.6 s |
-| No pre-selected channel: scan, then CAC | 70.0 s | 78.6 s |
-| Two 5 GHz radios, one stays on a non-DFS channel | 0.1 s | 1.2 s |
+**Design rules:**
 
-**One pre-selected non-DFS fallback turns 70 s into 1.0 s per event.** The cost of a client that misses the CSA (asleep, or off channel in a scan) is the time it takes to notice that the access point is gone and to scan, **8 s more** in the model. Then the daily total:
+1. Choose **non-DFS channels where voice must survive**.
+2. **Pre-select a non-DFS fallback** where DFS is used.
+3. **Never let every access point in an area share one DFS channel**: one event removes the area.
+4. Use a **second 5 GHz radio** (dual-5 GHz access points, [WF 01](01_wifi_landscape_and_ap_anatomy.md)) where the budget allows.
+5. Watch the DFS event count per channel and **ban a channel that keeps triggering**.
 
---- expected daily outage on a DFS channel for r radar events per day and the policy above (outage seconds per day)
-policy (client has CSA)                                         r = 0.2      r = 2     r = 10     r = 50
-switch at once to a non-DFS channel announced by CSA                0.2        2.0       10.1       50.6
-switch to another DFS channel (CAC must run first)                 12.1      121.0      605.1     3025.6
-no pre-selected channel: AP scans for a free channel, then CAC       14.0      140.0      700.0     3500.0
-dual 5 GHz radios: one stays on a non-DFS channel (the client roams)        0.0        0.2        1.0        5.0
-a false radar detection (a burst that looks like a radar pulse, a microwave oven or a noisy radio) costs exactly the same as a real one; the non-occupancy period is 30 min per channel (1800 s), so at r = 50 events per day on one channel, 25.0 hours a day are lost to the NOP alone
-moral: the policy decides the cost; one pre-selected non-DFS fallback cuts the outage from 70 s to 1.0 s per event
+(DFS timers and details differ by region; the figures above are the typical ETSI and FCC numbers and must be checked for the country.)
 
-At **0.2 events per day** (one every five days, a quiet site) the cost is **0.2 s a day with the non-DFS fallback and 12.1 s with a switch to another DFS channel**. At **10 events a day** (an airport or a harbour, or a site with a microwave oven or a noisy radio that looks like radar) the figures are **10.1 s and 605 s**, and at **50 events a day on one channel, 25 hours a day are lost to the non-occupancy period alone**. A **false detection costs exactly the same as a real one**, so the policy is more important than the detector. The design rules are: **choose non-DFS channels where voice must survive, pre-select a non-DFS fallback channel where DFS is used, never let every access point of an area share one DFS channel, and use a second 5 GHz radio** (the dual 5 GHz access points of [WF 01](01_wifi_landscape_and_ap_anatomy.md)) **where the budget allows**, so that a radar event is a roam of 0.1 s and not an outage.
+## 11. Controller-era architecture: what roaming means in a product
 
-## 11. Controller-era architecture: what the Candela course leaves to the vendors
+A Staff interview about Wi-Fi will use the vocabulary of controller products. The architecture itself is the subject of [WF 07](07_wifi_architectures_mesh_and_services.md); this is the part that touches roaming.
 
-Roaming and RRM are the places where product architecture matters, and a Staff interview about Wi-Fi will use the vocabulary of controller products. The facts here are **from memory of vendor documentation and standard practice**, and are marked as such. The architecture itself is the subject of [WF 07](07_wifi_architectures_mesh_and_services.md); this is the part that touches roaming.
+- **Layer 2 and layer 3 roaming.** Within one VLAN and subnet a roam moves only the client entry. When the new access point is on another subnet, the client keeps its IP address by **tunnelling its traffic back to the original controller**: the **anchor** (where the client first joined, which owns the address) and the **foreign** controller (where it is now, which tunnels to the anchor). It keeps sessions alive and adds a tunnel hop, so many designs avoid it with **one large VLAN per SSID**, at the price of a big broadcast domain (which proxy ARP and multicast-to-unicast make tolerable).
+- **Central, local and FlexConnect switching.** With central switching all client traffic goes through the controller, so a roam is a controller state change. With **FlexConnect** (hybrid REAP) or **local switching** a branch access point puts traffic on the local VLAN and keeps working if the controller is unreachable. In standalone mode the access point must authenticate clients itself, so a branch design needs **local EAP** or a local RADIUS and a key caching or 802.11r design that works **without a controller round trip**.
+- **Client exclusion and rogue handling.** Controllers exclude (blacklist) a client for a time after repeated failures, and classify other access points as friendly, malicious, unclassified or rogue. **Containment** (sending deauthentication frames to a rogue's clients) is legally and technically delicate, and protected management frames limit its effect ([WF 04](04_wifi_security.md)).
+- **Cloud and controllerless designs.** The same functions run in a cloud service or in the access points themselves. The roam path then **must not depend on the controller or the cloud**: key caching and FT keys have to live on the access points of the mobility domain, because a 40 ms cloud round trip makes a full EAP roam a visible event.
 
-- **Mobility groups and L2 against L3 roaming.** When an access point is on another subnet or controller than the previous one, the client's IP address belongs to the old network. **Layer 2 roaming** (same VLAN and subnet) needs only a move of the client entry. **Layer 3 roaming** keeps the old address by **tunnelling the client's traffic back to the original controller**: the **anchor** controller (where the client first joined, which keeps the address) and the **foreign** controller (where the client is now, which tunnels to the anchor). It keeps sessions alive and adds a tunnel hop, and many designs avoid it by using one large VLAN per SSID, at the cost of a large broadcast domain (the proxy ARP of section 3 is what makes this tolerable).
-- **Local, central and FlexConnect switching.** In **central switching** all client traffic goes through the controller, which makes roaming a controller state change. In **FlexConnect** (hybrid REAP, the Cisco name) or **local switching** a branch access point puts the traffic on the local VLAN and works even if the controller is not reachable: in **connected** mode the controller authenticates, in **standalone** mode the access point has to authenticate clients itself, which is why a branch design needs **local EAP** or a **local RADIUS** and a key caching or 802.11r design that works without a controller round trip (the roam budget of section 6).
-- **Client exclusion and rogue handling.** Controllers **exclude** (blacklist) a client for a time after repeated failures (failed authentications, an excessive association rate, a policy violation) and classify other access points as **friendly, malicious, unclassified or rogue** by whether they are known and whether they are on the wired network (the detection through the rogue location discovery or the switch port, **from memory**), with a **containment** option that sends deauthentication frames to the clients of a rogue, which is legally and technically delicate ([WF 04](04_wifi_security.md): protected management frames limit the effect).
-- **RF groups and CleanAir.** An **RF group** is the set of access points that exchange the neighbour messages that RRM uses for the channel and power plan, and a **leader** that runs the algorithm. **CleanAir** is the spectrum analysis in the access point silicon, which classifies non-Wi-Fi interference (microwave, Bluetooth, video bridges, cordless phones) and reports its duty cycle and severity, so DCA can avoid the channel ([WF 08](08_wifi_capture_tools_and_debug.md) covers the spectrum tools).
-- **Dynamic channel assignment (DCA), transmit power control (TPC) and load balancing** are the algorithms of section 9, with **event-driven** changes (a high interference or a radar event) and **scheduled** changes (once a day at night, because every change interrupts clients, **from memory**).
-- **Cloud and controllerless designs.** The same functions run in a cloud service (the access points report neighbours and the cloud assigns the plan) or in the access points themselves (a distributed protocol, an elected leader). The roam path then must not depend on the controller or the cloud: **key caching and 802.11r keys must live on the access points of the mobility domain** (a distributed key holder, a shared R0KH), because a cloud round trip of 40 ms makes the figures of section 5 fall apart.
+## 12. Reading a roam from a capture
 
-## 12. Reading a roam from a capture, and a design checklist
-
-A roam trace has a few frames, and the time between them tells the story. In a monitor-mode capture ([WF 08](08_wifi_capture_tools_and_debug.md)) filter on the **station address** and read the sequence on both channels (a single radio sees only one channel, so capture on the old and the new channel at once, or the roam will look like a station that disappeared).
+A roam trace is a few frames, and the time between them tells the story. In a monitor-mode capture ([WF 08](08_wifi_capture_tools_and_debug.md)) filter on the **station address**. A single radio sees only one channel, so capture on the old **and** the new channel at once, or the roam will look like a station that disappeared.
 
 | What to find | tshark display filter | What it tells you |
-| --- | --- | --- |
-| Reassociation, not association | `wlan.fc.type_subtype == 2` (request), `3` (response) | The client used the roaming path and named the old AP |
+|---|---|---|
+| Reassociation, not association | `wlan.fc.type_subtype == 2` (request), `3` (response) | The client used the roaming path |
 | Authentication algorithm | `wlan.fixed.auth.alg == 2` | 2 is FT, 0 is open system (including OKC and PMKSA roams) |
-| FT elements | `wlan.mobility_domain.mdid`, `wlan.ft.anonce`, `wlan.ft.snonce` | The mobility domain and nonces of an 802.11r roam |
-| AKM suites | `wlan.rsn.akms.type` | 3, 4 or 9 is FT, 1 or 2 is not |
-| PMKIDs in the request | `wlan.rsn.pmkid.count` | A PMKID means key caching or FT, none means a full authentication |
-| 4-way handshake after the reassociation | `eapol` | Present in a PMKSA or OKC roam, absent in an FT roam |
-| EAP after the reassociation | `eap` | A full 802.1X roam: the expensive case |
+| FT elements | `wlan.mobility_domain.mdid`, `wlan.ft.anonce`, `wlan.ft.snonce` | An 802.11r roam |
+| AKM suites | `wlan.rsn.akms.type` | 3, 4 or 9 is FT; 1 or 2 is not |
+| PMKIDs in the request | `wlan.rsn.pmkid.count` | A PMKID means caching or FT; none means a full authentication |
+| 4-way handshake after reassociation | `eapol` | Present in a PMKSA or OKC roam, absent in an FT roam |
+| EAP after reassociation | `eap` | A full 802.1X roam: the expensive case |
 | Neighbor report and BTM | `wlan.fixed.category_code == 5` or `10`, `wlan.fixed.action_code` | 11k and 11v activity |
 | BTM request fields | `wlan.fixed.request_mode.disassoc_imminent`, `wlan.fixed.disassoc_timer` | A steering request and its deadline |
-| BTM response status | `wlan.fixed.bss_transition_status_code` | 0 accepted, other values refused |
+| BTM response status | `wlan.fixed.bss_transition_status_code` | 0 accepted, others refused |
 | Channel switch | `wlan.csa.new_channel_number`, `wlan.csa.channel_switch.count` | A DFS or planned move |
 
-The measures to take from the trace are **the gap between the last data frame on the old access point and the first on the new one** (the real outage), **the time between the authentication and the end of the key exchange**, **the number of channels visited before the authentication** (the scan), and whether the client **asked** for a neighbor report first. A gap of 100 ms with 4 probe-only channels in front is a client doing a scan, and a gap of 6 ms with no probes is a client that knew the target.
+Four numbers to take from the trace:
 
-**A design checklist, in order of effect:**
+1. **The gap between the last data frame on the old access point and the first on the new one.** That is the real outage.
+2. **The time from authentication to the end of the key exchange.** That is the key cost.
+3. **How many channels were probed before the authentication.** That is the scan.
+4. **Whether the client asked for a neighbor report first.** That says whether 802.11k is in use.
 
-1. **Cheap roam first**: 802.11r where the clients support it (and a fallback for those that do not), or OKC or PMKSA caching as the minimum, and a **key holder that lives close to the access points**.
-2. **Short scans**: 802.11k neighbor reports on, with an accurate list; the RNR and PSC channels on 6 GHz; remove channels the clients should not scan.
-3. **Honest overlap**: 14 dBm and a plan with N+1 coverage for the critical areas, not 20 dBm everywhere.
-4. **Fewer, faster beacons**: the lowest basic rate at 6 or 12 Mbit/s, few SSIDs, multiple BSSID on 6 GHz.
-5. **Steering with a measurement**: BTM and band steering with a counter of acceptance, and the sticky clients identified from the retry and rate data.
-6. **A DFS policy**: non-DFS where voice must survive and a pre-selected non-DFS fallback elsewhere.
-7. **Only then tune the thresholds**, with hysteresis of 8 to 12 dB between the old and the new access point.
+A gap of 100 ms or more with four probe-only channels in front is a client doing a scan. A gap of a few milliseconds with no probes is a client that already knew its target.
 
-## 13. Common mistakes
+## 13. Debugging roaming: symptom, likely cause, first check
 
-1. **Thinking the access point decides the roam.** It can only advise or make the link worse. A design that depends on BTM is only as good as the clients.
-2. **Enabling 802.11r without testing the clients.** Some do not join a network that advertises the FT AKM. Use the mixed mode, and test the clients that matter (scanners, medical carts, old phones).
-3. **Believing 802.11r fixes the roam time.** The key exchange is 6 to 10 ms, and the scan is 30 to 1,140 ms. Without a short scan (11k, 6 GHz discovery, background scanning) a roam is still long.
-4. **A cloud RADIUS without key caching.** Every roam pays the EAP rounds at the server distance (731 ms for EAP-TLS at 100 ms, section 5).
-5. **A different mobility domain or key holder on neighbouring access points.** The R1 key never arrives and the roam falls back to a full authentication, or fails.
-6. **Transmit power at maximum.** More power does not help the uplink, keeps sticky clients attached and nearly doubles the contention (10.8 against 5.7 access points heard, section 9).
-7. **Banning DFS without counting the channels.** The plan with 9 channels has 13 co-channel pairs in the model, against 0 with 25, and the DFS risk is a policy question that a fallback channel solves.
-8. **Using DFS without a fallback.** 70 s of outage per radar event against 1.0 s.
-9. **Steering that is never measured.** Compliance decides the result (40.2 percent against 58.0 percent on 5 GHz) and some clients blacklist an SSID after a rejection.
-10. **Judging a roam from a single-channel capture.** The client leaves the channel, so the trace shows a silence. Capture both channels.
-11. **Tuning the RSSI threshold before the roam is cheap.** The best threshold depends on the roam cost (section 7).
-12. **Keeping 1 and 2 Mbit/s as basic rates.** The beacons alone take 10 percent of the air with 4 SSIDs, and one slow station can take 63 percent of everyone's throughput.
+| Symptom | Likely cause | First check |
+|---|---|---|
+| Voice breaks for 1 to 3 s when walking | Full EAP roam to a distant RADIUS, or a full scan | Capture: is there EAP after the reassociation? How many channels probed? |
+| Phone clings to the far access point, throughput poor | Sticky client, power too high, low basic rates enabled | RSSI and rate of the client; neighbours' RSSI at the client; BTM response if sent |
+| Roams every few seconds near a midpoint | No hysteresis, shadowing | Roam count per hour per client; margin of the client |
+| Some devices cannot join after enabling 802.11r | Client does not parse the FT AKM | Try mixed mode or a legacy SSID; look at the association response status |
+| Roam works to some access points but falls back to full auth on others | Mobility domain or key-holder mismatch | Compare MDID and R0KH/R1KH settings; check the PMKR0Name in the auth request |
+| BTM sent but ignored | Client does not support 11v, or it rejects with status 2 or 7 | The BTM response status; the client's extended capabilities |
+| Network changes channels in the middle of the day | RRM sensitivity too high, or an interferer, or false radar | RRM change log; DFS event log per channel |
+| Whole area drops for a minute at random | Radar event on a shared DFS channel | DFS events, and whether a non-DFS fallback exists |
+| New SSID made everything slower | Beacon overhead with low basic rates | Beacon airtime on the channel; basic rate set |
+| Roam OK on the air, but downlink stalls for a second | Switch did not learn the move, or an L3 tunnel is slow | Capture on the wired side: where do downlink frames go after the roam? |
 
+## 14. Common mistakes
 
-## 14. Interview questions
+1. **Believing the network can force a roam.** It can advise and degrade. Design for clients that ignore it.
+2. **Enabling 802.11r without a fallback** for clients that do not support it, and then blaming the clients.
+3. **Setting the thresholds before making the roam cheap.** Fix keys and scan first, then tune.
+4. **Running full power "for coverage".** It extends the cell for the access point and not for the client, and it keeps sticky clients attached.
+5. **Keeping the 1 Mbit/s basic rate** and several SSIDs on a dense channel. The beacons eat the air.
+6. **Using 80 or 160 MHz channels in a dense deployment** and ending up with co-channel contention.
+7. **Letting RRM run unattended during working hours**, so a channel change interrupts voice.
+8. **A stale neighbor list**: a plan change that the 802.11k list does not follow.
+9. **One DFS channel for every access point in an area**, with no fallback.
+10. **Testing roaming with one phone model** and concluding the network is fine (or broken).
+11. **Capturing on one channel only** and concluding "the client vanished".
 
-1. **Who decides when a station roams, and what can the network do about it?** The station. The network can advise (BSS transition request), make the link worse, or make the neighbour better; a BTM request is advice that the station may refuse (sections 1 and 3).
-2. **What do 802.11k, v and r each do?** k gives measurements and the neighbor report (a short scan), v gives the BTM request and WNM services, r gives the key hierarchy that removes the EAP exchange and the 4-way handshake from the roam (sections 2 to 4).
-3. **Where does the time of a roam go?** In the model: scan **1,140 ms** for 38 channels against **90 ms** for 3, and the exchange **66.5 to 1,039 ms** for a full EAP roam (server at 5 to 100 ms) against **5.7 ms** for 802.11r. The scan is 79 percent of the worst case (section 6).
-4. **Why does 802.11r not fix a roam on its own?** It fixes the exchange (5.7 ms) and not the scan; without 11k or a known target the roam is still over a second (section 6).
-5. **Explain the 802.11r key hierarchy.** PMK-R0 at the R0 key holder, PMK-R1 per access point, PTK from the R1; the names PMKR0Name and PMKR1Name appear in frames; a stolen access point exposes only its own sessions (section 4).
-6. **What is the difference between PMKSA caching, OKC and 802.11r?** PMKSA: the same access point only. OKC: any access point with the same key holder, needs a 4-way handshake, vendor feature. 802.11r: derived keys, the handshake is folded into the roam, standard (sections 4 and 5).
-7. **How does a station learn which channels to scan?** The neighbor report (11k), the RNR element and PSC channels on 6 GHz, and its own background scan (sections 2 and 6).
-8. **What is a sticky client and what do you do about it?** A station that stays on a weak access point (12.3 percent of the time below -75 dBm in the sticky policy). BTM with a disassociation timer, a minimum RSSI on the access point, lower power and a lower threshold on the client if it can be set (sections 3 and 7).
-9. **Why use hysteresis in a roam decision?** The difference of two shadowed RSSI values has a standard deviation of **5.66 dB**, so with no margin the better access point flips at random (probability 0.5); an 8 to 12 dB margin cuts spurious roams to **7.9 to 1.7 percent** (section 7).
-10. **What does band steering do and when does it fail?** It moves dual band stations to 5 or 6 GHz (20.8 to 58.0 percent on 5 GHz in the model); it fails when clients ignore it (40.2 percent) or are not dual band (24.8 percent) (section 8).
-11. **How do you choose the channel and the power in a dense network?** Channel count is the resource (13 co-channel pairs with 9 channels, 0 with 25); lower power to 14 dBm keeps 98.2 percent coverage and halves the number of access points heard (10.8 to 5.7); keep N+1 overlap where it matters (section 9).
-12. **What happens when radar is detected on a DFS channel and how do you limit the damage?** The access point must leave within 260 ms, announces with a CSA, and cannot return for 30 minutes; a pre-selected non-DFS fallback gives **1.0 s** of outage instead of **70 s** (section 10).
+## 15. Interview questions
 
----
+1. **Who decides when a client roams, and what can the network do about it?** The client decides. The network can advise (BTM), degrade the current link (lower power, higher basic rate, disassociate a weak client) or improve the neighbour. It cannot force a move.
+2. **What are the four steps of a roam and where does the time go?** Trigger, discover, select, execute. The scan and the key exchange dominate. Without a list a client scans every channel; with full 802.1X the server distance times the number of rounds adds up.
+3. **What does 802.11k give a client?** A neighbor report: the access points of the same ESS with their channels, so the client scans a few channels instead of all. It also defines beacon, channel load and other measurements, of which clients support only some.
+4. **What does 802.11v add, and why is it only advice?** BSS transition management: the access point can suggest a move with a candidate list and a deadline. The client may refuse (status codes 1 to 8); the only enforcement is the disassociation timer.
+5. **Explain 802.11r.** A key hierarchy above the PTK: PMK-R0 at the R0 key holder, PMK-R1 per access point, PTK per association. The target holds its R1 before the client arrives, so a roam is four frames with no EAP and no separate 4-way handshake.
+6. **Why does each access point get its own PMK-R1?** So a compromised access point exposes only its own sessions, and a client cannot use a key at an access point that was not given its R1.
+7. **Compare PMKSA caching, OKC and 802.11r.** PMKSA helps only a return to the same access point. OKC lets access points under one key holder share the PMK but is vendor-specific. 802.11r is in the standard and also folds the 4-way handshake into the roam; it needs client support and key distribution.
+8. **Over the air against over the DS?** Over the air: the client talks to the target directly. Over the DS: it sends action frames through the current access point, staying on the old channel longer, at the price of a wired dependency. Many clients only use over the air.
+9. **What is a sticky client and how do you handle it?** One that holds on to a weak access point. Lower power, raise the minimum basic rate, set a minimum RSSI or low-ack disconnect, and send BTM requests for clients that support them.
+10. **What is hysteresis in roaming and why 8 to 12 dB?** A margin between the serving and the target access point. Shadowing makes the difference of two RSSI values noisy (several dB), so without a margin the client flips near the midpoint.
+11. **Explain DCA and TPC.** DCA assigns channels using neighbour measurements, conservatively and often on a schedule. TPC lowers power until the third-strongest neighbour is heard at about a threshold. Both prefer stable changes to optimal ones.
+12. **What happens on a radar event and how do you limit the damage?** The access point stops within a short time, announces a CSA, and cannot use that channel for 30 minutes. A pre-selected non-DFS fallback turns a minute-long outage into a second or so; a second 5 GHz radio turns it into a roam.
 
-## 15. Problems
+## 16. Scenarios and design questions
 
-Each problem has a script in `prog/` (`ans_a.py` to `ans_e.py`) whose output is frozen in `v/`. Try them on paper first.
+Each scenario names where to practise, then gives an approach. Strong answers follow in section 17.
 
-**Problem A: decode the 11k and 11v frames by hand.** From the bytes of the neighbor report response, the beacon report and the BSS transition request, decode the BSSID information, the operating class and channel of each candidate, the RCPI and RSNI, and the request mode and disassociation timer. Add a table of RCPI and RSNI against dBm and dB.
+**S1. Voice breaks for a second or two when users walk between floors on the corporate SSID.** *Where to practise:* a two-AP lab with `hostapd` and a monitor capture on both channels (`wlan.fixed.auth.alg`, `eap`, `eapol`). *Approach:* capture the roam, measure the gap, check for EAP after the reassociation, count probed channels, and find where the RADIUS server is.
 
-**Problem B: the roam time budget.** For outage budgets of 50, 150 and 300 ms, find the largest RADIUS round trip that a full EAP-TLS or PEAP roam without a scan can have, and how many channels a scan may visit with FT at 30 ms per channel. Price a passive scan of 38 channels and of 3 channels at a 110 ms dwell.
+**S2. A phone sticks to an access point at the end of the corridor and the cell is slow for everyone.** *Where to practise:* a lab with attenuators or a walking test with RSSI logs. *Approach:* read the client RSSI and rate, the neighbours' RSSI at the client, and the power and basic rate settings; decide between power, basic rate, minimum RSSI and BTM.
 
-**Problem C: 802.11r key bookkeeping.** Derive PMK-R0 once and PMK-R1 for three access points, show that a wrong R1KH-ID gives a different key, and compute the memory of pre-deriving every pair for 100 access points by 1,000 clients, 1,000 by 10,000 and 5,000 by 50,000, against deriving on demand.
+**S3. After you enable 802.11r on the main SSID, some printers and old scanners cannot connect.** *Where to practise:* association captures from the failing devices. *Approach:* look at the association response status, the RSN element, and decide between mixed mode, adaptive 802.11r and a separate SSID.
 
-**Problem D: roam thresholds and hysteresis.** For two access points 25 m apart with a path loss model and shadowing of 4 dB, find the midpoint RSSI, the distance at which RSSI reaches -60 to -85 dBm, the SNR left, and the chance that noise alone exceeds a margin of 0 to 12 dB.
+**S4. Design roaming for a hospital with voice badges and a 50 ms budget.** *Where to practise:* write it as a design review. *Approach:* cover the key holder placement, one L2 domain per SSID, scan reduction, power and overlap, DFS policy, N+1 coverage and monitoring.
 
-**Problem E: beacon overhead.** For a 300 byte beacon at 1, 2, 6, 12 and 24 Mbit/s give the airtime, the share of the air for 1 and 4 SSIDs, the total for 1 to 20 access points on one channel at 1, 6 and 12 Mbit/s, and the effect of multiple BSSID.
+**S5. Read a roam from a capture description.** The client sends probe requests on channels 1, 6 and 11, then an authentication with algorithm 0, a reassociation with no PMKID, an EAP exchange of eight frames, a 4-way handshake and then data. *Where to practise:* any roam capture. *Approach:* name the mechanism, find the three costs, and say what to change.
 
-## 16. Answers
+**S6. RRM keeps changing channels and users complain.** *Where to practise:* the controller change log and a DFS event list. *Approach:* decide whether it is real interference, a sensitivity setting, a false radar trigger or a neighbour-list effect, and what to freeze.
 
-**Answer A.** The script decodes the three frames of section 2 from their bytes.
+**S7. A site near an airport reports random one-minute outages on 5 GHz.** *Where to practise:* the DFS event log per channel. *Approach:* connect the outages to CAC and non-occupancy time and change the policy.
 
-```python
-# ans_a.py: decode a neighbor report response, a beacon report and a BSS transition request from their bytes (no library)
-import struct, os, sys
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from dot11 import *
-nr = lambda b, info, oc, ch, ph: ie(52, b + struct.pack('<I', info) + bytes([oc, ch, ph]))
-AP2 = MAC('02:00:00:00:00:02'); AP3 = MAC('02:00:00:00:00:03')
-nrr = bytes([5, 5, 1]) + nr(AP2, 0x0c0f, 115, 36, 9) + nr(AP3, 0x000f, 81, 11, 7)
-brp = bytes([5, 1, 2]) + ie(39, bytes([1, 0, 5, 115, 36]) + struct.pack('<QH', 123456, 20) + bytes([0, 96, 70]) + AP2 + bytes([0]) + struct.pack('<I', 99))
-btm = bytes([10, 7, 3, 0x05, 100, 0, 10]) + nr(AP2, 0x0c0f, 115, 36, 9)
-mac = lambda b: ':'.join('%02x' % x for x in b)
-def body(f):
-    return f
-def neighbors(b):
-    p = 0; out = []
-    while p < len(b):
-        i, n = b[p], b[p + 1]; e = b[p + 2:p + 2 + n]; p += 2 + n
-        if i == 52:
-            info = struct.unpack('<I', e[6:10])[0]
-            out.append('BSSID %s info 0x%08x (reachability %d, security %d, key scope %d, mobility domain %d, HT %d) class %d channel %d PHY type %d' % (mac(e[:6]), info, info & 3, (info >> 2) & 1, (info >> 3) & 1, (info >> 10) & 1, (info >> 11) & 1, e[10], e[11], e[12]))
-    return out
-print('--- frame 1: neighbor report response, %d bytes: category %d (radio measurement), action %d, token %d' % (len(nrr), nrr[0], nrr[1], nrr[2]))
-for l in neighbors(nrr[3:]): print('   ' + l)
-print('--- frame 2: beacon report, %d bytes: category %d, action %d, token %d' % (len(brp), brp[0], brp[1], brp[2]))
-e = brp[5:]; t = e[2]; r = e[3:]
-print('   measurement type %d (5 = beacon report), class %d, channel %d, start TSF %d us, duration %d TU' % (t, r[0], r[1], struct.unpack('<Q', r[2:10])[0], struct.unpack('<H', r[10:12])[0]))
-rc, rs = r[13], r[14]
-print('   RCPI byte %d -> %.1f dBm (2 x (dBm + 110)); RSNI byte %d -> %.1f dB (2 x (SNR + 10)); BSSID %s' % (rc, rc / 2 - 110, rs, rs / 2 - 10, mac(r[15:21])))
-print('--- frame 3: BSS transition management request, %d bytes: category %d (WNM), action %d, token %d' % (len(btm), btm[0], btm[1], btm[2]))
-mode = btm[3]
-print('   request mode 0x%02x: candidate list included %d, abridged %d, disassociation imminent %d, BSS termination %d, ESS disassociation imminent %d' % (mode, mode & 1, (mode >> 1) & 1, (mode >> 2) & 1, (mode >> 3) & 1, (mode >> 4) & 1))
-print('   disassociation timer %d TU = %.1f ms, validity interval %d' % (struct.unpack('<H', btm[4:6])[0], struct.unpack('<H', btm[4:6])[0] * 1.024, btm[6]))
-for l in neighbors(btm[7:]): print('   candidate: ' + l)
-print('--- the same numbers as a table: RCPI and RSNI for a few levels')
-for dbm in (-90, -80, -70, -62, -50): print('   %4d dBm -> RCPI %3d' % (dbm, int(2 * (dbm + 110))))
-for snr in (0, 10, 25, 40): print('   %4d dB  -> RSNI %3d' % (snr, int(2 * (snr + 10))))
-```
+**S8. Design a channel assignment algorithm for 200 access points.** *Where to practise:* write the pseudocode on a whiteboard, then run it on a random floor. *Approach:* build the interference graph from neighbour RSSI, choose a cost, do local search, add hysteresis and constraints.
 
---- frame 1: neighbor report response, 33 bytes: category 5 (radio measurement), action 5, token 1
-   BSSID 02:00:00:00:00:02 info 0x00000c0f (reachability 3, security 1, key scope 1, mobility domain 1, HT 1) class 115 channel 36 PHY type 9
-   BSSID 02:00:00:00:00:03 info 0x0000000f (reachability 3, security 1, key scope 1, mobility domain 0, HT 0) class 81 channel 11 PHY type 7
---- frame 2: beacon report, 34 bytes: category 5, action 1, token 2
-   measurement type 5 (5 = beacon report), class 115, channel 36, start TSF 123456 us, duration 20 TU
-   RCPI byte 96 -> -62.0 dBm (2 x (dBm + 110)); RSNI byte 70 -> 25.0 dB (2 x (SNR + 10)); BSSID 02:00:00:00:00:02
---- frame 3: BSS transition management request, 22 bytes: category 10 (WNM), action 7, token 3
-   request mode 0x05: candidate list included 1, abridged 0, disassociation imminent 1, BSS termination 0, ESS disassociation imminent 0
-   disassociation timer 100 TU = 102.4 ms, validity interval 10
-   candidate: BSSID 02:00:00:00:00:02 info 0x00000c0f (reachability 3, security 1, key scope 1, mobility domain 1, HT 1) class 115 channel 36 PHY type 9
---- the same numbers as a table: RCPI and RSNI for a few levels
-    -90 dBm -> RCPI  40
-    -80 dBm -> RCPI  60
-    -70 dBm -> RCPI  80
-    -62 dBm -> RCPI  96
-    -50 dBm -> RCPI 120
-      0 dB  -> RSNI  20
-     10 dB  -> RSNI  40
-     25 dB  -> RSNI  70
-     40 dB  -> RSNI 100
+**S9. Design key distribution for 802.11r in a cloud-managed network with no controller.** *Where to practise:* a lab with three hostapd instances and `ft_psk_generate_local`. *Approach:* cover PSK against 802.1X, who is the R0KH and R1KH, push or pull, and failure behaviour.
 
-The neighbor report gives the BSSID information **0x00000c0f** for the first candidate: reachability 3, security 1, key scope 1, **mobility domain 1** and HT 1 (so a fast transition to it is possible), operating class **115 (5 GHz channels 36 to 48), channel 36**, PHY type 9 (the PHY code of the 5 GHz OFDM / HT family in the table of the standard, from memory); the second candidate is class 81 (2.4 GHz) channel 11 and is not in the mobility domain. The beacon report carries RCPI **96, which is -62.0 dBm**, and RSNI **70, which is 25.0 dB**, for a 20 TU measurement. The BTM request mode **0x05** is candidate list included plus disassociation imminent, with a **timer of 100 TU, which is 102.4 ms**.
+**S10. You roll out BTM-based steering and only 30 percent of clients seem to move. What next?** *Where to practise:* collect BTM response status codes from a test group. *Approach:* measure, classify the refusals, set a fallback and decide what not to do.
 
-**Answer B.**
+## 17. Strong answers (outlines)
 
-```python
-# ans_b.py: a roam time budget: which mechanisms fit in 50, 150 and 300 ms, and how long a scan may be
-RATE = 6.0
-frame = lambda n: 34 + 67.5 + 20 + 8 * n / RATE + 16 + 20 + 8 * 14 / RATE
-exch = lambda *s: sum(frame(n) + 1000 for n in s) / 1000.0
-auth, assoc, reassoc, four, ft = exch(30, 30), exch(150, 150), exch(180, 180), exch(99, 121, 155, 99), exch(177, 177, 187, 177)
-print('exchange costs (ms): auth %.2f, assoc %.2f, reassoc %.2f, 4-way %.2f, FT %.2f' % (auth, assoc, reassoc, four, ft))
-print('--- largest RADIUS round trip for a full EAP roam to fit a budget (no scan, rounds of 2 frames + the server each)')
-rnd = exch(100, 120)
-print('one EAP round on the air: %.2f ms; Start and Success %.2f ms' % (rnd, exch(30, 30)))
-for name, rounds in (('EAP-TLS, 7 rounds', 7), ('PEAP, 10 rounds', 10)):
-    for budget in (50, 150, 300):
-        fixed = auth + assoc + exch(30, 30) + four + rounds * rnd
-        room = (budget - fixed) / rounds
-        print('%-18s budget %3d ms: %s' % (name, budget, 'cannot fit even with a 0 ms server (fixed %.1f ms)' % fixed if room < 0 else 'RADIUS round trip at most %.1f ms' % room))
-print('--- how many channels a scan may visit inside the budget, by dwell time per channel (after subtracting the exchange)')
-for budget in (50, 150, 300):
-    for mech, ex in (('FT over the air', ft), ('PMKSA or OKC', auth + reassoc + four), ('WPA2-PSK full', auth + assoc + four)):
-        room = budget - ex
-        print('budget %3d ms, %-16s: %s' % (budget, mech, ' '.join('dwell %d ms: %2d channels;' % (d, max(0, int(room // d))) for d in (10, 20, 30, 40, 110))))
-print('--- a passive scan (110 ms dwell) of all 25 channels of 5 GHz plus 13 of 2.4 GHz: %.1f s; with the 11k list of 3 channels: %.0f ms' % (38 * 110 / 1000, 3 * 110))
-```
+**S1.** Capture on both channels. Measure the gap between the last data frame on the old access point and the first on the new one. Count the probed channels. Look for `eap` after the reassociation: if present, the roam is a full 802.1X exchange whose cost is the RADIUS distance times about 7 to 10 rounds. The fixes in order: key caching or 802.11r, 802.11k so the scan is a few channels, and a RADIUS (or a key holder) near the access points. Confirm with a second capture. Do not tune the thresholds until the roam is cheap.
 
-exchange costs (ms): auth 2.43, assoc 2.75, reassoc 2.83, 4-way 5.34, FT 5.66
---- largest RADIUS round trip for a full EAP roam to fit a budget (no scan, rounds of 2 frames + the server each)
-one EAP round on the air: 2.65 ms; Start and Success 2.43 ms
-EAP-TLS, 7 rounds  budget  50 ms: RADIUS round trip at most 2.6 ms
-EAP-TLS, 7 rounds  budget 150 ms: RADIUS round trip at most 16.9 ms
-EAP-TLS, 7 rounds  budget 300 ms: RADIUS round trip at most 38.4 ms
-PEAP, 10 rounds    budget  50 ms: RADIUS round trip at most 1.1 ms
-PEAP, 10 rounds    budget 150 ms: RADIUS round trip at most 11.1 ms
-PEAP, 10 rounds    budget 300 ms: RADIUS round trip at most 26.1 ms
---- how many channels a scan may visit inside the budget, by dwell time per channel (after subtracting the exchange)
-budget  50 ms, FT over the air : dwell 10 ms:  4 channels; dwell 20 ms:  2 channels; dwell 30 ms:  1 channels; dwell 40 ms:  1 channels; dwell 110 ms:  0 channels;
-budget  50 ms, PMKSA or OKC    : dwell 10 ms:  3 channels; dwell 20 ms:  1 channels; dwell 30 ms:  1 channels; dwell 40 ms:  0 channels; dwell 110 ms:  0 channels;
-budget  50 ms, WPA2-PSK full   : dwell 10 ms:  3 channels; dwell 20 ms:  1 channels; dwell 30 ms:  1 channels; dwell 40 ms:  0 channels; dwell 110 ms:  0 channels;
-budget 150 ms, FT over the air : dwell 10 ms: 14 channels; dwell 20 ms:  7 channels; dwell 30 ms:  4 channels; dwell 40 ms:  3 channels; dwell 110 ms:  1 channels;
-budget 150 ms, PMKSA or OKC    : dwell 10 ms: 13 channels; dwell 20 ms:  6 channels; dwell 30 ms:  4 channels; dwell 40 ms:  3 channels; dwell 110 ms:  1 channels;
-budget 150 ms, WPA2-PSK full   : dwell 10 ms: 13 channels; dwell 20 ms:  6 channels; dwell 30 ms:  4 channels; dwell 40 ms:  3 channels; dwell 110 ms:  1 channels;
-budget 300 ms, FT over the air : dwell 10 ms: 29 channels; dwell 20 ms: 14 channels; dwell 30 ms:  9 channels; dwell 40 ms:  7 channels; dwell 110 ms:  2 channels;
-budget 300 ms, PMKSA or OKC    : dwell 10 ms: 28 channels; dwell 20 ms: 14 channels; dwell 30 ms:  9 channels; dwell 40 ms:  7 channels; dwell 110 ms:  2 channels;
-budget 300 ms, WPA2-PSK full   : dwell 10 ms: 28 channels; dwell 20 ms: 14 channels; dwell 30 ms:  9 channels; dwell 40 ms:  7 channels; dwell 110 ms:  2 channels;
---- a passive scan (110 ms dwell) of all 25 channels of 5 GHz plus 13 of 2.4 GHz: 4.2 s; with the 11k list of 3 channels: 330 ms
+**S2.** First confirm: the client's RSSI and rate on the far access point and the RSSI of a nearby one. Then work on the network side because the client cannot be changed: lower the transmit power so the far cell is smaller, raise the minimum basic rate so the cell edge disappears, set a minimum RSSI or low-ack disconnect with care (some clients reconnect in a loop), and send BTM requests to clients that support them. Measure the client population before and after: the share of time below -75 dBm and the airtime of low-rate frames.
 
-With no scan, a roam must keep the **RADIUS round trip below 2.6 ms (EAP-TLS) or 1.1 ms (PEAP) for 50 ms**, below 16.9 and 11.1 ms for 150 ms and below 38.4 and 26.1 ms for 300 ms. So a 50 ms target is possible only with key caching or 802.11r. The channels allowed to a scan are the **budget divided by the dwell**, less the exchange: 4 channels for 150 ms with FT and 1 for 50 ms. The passive scan of 38 channels takes **4.2 s** and of 3 channels **330 ms**, so even the short list is a passive scan of a third of a second unless the station probes actively.
+**S3.** Read the association response status and the RSN element in the beacon. The device likely does not parse the FT AKM. Options: mixed mode with both the FT and the plain AKM (works for most), a vendor adaptive 802.11r, or a separate SSID for legacy devices with a plain AKM. Do not disable 802.11r for the whole network if voice depends on it.
 
-**Answer C.**
+**S4.** Start from the budget (50 ms and no gaps), then work through the steps. Keys: 802.11r with a fallback for clients that do not support it, and key holders on site (not in a cloud). Scan: 802.11k on with an accurate list; fewer channels (a plan with few DFS channels). Overlap: 14 dBm style power, N+1 coverage in critical areas. Layer 2: one VLAN per SSID where possible to avoid anchor and foreign tunnels, proxy ARP. DFS: non-DFS channels for voice. Beacons: a basic rate of 6 or 12, few SSIDs. Validation: walk tests with the actual badges, with captures of the roam gap, and a monitoring dashboard.
 
-```python
-# ans_c.py: the 802.11r key bookkeeping: derive R0 and R1 keys, show the binding to the AP, and the memory of pre-deriving every pair
-import os, sys
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from dot11 import *
-from ft import *
-xx = bytes(range(32)); ssid, mdid = b'office', bytes([0xab, 0xcd])
-sta = MAC('02:00:00:00:00:aa'); r0kh = b'ctrl-A'
-r0, r0n = pmk_r0(xx, ssid, mdid, r0kh, sta)
-print('PMK-R0 %s...  PMKR0Name %s' % (r0.hex()[:32], r0n.hex()))
-aps = [MAC('02:00:00:00:01:%02x' % i) for i in range(1, 4)]
-r1 = {}
-for a in aps:
-    k, n = pmk_r1(r0, r0n, a, sta); r1[a] = k
-    print('R1KH-ID %s: PMK-R1 %s...  PMKR1Name %s' % (':'.join('%02x' % x for x in a), k.hex()[:32], n.hex()))
-wrong, _ = pmk_r1(r0, r0n, aps[1], sta)
-print('a target AP that derives R1 with the wrong R1KH-ID gets a different key: %s (the PTK is then different and the MIC of the reassociation fails)' % (wrong != r1[aps[0]]))
-sn, an = bytes([1] * 32), bytes([2] * 32)
-p = [ptk(r1[a], sn, an, a, sta) for a in aps]
-print('the PTK for the same nonces differs for each AP: %s' % (len(set(p)) == 3))
-print('--- bookkeeping at the R0 key holder: pre-deriving every PMK-R1 for every client against deriving on demand')
-for aps_n, clients in ((100, 1000), (1000, 10000), (5000, 50000)):
-    pairs = aps_n * clients
-    print('%5d APs x %6d clients = %.2e pairs x 48 bytes (key and name) = %.1f MB; on demand: one derivation per roam, 2 HMAC-SHA256 blocks (about %.1f us)' % (aps_n, clients, pairs, pairs * 48 / 1e6, 1.5))
-print('a client in the mobility domain roams to a handful of neighbours (say 8): %d keys per client, %.1f MB for 10,000 clients (against 480 MB for all 1,000 APs)' % (8, 8 * 10000 * 48 / 1e6))
-```
+**S5.** The client scanned three channels without a list, did an open authentication and a reassociation with no PMKID, so there was no key caching, and then a full EAP of eight frames and a 4-way handshake. The costs: the scan (three channels of dwell), the EAP (server distance times rounds) and the 4-way handshake. Changes: enable 11k (shorter scan), key caching or 11r (remove EAP and, with 11r, the 4-way handshake), and measure again.
 
-PMK-R0 23aaf960d63a75d6177b91202d73db65...  PMKR0Name 3ff3b904f1983469b330bd5ab93a238c
-R1KH-ID 02:00:00:00:01:01: PMK-R1 2ea9e1320658d2bf63b1bd50dfff80e9...  PMKR1Name ba5a875ccb1d514c9c60327ad65ccc3d
-R1KH-ID 02:00:00:00:01:02: PMK-R1 fa54cdcf0be2707ace8a6c0f00ec9331...  PMKR1Name 48e354f54c7996500cd8f8f2dab519ec
-R1KH-ID 02:00:00:00:01:03: PMK-R1 33199ff444800dac2b866976de188bff...  PMKR1Name e44d85915e19c1e3accc00ab6f608e4a
-a target AP that derives R1 with the wrong R1KH-ID gets a different key: True (the PTK is then different and the MIC of the reassociation fails)
-the PTK for the same nonces differs for each AP: True
---- bookkeeping at the R0 key holder: pre-deriving every PMK-R1 for every client against deriving on demand
-  100 APs x   1000 clients = 1.00e+05 pairs x 48 bytes (key and name) = 4.8 MB; on demand: one derivation per roam, 2 HMAC-SHA256 blocks (about 1.5 us)
- 1000 APs x  10000 clients = 1.00e+07 pairs x 48 bytes (key and name) = 480.0 MB; on demand: one derivation per roam, 2 HMAC-SHA256 blocks (about 1.5 us)
- 5000 APs x  50000 clients = 2.50e+08 pairs x 48 bytes (key and name) = 12000.0 MB; on demand: one derivation per roam, 2 HMAC-SHA256 blocks (about 1.5 us)
-a client in the mobility domain roams to a handful of neighbours (say 8): 8 keys per client, 3.8 MB for 10,000 clients (against 480 MB for all 1,000 APs)
+**S6.** Read the change log: what triggered each change, and when. If changes are daily and driven by small improvements, raise the **sensitivity** (hysteresis) and set an **anchor time** at night. If they follow DFS events, find the false trigger source. If they follow non-Wi-Fi interference, use a spectrum view. Freeze the channels of voice areas and let RRM handle the rest. Check that the 802.11k list is refreshed after a change.
 
-A key derived with a wrong R1KH-ID differs, so the PTK differs and the MIC of the reassociation fails: the roam fails, which is the usual symptom of an inconsistent mobility domain. The full pre-derivation is **4.8 MB, 480 MB and 12,000 MB** for the three sizes, so derive on demand (two HMAC blocks per roam) or push the keys for the neighbours of each client (8 keys per client, 3.8 MB for 10,000 clients).
+**S7.** Count events per channel per day. Outage per event is the CAC (about a minute) plus the 30 minute non-occupancy for that channel. With a fallback on a non-DFS channel the outage is about a second; without it, a minute or more. Change the policy: a pre-selected non-DFS fallback, ban the channels with the most events, and use a second 5 GHz radio for critical areas. Check that the "radar" is real and not a local interferer.
 
-**Answer D.**
+**S8.** Nodes are access points. Edge weights are the **interference** between them (the neighbour RSSI, converted to power, plus the load). The objective is the sum of weights of co-channel pairs (and a penalty for adjacent-channel overlap). Start greedy (highest-degree first) and improve with local search (change one access point's channel if it reduces the cost). Add constraints: DFS availability, a limit on how many access points change per run, and a **hysteresis** so a change must beat the current plan by a margin. Add channel width as a second variable, usually 20 MHz in dense areas. The graph is dense, so the number of channels, not the algorithm, decides the quality; say so.
 
-```python
-# ans_d.py: roam thresholds: shadowing makes two APs look equal for a while; the chance that a hysteresis margin is exceeded by noise alone
-import math
-SIG = 4.0
-print('RSSI of the serving AP and of the neighbour each carry shadowing of sigma %.0f dB; the difference has sigma %.2f dB' % (SIG, SIG * math.sqrt(2)))
-print('%-22s %-26s %-30s' % ('hysteresis (dB)', 'P(noise alone exceeds it)', 'samples per hour at 1 Hz (independent draws, an upper bound)'))
-for h in (0, 2, 4, 6, 8, 10, 12):
-    p = 0.5 * math.erfc(h / (SIG * math.sqrt(2) * math.sqrt(2)))
-    print('%-22d %-26.4f %-30.0f' % (h, p, 3600 * p))
-print('--- the midpoint between two APs 25 m apart: log distance loss 40 + 32 log10(d); AP power 17 dBm')
-for d in (5, 10, 12.5, 20, 30, 40):
-    print('distance %5.1f m: RSSI %6.1f dBm' % (d, 17 - 40 - 32 * math.log10(d)))
-print('--- what a threshold costs: the distance at which RSSI crosses it, and the SNR it leaves above a noise floor of -95 dBm')
-for thr in (-60, -65, -70, -75, -80, -85):
-    d = 10 ** ((17 - 40 - thr) / 32)
-    print('roam threshold %4d dBm: reached at %5.1f m from the AP, SNR %d dB' % (thr, d, thr + 95))
-print('with 25 m spacing the midpoint between two APs (12.5 m from each) is at %.1f dBm; a client that waits for -80 dBm would be %.0f m from its AP, which in this corridor is beyond the next two access points: it would have gone through their cells long before, so a sticky client sits on a far AP with much louder neighbours near it' % (17 - 40 - 32 * math.log10(12.5), 10 ** ((17 - 40 + 80) / 32)))
-```
+**S9.** PSK: every access point can derive PMK-R1 from the PSK and a shared mobility domain, so no key distribution is needed (`ft_psk_generate_local`). 802.1X: someone must hold PMK-R0 (R0KH) and give each access point its PMK-R1 (R1KH); options are push after authentication to the neighbours, or pull on the first roam. A cloud holder is slow, so push to the likely neighbours (from the neighbor list) ahead of time. Failure behaviour: if the key is missing the roam must fall back to a full authentication (slow but working), and the system should log it. Security: PMK-R1 is per access point, so a stolen access point exposes only its own sessions.
 
-RSSI of the serving AP and of the neighbour each carry shadowing of sigma 4 dB; the difference has sigma 5.66 dB
-hysteresis (dB)        P(noise alone exceeds it)  samples per hour at 1 Hz (independent draws, an upper bound)
-0                      0.5000                     1800
-2                      0.3618                     1303
-4                      0.2398                     863
-6                      0.1444                     520
-8                      0.0786                     283
-10                     0.0385                     139
-12                     0.0169                     61
---- the midpoint between two APs 25 m apart: log distance loss 40 + 32 log10(d); AP power 17 dBm
-distance   5.0 m: RSSI  -45.4 dBm
-distance  10.0 m: RSSI  -55.0 dBm
-distance  12.5 m: RSSI  -58.1 dBm
-distance  20.0 m: RSSI  -64.6 dBm
-distance  30.0 m: RSSI  -70.3 dBm
-distance  40.0 m: RSSI  -74.3 dBm
---- what a threshold costs: the distance at which RSSI crosses it, and the SNR it leaves above a noise floor of -95 dBm
-roam threshold  -60 dBm: reached at  14.3 m from the AP, SNR 35 dB
-roam threshold  -65 dBm: reached at  20.5 m from the AP, SNR 30 dB
-roam threshold  -70 dBm: reached at  29.4 m from the AP, SNR 25 dB
-roam threshold  -75 dBm: reached at  42.2 m from the AP, SNR 20 dB
-roam threshold  -80 dBm: reached at  60.4 m from the AP, SNR 15 dB
-roam threshold  -85 dBm: reached at  86.6 m from the AP, SNR 10 dB
-with 25 m spacing the midpoint between two APs (12.5 m from each) is at -58.1 dBm; a client that waits for -80 dBm would be 60 m from its AP, which in this corridor is beyond the next two access points: it would have gone through their cells long before, so a sticky client sits on a far AP with much louder neighbours near it
+**S10.** Collect BTM responses and group by status code. Status 0 is compliance. Status 2 (insufficient beacon data) suggests the client lacks fresh scan data; status 7 or 3 suggests the candidate list is poor. A silent client does not support 11v, and nothing helps but the network-side tools of section 3. Next steps: improve the candidate list, send BTM at the right time (before the link is bad), fall back to power and rate controls for non-supporting clients, and do not disassociate aggressively because clients may blacklist the SSID.
 
-The difference of two independent shadowing values of 4 dB has a standard deviation of 4 times the square root of 2, which is **5.66 dB**. The chance that it exceeds a margin m is the Gaussian tail of m over 5.66: **0.5 at 0 dB, 0.24 at 4 dB, 0.079 at 8 dB, 0.017 at 12 dB**. The midpoint of two access points 25 m apart is 12.5 m from each, where the model gives **-58.1 dBm**, so a client that waits for -80 dBm is **60.4 m** from the access point, farther than the next access point is, which is why a sticky threshold must be set against the cell size and not by habit.
-
-**Answer E.**
-
-```python
-# ans_e.py: beacon overhead: how much airtime beacons take, by SSID count, basic rate and number of APs on a channel
-BI = 0.1024
-def beacon_us(rate_mbps, ssids_bytes=300, long_preamble=False):
-    pre = 192.0 if long_preamble else (20.0 if rate_mbps >= 6 else 96.0)
-    return pre + 8 * ssids_bytes / rate_mbps
-print('a beacon is about 300 bytes (the elements of an HE AP are 250 to 400 bytes, from WF 01); one every 102.4 ms per SSID')
-print('%-26s %-14s %-12s %-12s %-12s' % ('beacon rate (Mbit/s)', 'us per beacon', '1 SSID', '4 SSIDs', '8 SSIDs'))
-for r, lp in ((1, True), (2, True), (6, False), (12, False), (24, False)):
-    u = beacon_us(r, 300, lp)
-    print('%-26s %-14.0f %-12s %-12s %-12s' % (r, u, '%.2f %%' % (100 * u / (BI * 1e6)), '%.2f %%' % (400 * u / (BI * 1e6)), '%.2f %%' % (800 * u / (BI * 1e6))))
-print('--- all the APs of one channel hear each other: the sum for N APs on a channel, 4 SSIDs each, beacon at 1, 6 and 12 Mbit/s')
-for r, lp in ((1, True), (6, False), (12, False)):
-    u = beacon_us(r, 300, lp)
-    print('beacon at %2d Mbit/s: ' % r + ', '.join('%d APs: %5.1f %%' % (n, 400 * n * u / (BI * 1e6)) for n in (1, 3, 5, 10, 20)))
-print('--- the airtime left for data')
-for r, lp, n in ((1, True, 10), (6, False, 10), (6, False, 20)):
-    u = beacon_us(r, 300, lp); used = 400 * n * u / (BI * 1e6)
-    print('%2d APs, 4 SSIDs, beacons at %2d Mbit/s: %5.1f %% of the air is beacons; %.1f %% remains for data' % (n, r, used, max(0, 100 - used)))
-print('--- the same figures per AP when SSIDs are merged into one with a multi-BSSID element (one beacon carries the others, from memory of 802.11ax 6 GHz rules): 1 beacon per AP')
-for r, lp in ((6, False),):
-    u = beacon_us(r, 450, lp)
-    print('beacon of 450 bytes at %d Mbit/s: %.2f %% per AP; 10 APs: %.1f %%' % (r, 100 * u / (BI * 1e6), 1000 * u / (BI * 1e6)))
-```
-
-a beacon is about 300 bytes (the elements of an HE AP are 250 to 400 bytes, from WF 01); one every 102.4 ms per SSID
-beacon rate (Mbit/s)       us per beacon  1 SSID       4 SSIDs      8 SSIDs
-1                          2592           2.53 %       10.12 %      20.25 %
-2                          1392           1.36 %       5.44 %       10.88 %
-6                          420            0.41 %       1.64 %       3.28 %
-12                         220            0.21 %       0.86 %       1.72 %
-24                         120            0.12 %       0.47 %       0.94 %
---- all the APs of one channel hear each other: the sum for N APs on a channel, 4 SSIDs each, beacon at 1, 6 and 12 Mbit/s
-beacon at  1 Mbit/s: 1 APs:  10.1 %, 3 APs:  30.4 %, 5 APs:  50.6 %, 10 APs: 101.2 %, 20 APs: 202.5 %
-beacon at  6 Mbit/s: 1 APs:   1.6 %, 3 APs:   4.9 %, 5 APs:   8.2 %, 10 APs:  16.4 %, 20 APs:  32.8 %
-beacon at 12 Mbit/s: 1 APs:   0.9 %, 3 APs:   2.6 %, 5 APs:   4.3 %, 10 APs:   8.6 %, 20 APs:  17.2 %
---- the airtime left for data
-10 APs, 4 SSIDs, beacons at  1 Mbit/s: 101.2 % of the air is beacons; 0.0 % remains for data
-10 APs, 4 SSIDs, beacons at  6 Mbit/s:  16.4 % of the air is beacons; 83.6 % remains for data
-20 APs, 4 SSIDs, beacons at  6 Mbit/s:  32.8 % of the air is beacons; 67.2 % remains for data
---- the same figures per AP when SSIDs are merged into one with a multi-BSSID element (one beacon carries the others, from memory of 802.11ax 6 GHz rules): 1 beacon per AP
-beacon of 450 bytes at 6 Mbit/s: 0.61 % per AP; 10 APs: 6.1 %
-
-The beacon airtime is the preamble and header at the basic rate plus the bytes at the same rate, so it falls from 2,592 µs at 1 Mbit/s to 420 µs at 6 and 220 µs at 12. The total over the access points that share a channel is linear in their number, so **4 SSIDs at 1 Mbit/s with 10 access points need 101.2 percent of the air**, which is impossible, and the same network at 6 Mbit/s uses 16.4 percent. Multiple BSSID merges the SSIDs of one access point into one beacon (6.1 percent for 10 access points).
-
-## 17. Cheat sheet
+## 18. Cheat sheet
 
 | Fact | Value |
 |---|---|
-| Who roams | The station; the network advises (BTM), degrades or improves |
-| 802.11k | Action category 5; neighbor report (element 52, 15 bytes per candidate), beacon report, RCPI = 2 x (dBm + 110), RSNI = 2 x (SNR + 10) |
-| 802.11v | Action category 10; BTM request (mode bits: candidate list, abridged, disassociation imminent), timer in TU, proxy ARP, DMS, BSS max idle |
-| 802.11r | MDIE id 54, FTE id 55, auth algorithm 2, AKM 3 (802.1X), 4 (PSK), 9 (SAE); PMK-R0, PMK-R1 per AP, PTK |
-| FT time (model) | 5.7 ms over the air, 9.7 ms over the DS; 4-way handshake 5.3 ms; PMKSA or OKC 10.6 ms |
-| EAP roam (model) | EAP-TLS 66.5 / 311.5 / 731.5 ms at RADIUS 5 / 40 / 100 ms; PEAP 89.4 / 439.4 / 1,039.4 ms |
-| Scan (model, 30 ms/ch) | 38 ch 1,140 ms; 9 ch 270; 3 ch 90; 1 ch 30 |
-| Whole roam (model) | 1,451 ms with 72 lost voice packets; 96 ms with 11k and 11r; 6 ms with a known target |
-| Voice budget | About 50 ms (design target, from memory) |
-| Hysteresis | Sigma of the RSSI difference 5.66 dB; margin 8 to 12 dB gives 7.9 to 1.7 percent spurious roams |
-| Steering (model) | 5 GHz share 20.8 to 58.0 percent; 40.2 percent with 30 percent non-compliant |
-| Channels | 2.4 GHz: 54 co-channel pairs of 20 APs even after search; 5 GHz 9 ch: 13; 25 ch: 0 |
-| Power | 14 dBm keeps 98.2 percent coverage; APs heard 10.8 to 5.7; 8 dBm drops to 77.3 percent |
-| Beacons | 300 bytes: 2,592 us at 1 Mbit/s, 420 at 6; 4 SSIDs at 1 Mbit/s: 10.1 percent per AP |
-| 6 GHz discovery | RNR in 2.4/5 GHz beacons, 15 PSC channels, FILS discovery every 20 TU or less (from memory) |
-| DFS | CAC 60 s (600 s weather), leave within 260 ms, NOP 30 min (from memory); CSA id 37, ECSA id 60 |
-| DFS cost (model) | Non-DFS fallback 1.0 s per event; DFS to DFS 60.5 s; no plan 70.0 s |
-| Controller terms | Anchor/foreign (L3 roam), FlexConnect, local EAP, client exclusion, RF group, DCA, TPC, CleanAir (from memory) |
+| Who roams | The station; the network advises, degrades or improves |
+| Roam steps | Trigger, discover, select, execute |
+| Biggest costs | The scan; the key exchange (EAP: server distance times rounds) |
+| 802.11k | Action category 5; neighbor report (element 52, 13-byte body per candidate), beacon report, RCPI = 2 x (dBm + 110), RSNI = 2 x (SNR + 10) |
+| 802.11v | Action category 10; BTM request mode bits (0 candidates, 1 abridged, 2 disassoc imminent, 3 BSS termination, 4 ESS disassoc imminent); timer in TU; status 0 accept |
+| 802.11r | Mobility domain element id 54, FT element id 55, auth algorithm 2; AKM 3 (802.1X), 4 (PSK), 9 (SAE); PMK-R0, PMK-R1 per AP, PTK |
+| 802.11r roam | 4 frames: auth req (SNonce), auth resp (ANonce), reassoc req (MIC), reassoc resp (GTK); no EAP, no separate 4-way |
+| Key caching | PMKSA (same AP), OKC (shared key holder, vendor), preauth (rare), 802.11r (standard) |
+| Voice budget | About 50 ms (a design target) |
+| Apple thresholds | Mac about -75 dBm, iPhone about -70 dBm; margin 12 dB idle, 8 dB when sending |
+| Hysteresis | 8 to 12 dB between serving and target |
+| Cisco RRM (older releases) | Neighbor messages 60 s; DCA 600 s plus anchor time; TPC third neighbour at -70 dBm; coverage hole check 180 s |
+| 2.4 GHz | 3 channels: turn radios off and lower power |
+| Beacon cost | 300 byte beacon: about 2.6 ms at 1 Mbit/s, 0.42 ms at 6 |
+| 6 GHz discovery | RNR in 2.4 and 5 GHz beacons, PSC channels, FILS discovery |
+| DFS | CAC 60 s (10 min weather), leave fast, NOP 30 min; CSA element 37, ECSA 60 |
+| DFS policy | Non-DFS fallback about 1 s; DFS to DFS about 1 min; second 5 GHz radio about 0.1 s |
+| Controller terms | Anchor and foreign (L3 roam), FlexConnect, local EAP, client exclusion, RF group and leader |
 
-## Sources
+## 19. Sources and caveats
 
-- Candela Technologies, *Wi-Fi training course*, session 5a (roaming, 802.11k, v and r, band and client steering, RRM, DFS): <https://www.candelatech.com/course.php>.
-- IEEE Std 802.11 with the 802.11k, 802.11r and 802.11v amendments (now part of the 802.11-2024 base standard): frame layouts, element IDs and timers not measured here are **from memory** and were not re-read for this tutorial.
-- Wireshark 4.2.2 `tshark` as the independent decoder of the 11k, 11v, 11r and CSA frames built here, and Python `scapy` 2.5.0 and `cryptography` for the key derivations.
-- The mrncciew.com CWAP, CWSP and CCIE Wireless indexes (<https://mrncciew.com/2014/09/13/how-to-study-for-cwsp/>), used as the topic checklist for roaming, key caching, RRM and controller features; the indexes give topics, not content.
-- Vendor RRM, FlexConnect and mobility documentation (controller products), from memory of their terms; the algorithms of section 9 are my own models, not any vendor's implementation (limits in the introduction).
-- Regulatory DFS timers (CAC, closing transmission time, non-occupancy period), from memory of the ETSI and FCC rules; check the rules of the country before relying on them.
+Web sources used for this tutorial: mrncciew on the [802.11r key hierarchy](https://mrncciew.com/2014/09/05/cwsp-802-11r-key-hierarchy/) and the [over-the-air FT exchange](https://mrncciew.com/2014/09/07/cwsp-802-11r-over-the-air-ft/); Microsoft on [fast roaming with 802.11k, v and r](https://learn.microsoft.com/en-us/windows-hardware/drivers/network/fast-roaming-with-802-11k--802-11v--and-802-11r); Apple's [Wi-Fi network roaming support](https://support.apple.com/103274) (thresholds, margins, PMKID caching); the [11k and 11v overview](https://gengstah.github.io/wiki/concepts/radio-resource-mgmt/) (beacon reports, forged BTM and protection); and Cisco's [RRM technical note](https://www.cisco.com/c/en/us/support/docs/wireless-mobility/wireless-lan-wlan/71113-rrm-new.html) (RF group, DCA, TPC, coverage holes; written for older controller releases). The Candela course (session 5a) is the syllabus.
+
+Caveats. The key-derivation code follows the standard's structure and uses labels that exist in the hostapd binaries, but it was not checked against hostapd output. The BTM frame and the neighbor report parser were checked with `tshark` and by hand. There is no radio in the working environment, so no roam was measured here, and DFS timers vary by region. Vendor numbers (RRM intervals, thresholds) are from documentation of particular releases. The BTM status code list and neighbor report bit positions come from the 802.11 standard as I know it and should be confirmed against the current amendment text before being quoted exactly.
