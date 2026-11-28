@@ -177,6 +177,7 @@ Every NET tutorial follows these rules, so the track is something you run and lo
 | 16 | Foundations gaps | Written (Nov 2026) |
 | 17 | Cloud, SDN, automation and labs | Written (Nov 2026) |
 | 15 | Question bank | Written (Nov 2026) |
+| 18–26, WF 16–18 | Proposed additions (resource comparison, 28 Nov 2026) | Proposed, not started; see section 11 |
 
 Cross-track view: [`../00_MASTER_PLAN.md`](../00_MASTER_PLAN.md).
 
@@ -277,3 +278,78 @@ Priority: **raised on 23 Nov 2026**. You asked for networking to be completed, e
 WF 02 (already shipped) matches the CWAP PHY objective (10 %); its MIMO and OFDMA section is the heading the CWAP page leaves empty.
 
 **Coverage check against Candela:** every one of the 32 listed sessions (1a to 4d, 5a to 8d) maps to a row above. Candela session 7d (OpenWRT basics) maps to WF 10. Nothing in the course is left out; items I added are the key hierarchy and handshake detail, airtime fairness, 802.1X re-authentication cost, `mac80211_hwsim`, and the Linux driver and firmware interfaces.
+
+---
+
+## 11. Resource comparison and proposed additions (28 Nov 2026)
+
+**Why this section exists.** After NET 17 and WF 15 the plan was complete against its own list, which came from the Candela notes and the first audit. The goal here is different: the Wi-Fi and networking concepts and protocols should be strong for **interviews and the job**, not for exams. So the question was what the best external sources teach that these tutorials do not.
+
+### 11.1 What was compared
+
+| Source | What it is | What was read | What it showed |
+|---|---|---|---|
+| [UC Berkeley CS 168](https://www2.eecs.berkeley.edu/Courses/CS168) | Undergraduate Internet architecture course | The course page (topic list) | Layering and architecture principles, addressing, intra- and inter-domain routing, reliable delivery, congestion control, TCP, UDP, IP, DNS, HTTP, Ethernet and wireless |
+| [UW CSE 461](https://courses.cs.washington.edu/courses/cse461/24sp/syllabus.html) | Undergraduate networks course | The syllabus topic list | Framing, error correction, multi-access, queueing and scheduling, QoS, SDN, security |
+| [Stanford CS 244](https://web.stanford.edu/class/cs244) | Graduate research course | The topic and paper list | End-to-end arguments, switch scheduling, programmability (B4, host SDN), data-centre design (fat-tree, Jupiter), congestion control (AIMD, Vegas, BBR), fair queueing, measurement, NIC and PCIe performance, video streaming |
+| [MIT 6.829](https://web.mit.edu/6.829/www/2020) | Graduate networks course | The course page | Architecture, wireless and data-centre underlays, SDN and programmable data planes, CDNs, peer-to-peer, video streaming, mobility, naming |
+| *Computer Networks: A Systems Approach* ([Open Textbook Library](https://open.umn.edu/opentextbooks/textbooks/771)) | The standard "build it from the ground up" book | The chapter list only | Direct links, internetworking, advanced internetworking, end-to-end protocols, congestion control, security, applications |
+| [Cisco CCNP ENCOR 350-401](https://learningcontent.cisco.com/documents/marketing/exam-topics/350-401-ENCORE-v1.2.pdf) | An industry skills list (used here as a topic list, not as an exam) | The blueprint | Architecture (SD-WAN, SD-Access, QoS), virtualisation (VRF, tunnels, VXLAN), L2 and L3 and IP services, assurance (NetFlow, SPAN, IP SLA, NETCONF), security, automation (Python, JSON, YANG, REST) |
+| Juniper JNCIS and JNCIE enterprise tracks | Vendor skills lists | Search results only, not the objectives | Not used for conclusions beyond "IS-IS, tunnels and MPLS are standard topics" (from memory) |
+| CWNP objectives: [CWNA](https://www.cwnp.com/uploads/cwna-109-objectives-2023.pdf), [CWAP](https://www.cwnp.com/uploads/cwap-405-objectives-2025_001.pdf), [CWDP](https://cwnp.com/uploads/cwdp-305-2024-objectives.pdf), [CWSP](https://www.cwnp.com/uploads/cwsp-208-objectives-2025.pdf) | The Wi-Fi industry's skills lists (topic lists, not exams) | The four objectives documents | CWAP is covered by WF 02, 03, 04, 05, 06 and 08. CWNA is covered. CWDP (design) and CWSP (enterprise authentication and attack defence) are only partly covered |
+| [SONiC architecture](https://developer.cisco.com/docs/sonic/sonic-architecture/) and an [interview write-up for systems and networking engineers](https://www.techinterview.org/post/3233477240/how-nexthop-ai-interviews-systems-networking-engineers/) | What switch software and fabric-company interviews touch | Both pages | Longest-prefix-match coding, BGP best path from a stream, leaf-spine reconvergence, ECMP hashing, RoCE and PFC deadlock, GPU fabric design (rail-optimised, radix, oversubscription), the route path from FRR to the ASIC (APPL_DB, orchagent, ASIC_DB, syncd, SAI), packet buffers, cut-through, link errors |
+| [Isovalent Kubernetes networking lab](https://isovalent.com/blog/post/foundations-networking-lab) and [ipSpace.net](https://www.ipspace.net/Courses) | Practitioner material | The pages | Pod networking and IPAM, CNI, services and kube-proxy, network policy, eBPF, ingress and gateway; public-cloud networking, automation, data-centre design |
+| [Wi-Fi learning list (BadFi)](https://badfi.squarespace.com/links-of-interest) | A practitioner's resource list | The page | CWNPTV and the Wireless LAN Professionals conference recordings, RF Elements antenna videos, podcasts (Clear To Send, Heavy Wireless, Mobility Field Day, Waves), tools (WLAN Pi, Ekahau, scanners) |
+
+**Honest limits of this comparison.** Course pages and blueprints were read as topic lists, so the comparison is about **coverage of topics**, not about the quality of their teaching. The books named (Kurose and Ross, Peterson and Davie, Gast, Perahia and Stacey) were not read; their tables of contents were only partly available, so nothing here depends on their detail. The video channels and playlists were identified from lists and search results, not watched, so they appear as suggestions, not as verified reviews. The interview evidence is anecdotal (one write-up and a Meta interview guide), so it shows what is plausible to be asked, not what will be.
+
+### 11.2 What the comparison found
+
+**Already strong:** TCP and congestion control, the Linux stack, sockets and epoll, zero-copy and XDP, DNS, HTTP and TLS, firewalls, BGP and OSPF, Clos fabrics, VXLAN and EVPN, RDMA and RoCE, load balancing, queueing and QoS, and every area of CWAP and CWNA on the Wi-Fi side.
+
+**Gaps (checked by searching our own tutorials for each topic):**
+
+| Gap | Evidence in our files | Source that expects it |
+|---|---|---|
+| **IPv6 as a topic** (header, address types, SLAAC, DHCPv6 and prefix delegation, extension headers, transition, IPv6-only networks) | NET 02 says "sketch IPv6"; neighbour discovery is in NET 01 only; NAT64 and DHCPv6 appear a handful of times | CS 168, CCNP, every large-network employer (Google and Meta run very large IPv6 deployments, from memory) |
+| **Inside a switch and a router** (ASIC pipeline, TCAM, packet buffers, cut-through, virtual output queues, the punt path and CoPP, how the NOS programs the chip, SONiC and SAI) | Cut-through 1 file, VOQ 1 file, SAI none; NET 11 section 11 only starts | CS 244, SONiC, the systems-and-networking interview write-up, Cisco, Nvidia, Microsoft |
+| **Observability and time**: SNMP, syslog, NetFlow, IPFIX, sFlow, SPAN and ERSPAN, IP SLA and TWAMP, telemetry, NTP, PTP | SNMP and telemetry are one subsection of NET 08; NetFlow, IPFIX and sFlow are absent | CCNP assurance |
+| **Container and Kubernetes networking** | CNI appears nowhere | Isovalent and ipSpace material, Google, Meta, Microsoft |
+| **Ethernet at speed and the physical layer** (SerDes, PAM4, forward error correction, link training, optics, breakout, symbol errors) | PAM4 and SerDes absent; NET 16 covers copper, fibre and PoE only | Nvidia and Cisco hardware roles |
+| **Link-layer fundamentals** (framing, CRC, forward error correction in outline, multi-access) | CRC appears, but no explanation of how it works | UW CSE 461, CS 168; also the basis for Wi-Fi coding |
+| **AI-cluster fabric design** (radix and oversubscription arithmetic, rail-optimised topologies, NVLink and NVSwitch, InfiniBand with SHARP and adaptive routing, collective algorithms, DPUs) | RoCE, PFC, DCQCN and collectives are in NET 12; topology sizing and NVLink are one to three mentions | Nvidia, Meta, Microsoft |
+| **WAN and service-provider routing** (VRF, GRE and tunnels, MPLS and LDP, L3VPN, segment routing, IS-IS, PIM, SD-WAN, RPKI) | MPLS and segment routing two or three mentions, IS-IS four, VRF two, LISP none | CCNP, Juniper tracks, Cisco |
+| **Networking coding drills** (longest-prefix trie, checksum, packet parser, token bucket, ECMP hash, best-path selection, flow table with expiry) | NET 02 explains LPM structures but there are no practice problems | The interview write-up; the "systems coding" round at network-equipment companies |
+| **Internet architecture and content delivery** (end-to-end argument, design principles, CDNs, adaptive video streaming) | The end-to-end argument is absent; CDN appears four times | CS 244, MIT 6.829 |
+| **WLAN design and capacity planning** (requirements, coverage against capacity, high-density, voice and video, survey and validation, design documents) | WF 11 has one worked coverage design and WF 08 has surveys; no tutorial on capacity | CWDP, the WLPC and Ekahau material |
+| **Enterprise Wi-Fi authentication design and attacks in practice** (EAP method choice and certificates, RADIUS attributes and change of authorisation, dynamic VLAN, WIPS, evil twin, KRACK, FragAttacks) | WF 04 covers the mechanisms; attack names are in one file | CWSP |
+| **A Wi-Fi interview bank** (cross-topic troubleshooting scenarios, like NET 15) | Each WF tutorial has its own questions; there is no cross-topic bank | The networking equivalent exists (NET 15) and has been useful |
+
+### 11.3 Proposed tutorials, in priority order
+
+All are **proposals, not started**. Each would use the approved style: concept first, tested labs on this VM, interview questions with answers, scenarios with where to practise and how to approach them, and an honest sources and caveats section. Size and time follow the existing tutorials.
+
+| Tier | # | Proposed file | Covers | Practice |
+|---|---|---|---|---|
+| 1 | NET 18 | `18_ipv6_in_depth.md` | Header and extension headers; address types and scopes; SLAAC, RA flags, DHCPv6 and prefix delegation; neighbour discovery security (RA guard); PMTUD and fragmentation in IPv6; dual stack, NAT64 and DNS64, 464XLAT, IPv6-only networks; IPv6 on Wi-Fi (multicast RAs, ND proxy); SRv6 in outline | Namespaces with `radvd` or `dnsmasq`, `ip -6`, captures |
+| 1 | NET 19 | `19_inside_a_switch_and_router.md` | Forwarding pipeline; TCAM and SRAM; packet buffers (shared, per-port, headroom), virtual output queues, cut-through and store-and-forward; the punt path and control-plane policing; ECMP hash polarisation; how the NOS programs the chip (SONiC: FRR, APPL_DB, orchagent, ASIC_DB, syncd, SAI); warm reboot | A small match-action and buffer model; reading a SONiC trace from documents |
+| 1 | WF 16 | `16_wifi_interview_bank_and_troubleshooting.md` | Cross-topic scenarios: cannot connect, slow, drops while roaming, voice choppy, 6 GHz clients missing, DFS events, mesh backhaul, multicast video; a diagnosis order; design questions for a Wi-Fi platform; "how to answer" | `mac80211_hwsim`, captures, the earlier labs |
+| 1 | NET 20 | `20_observability_time_and_troubleshooting_craft.md` | SNMP, syslog, streaming telemetry (gNMI); NetFlow, IPFIX, sFlow; SPAN, ERSPAN, taps; IP SLA and TWAMP; capture craft (BPF filters, `tshark`); traffic generation (`iperf3`, `pktgen`, TRex in outline); NTP and PTP, hardware timestamps, SyncE; a systematic method | Namespaces with `tshark`, `softflowd` or `nftables` flow accounting, a PTP or `chrony` model |
+| 1 | NET 21 | `21_container_and_kubernetes_networking.md` | Network namespaces, veth and bridge; CNI; pod networking and IPAM; services, kube-proxy (iptables and IPVS) against eBPF; network policy; ingress and gateway; service mesh in outline; overlay MTU; debugging a pod that cannot connect | A namespace-based "cluster" lab, `nft` service NAT |
+| 2 | NET 22 | `22_ethernet_at_speed_and_link_layer_fundamentals.md` | Framing, CRC and how it detects errors, forward error correction in outline, ALOHA and CSMA ideas; Ethernet speeds and SerDes, NRZ and PAM4; RS-FEC; link training and auto-negotiation; optics, DAC and AOC; breakout; symbol errors and flapping links; MACsec | A CRC and Hamming model; `ethtool` on a veth; reading counters from documents |
+| 2 | NET 23 | `23_ai_cluster_fabrics.md` | Radix, oversubscription and sizing arithmetic; fat-tree and rail-optimised designs; NVLink and NVSwitch; InfiniBand against RoCE, SHARP, adaptive routing; collective algorithms (ring, tree) and their traffic; DPUs and GPUDirect RDMA; failure handling | A fabric-sizing calculator and a collective-traffic model |
+| 2 | WF 17 | `17_wlan_design_and_capacity_planning.md` | Requirements; coverage against capacity; airtime budget per client; high-density (classrooms, stadiums); voice, video and location design; mesh planning; cabling and PoE; predictive against on-site survey; validation and design documents | An airtime-budget model; reading a survey |
+| 2 | NET 24 | `24_networking_coding_drills.md` | Small C and C++ problems: longest-prefix trie, Internet checksum, packet parser, token bucket, ECMP hash, best-path selection from a stream, flow table with expiry; complexity and memory layout (no large programs) | Each drill is under about 60 lines and tested |
+| 3 | NET 25 | `25_wan_and_service_provider_networking.md` | VRF; GRE and IP-in-IP; MPLS and LDP; L3VPN; segment routing; IS-IS; PIM; SD-WAN and LISP in outline; RPKI and route leaks | FRR in namespaces (OSPF, IS-IS, VRF, GRE) |
+| 3 | WF 18 | `18_enterprise_wifi_authentication_and_attacks.md` | EAP method choice and certificate handling; RADIUS attributes, change of authorisation, dynamic VLAN; WIPS; evil twin, KRACK, FragAttacks, Dragonblood; WPA3 transition-mode pitfalls; lifecycle | `hostapd` with a RADIUS server in `mac80211_hwsim` |
+| 3 | NET 26 | `26_internet_architecture_cdns_and_streaming.md` | End-to-end argument and design principles; CDN request routing and caching; adaptive bitrate streaming; congestion-control research in outline (AIMD fairness, BBR); measurement | A small AIMD model; reading papers |
+
+**Suggested order:** Tier 1 first (five tutorials), since IPv6, switch internals, observability and Kubernetes are the most likely to be asked at the target companies and are thin or missing today, and WF 16 turns the whole Wi-Fi sub-track into interview answers. Then Tier 2, then Tier 3. After each, NET 15 gets a short update with the new questions.
+
+**Watching and listening list (not verified, chosen from recommendation lists).** CWNPTV and the Wireless LAN Professionals conference recordings for Wi-Fi; the RF Elements antenna videos; the podcasts Clear To Send, Heavy Wireless and Waves; Practical Networking and Jeremy's IT Lab for wired fundamentals; and the ipSpace.net webinars for data-centre and automation design. These are supplements and none replaces the tutorials.
+
+### 11.4 Decisions needed
+
+1. Approve, drop or reorder the 12 proposals above.
+2. Whether Tier 3 should be written at all, or only on demand.
+3. Whether the debugging track (DBG 03 onward) waits until Tier 1 is finished, as networking did, or resumes after each tier.
