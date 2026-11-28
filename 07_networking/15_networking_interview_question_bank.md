@@ -465,6 +465,17 @@ Answers are written to be **said aloud in 20 to 40 seconds**, then extended by t
 98. **A short outage hits one floor once or twice a day. Suspect what?** DFS radar events on a 5 GHz channel: the AP leaves at once, a 60 second availability check follows on the new channel, and the old one is blocked for 30 minutes. Confirm in the radar log and move the APs to non-DFS channels.
 99. **How would you choose the best channel for a crowded 2.4 GHz AP in code?** Sum the neighbours' received power in linear units, weighted by channel overlap (a neighbour on channel 9 leaks into 6 and 11), optionally weighted by their utilisation, and apply hysteresis so the AP does not keep switching.
 
+### 3.12 Observability, time and troubleshooting ([NET 20](20_observability_time_and_troubleshooting_craft.md))
+
+100. **Why do 32-bit interface counters fail at high speed?** They wrap after about 4.29 GB, 3.4 seconds at 10 Gbit/s. A modular difference survives one wrap per poll and is silently wrong after two. Use the 64-bit `ifHC` counters and check `sysUpTime` for resets.
+101. **Why can IPFIX records arrive but be unreadable?** Data sets depend on an earlier template. A collector that missed the template, restarted or joined mid-capture cannot decode them until the exporter resends it. The sequence number shows lost messages.
+102. **How accurate is 1-in-N sampling for a flow?** Standard error is about 100 divided by the square root of the samples taken. It measures elephants well, misses small flows, and cannot prove a flow was absent.
+103. **Your capture filter for SYNs to port 443 misses IPv6. Why?** The compiled BPF checks the EtherType is IPv4 and rejects the rest. Add an IPv6 clause (offsets assume no extension headers) or capture broadly and use display filters.
+104. **A router shows zero errors and zero drops, yet traffic is lost. Where?** In an ACL, policer, queue or forwarding stage that is not an interface error. Compare in and out counters at each stage and read the counter of the stage between them.
+105. **How do you tell forward loss from reverse loss?** Use a probe whose far end reports what it received (TWAMP style). Forward loss is sent minus received at the reflector; reverse loss is reflected minus received back.
+106. **Why can NTP and PTP not see a fixed path asymmetry?** The offset is half the sum of the one-way differences, assuming equal delays. Unequal delays give an error of half the asymmetry, while the round-trip delay is unchanged.
+107. **Boundary clock or transparent clock?** A boundary clock terminates PTP and re-originates time on each port; a transparent clock adds its residence time to a correction field that the slave subtracts. Both remove switch queueing error; hardware timestamps remove host stack noise.
+
 ## 4. Design style questions
 
 A design question is answered in the same order every time: **requirements and numbers**, **the data path**, **state and what it costs**, **failure and how it is detected**, **what you would measure**. Say the numbers early; they decide the design.
