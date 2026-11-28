@@ -456,6 +456,15 @@ Answers are written to be **said aloud in 20 to 40 seconds**, then extended by t
 
 ---
 
+### 3.11 Wi-Fi troubleshooting and platform interviews ([WF 16](10_wifi/16_wifi_interview_bank_and_troubleshooting.md))
+
+94. **What is your first move on "Wi-Fi is slow"?** Make the complaint precise and scope it (which clients, which AP, when), then compare against a wired client and a working wireless client before changing anything. Change one thing at a time.
+95. **In a capture, a client sends M1, M2, M1, M2 and the AP then deauthenticates with reason 15. What is it?** The four-way handshake never completed: M3 never came. The usual cause is a wrong passphrase or key, so check the key configuration before the radio.
+96. **A video call breaks when a user walks. Where do you look?** At the roam: the gap between the last frame to the old AP and the first to the new one, whether a full 802.1X exchange followed the reassociation, and whether the wired side learned the move. Budget about 150 ms.
+97. **Why does more transmit power sometimes make a dense network slower?** The limit is co-channel contention, not signal. Louder APs make more neighbours defer to each other, so airtime falls.
+98. **A short outage hits one floor once or twice a day. Suspect what?** DFS radar events on a 5 GHz channel: the AP leaves at once, a 60 second availability check follows on the new channel, and the old one is blocked for 30 minutes. Confirm in the radar log and move the APs to non-DFS channels.
+99. **How would you choose the best channel for a crowded 2.4 GHz AP in code?** Sum the neighbours' received power in linear units, weighted by channel overlap (a neighbour on channel 9 leaks into 6 and 11), optionally weighted by their utilisation, and apply hysteresis so the AP does not keep switching.
+
 ## 4. Design style questions
 
 A design question is answered in the same order every time: **requirements and numbers**, **the data path**, **state and what it costs**, **failure and how it is detected**, **what you would measure**. Say the numbers early; they decide the design.
