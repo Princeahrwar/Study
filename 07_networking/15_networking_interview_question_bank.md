@@ -487,6 +487,17 @@ Answers are written to be **said aloud in 20 to 40 seconds**, then extended by t
 114. **After default-deny egress, names fail but IPs work. Why?** DNS is egress. Allow UDP and TCP 53 to the DNS pods, and allow kubelet probes if the CNI does not.
 115. **Why do iptables-mode Services slow down at scale, and what replaces them?** The top-level chain is checked rule by rule, so lookup and full updates grow with the number of Services (new connection time grew about tenfold from 0 to 20,000 rules in the lab, flat for a map). nftables mode uses a verdict map, eBPF a hash map; IPVS (deprecated) used a kernel hash table.
 
+### 3.14 Ethernet at speed and the link layer ([NET 22](22_ethernet_at_speed_and_link_layer_fundamentals.md))
+
+116. **How many frames per second does a 10G port carry at 64 bytes, and what does that imply at 100G?** 14.88 million, because each frame occupies 84 bytes on the wire (64 plus 8 preamble plus 12 gap), one every 67.2 ns. At 100G it is 148.8 million and 6.7 ns per frame, which is the per-packet budget for any line-rate design.
+117. **What does a CRC guarantee, and why is it not a security check?** It detects all single-bit errors and all bursts up to 32 bits (Ethernet's CRC-32) and misses other damage with probability about 2 to the minus 32. It is linear, so an attacker can change the message and patch the CRC without any key; authenticity needs a keyed tag such as MACsec's GCM ICV.
+118. **Why does Ethernet's FEC work on symbols, and what does RS(544,514) correct?** Reed-Solomon corrects multi-bit symbols (10 bits), so a burst touches few symbols. RS(544,514) has 30 parity symbols and corrects 15; RS(528,514) corrects 7. Damage beyond that is a cliff, not a slope: in the model a 5x rise in raw BER moved a link from one failure per centuries to one every half second.
+119. **Why PAM4, and what does it cost?** Two bits per symbol at half the symbol rate, because channel loss grows steeply with frequency. The cost is about 9.5 dB of noise margin (eyes one third as tall), so PAM4 links always run FEC, and Gray coding keeps a neighbouring-level error to one bit.
+120. **A link is up but slow, with late collisions on one end and FCS errors on the other. Cause?** Duplex mismatch: one end forced to full duplex, the other negotiating, which finds the speed by parallel detection but assumes half duplex. Set both ends the same way.
+121. **You disabled negotiation to stop a flap and now a 100G link will not come up. Why?** FEC is no longer negotiated; speed, lane mode and FEC type must be set by hand to match the neighbour (leaving FEC on `auto` does not bring up some 25G and 100G ports).
+122. **The FEC corrected-error counter climbs steadily but nothing is dropped. Do you act?** Yes: it is margin being used. Watch the rate, clean and swap one part at a time before it becomes uncorrected errors, and alert on the rate, not only on link down.
+123. **MACsec or IPsec on a leased layer 2 circuit?** MACsec runs at line rate in port hardware and covers ARP and DHCP but is hop by hop and limited to one L2 domain, with 24 to 32 bytes of overhead and MKA key management; IPsec is end to end across routers but costs CPU or offload.
+
 ## 4. Design style questions
 
 A design question is answered in the same order every time: **requirements and numbers**, **the data path**, **state and what it costs**, **failure and how it is detected**, **what you would measure**. Say the numbers early; they decide the design.
