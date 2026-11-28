@@ -433,6 +433,17 @@ Answers are written to be **said aloud in 20 to 40 seconds**, then extended by t
 85. **A program is slow to start.** DNS timeouts; `time getent hosts` (S7).
 86. **Slow with an idle link.** `ss -ti` limits; the reader (S8).
 
+### 3.9 IPv6 in depth ([NET 18](18_ipv6_in_depth.md))
+
+79. **Walk through how an IPv6 host gets an address.** It builds a link-local address and checks it with duplicate address detection, sends a router solicitation, gets a router advertisement with the prefix, flags and router lifetime, builds a global address if the A flag is set (then checks it again), and asks DHCPv6 if the M or O flag says so. The default route comes only from the advertisement.
+80. **What do the M, O, A and L flags mean?** M: addresses from stateful DHCPv6. O: other options (DNS) from DHCPv6. Per prefix, A: SLAAC may form an address; L: the prefix is on-link. They are advice, and hosts differ in how they react.
+81. **Why are IPv6 subnets /64?** SLAAC needs a 64-bit interface identifier, and a fixed boundary keeps design uniform with room for any number of interfaces (RFC 7421). Plan on nibble boundaries and for summarisation, not address saving.
+82. **Large transfers hang over IPv6 but small requests work. Why?** Routers never fragment, so a filtered ICMPv6 Packet Too Big leaves the sender at a size the path cannot carry. Allow ICMPv6, clamp MSS (1,440 on a 1,500 link), or advertise a smaller MTU.
+83. **What is a rogue router advertisement and how do you stop it?** A device on the link announces itself as a router, so hosts send traffic through it. Use RA guard on access ports (and drop fragmented ND, which evades it), SAVI, and alert on RAs from unexpected sources. Hop limit 255 does not help against a sender on the same link.
+84. **What does Happy Eyeballs do and what is its operational catch?** It races IPv6 and IPv4 (50 ms resolution delay, 250 ms between attempts) so a broken family costs the user little, which also hides broken IPv6. Test each family separately with a large transfer.
+85. **NAT64, DNS64 and 464XLAT in one answer?** NAT64 translates IPv6 clients to IPv4 servers, DNS64 synthesises AAAA records by embedding the IPv4 address in `64:ff9b::/96`, and 464XLAT adds a client-side translator so IPv4-literal apps work. Mobile networks use it; IPv6-mostly networks use DHCPv4 option 108 to let capable hosts opt out of IPv4.
+86. **Why is IPv6 harder on Wi-Fi?** Neighbour discovery and router advertisements are multicast, which on Wi-Fi goes at a low rate after the DTIM with no retry, and each address needs its own group. Mitigations are multicast-to-unicast, ND proxy, RA throttling, MLD snooping and RA guard.
+
 ---
 
 ## 4. Design style questions

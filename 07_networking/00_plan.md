@@ -52,6 +52,7 @@ Networking questions arrive from several directions: "what happens when you type
 | 15 | [`15_networking_interview_question_bank.md`](15_networking_interview_question_bank.md) | Networking interview question bank | Questions with answers across the track, a "network is slow" and "connection fails" triage tree, 10 to 15 troubleshooting scenarios reproduced in network namespaces (as in LX 14), design-style questions (load balancer, firewall data path, packet router), a one-page cheat sheet | Written and rewritten concept-first (Nov 2026): answer method, trees, 15 tested scenarios, 86 questions, 7 design questions | 24 |
 | 16 | [`16_network_foundations_gaps.md`](16_network_foundations_gaps.md) | Network foundations: media, topologies, legacy routing, gateway redundancy, attacks | Added 24 Nov 2026 after a check against a four-phase curriculum. Network scopes (PAN, LAN, MAN, WAN) and topologies; circuit against packet switching; hubs, bridges, L2 and L3 switches and where APs and WLCs sit; copper (Cat5e, Cat6, Cat6a) and fibre (single-mode against multimode), speed and duplex mismatch; PoE (802.3af, at, bt) and what an AP needs; APIPA and RFC 1918; floating static routes and administrative distance; RIP and EIGRP concepts next to OSPF and BGP; HSRP, VRRP and GLBP with a real `keepalived` VRRP failover; TACACS+ against RADIUS; ACL types; ARP spoofing, DNS cache poisoning, VLAN hopping and Zero Trust; FTP, SFTP, SMTP, IMAP and SSH against Telnet | Written (Nov 2026) | 25 |
 | 17 | [`17_cloud_sdn_automation_and_labs.md`](17_cloud_sdn_automation_and_labs.md) | Cloud networking, SDN, NFV, automation and lab tools | Added 24 Nov 2026. VPCs, subnets, route tables, security groups against NACLs, load balancers (links to NET 13), peering and transit; SDN (control plane and data plane split, OpenFlow, P4 at a glance, links to NET 11); NFV and virtual network functions; automation with Python and Ansible (a playbook that configures a namespace lab, idempotence); simulators and emulators (Packet Tracer, GNS3, EVE-NG) against namespaces and FRR, and which to use when | Written | done |
+| 18 | [`18_ipv6_in_depth.md`](18_ipv6_in_depth.md) | IPv6 in depth | Added 28 Nov 2026 (first Tier 1 addition, section 11). Header and extension headers, address types and scopes, solicited-node groups, neighbour discovery and DAD, SLAAC and RA flags, DHCPv6 and prefix delegation, interface identifiers and privacy, /64 and allocation planning, address selection and Happy Eyeballs, PMTUD and ICMPv6, link attacks (RA guard, DHCPv6 shield, SAVI), dual stack, NAT64, DNS64, 464XLAT, IPv6-mostly, IPv6 on Wi-Fi, SRv6 outline. Packets built with scapy and decoded with tshark; the lab VM has no IPv6 kernel, so live behaviour is from the RFCs | Written | done |
 
 ---
 
@@ -177,7 +178,8 @@ Every NET tutorial follows these rules, so the track is something you run and lo
 | 16 | Foundations gaps | Written (Nov 2026) |
 | 17 | Cloud, SDN, automation and labs | Written (Nov 2026) |
 | 15 | Question bank | Written (Nov 2026) |
-| 18–26, WF 16–18 | Proposed additions (resource comparison, 28 Nov 2026) | Proposed, not started; see section 11 |
+| 18 | IPv6 in depth | Written (28 Nov 2026), first Tier 1 addition |
+| 19–26, WF 16–18 | Remaining proposed additions (resource comparison, 28 Nov 2026) | Proposed, not started; NET 19 is next; see section 11 |
 
 Cross-track view: [`../00_MASTER_PLAN.md`](../00_MASTER_PLAN.md).
 
@@ -327,11 +329,11 @@ WF 02 (already shipped) matches the CWAP PHY objective (10 %); its MIMO and OFDM
 
 ### 11.3 Proposed tutorials, in priority order
 
-All are **proposals, not started**. Each would use the approved style: concept first, tested labs on this VM, interview questions with answers, scenarios with where to practise and how to approach them, and an honest sources and caveats section. Size and time follow the existing tutorials.
+All are **proposals, not started**, except NET 18, which is written. Each would use the approved style: concept first, tested labs on this VM, interview questions with answers, scenarios with where to practise and how to approach them, and an honest sources and caveats section. Size and time follow the existing tutorials.
 
 | Tier | # | Proposed file | Covers | Practice |
 |---|---|---|---|---|
-| 1 | NET 18 | `18_ipv6_in_depth.md` | Header and extension headers; address types and scopes; SLAAC, RA flags, DHCPv6 and prefix delegation; neighbour discovery security (RA guard); PMTUD and fragmentation in IPv6; dual stack, NAT64 and DNS64, 464XLAT, IPv6-only networks; IPv6 on Wi-Fi (multicast RAs, ND proxy); SRv6 in outline | Namespaces with `radvd` or `dnsmasq`, `ip -6`, captures |
+| 1 | NET 18 | `18_ipv6_in_depth.md` | Header and extension headers; address types and scopes; SLAAC, RA flags, DHCPv6 and prefix delegation; neighbour discovery security (RA guard); PMTUD and fragmentation in IPv6; dual stack, NAT64 and DNS64, 464XLAT, IPv6-only networks; IPv6 on Wi-Fi (multicast RAs, ND proxy); SRv6 in outline | Namespaces with `radvd` or `dnsmasq`, `ip -6`, captures | **Written 28 Nov 2026.**
 | 1 | NET 19 | `19_inside_a_switch_and_router.md` | Forwarding pipeline; TCAM and SRAM; packet buffers (shared, per-port, headroom), virtual output queues, cut-through and store-and-forward; the punt path and control-plane policing; ECMP hash polarisation; how the NOS programs the chip (SONiC: FRR, APPL_DB, orchagent, ASIC_DB, syncd, SAI); warm reboot | A small match-action and buffer model; reading a SONiC trace from documents |
 | 1 | WF 16 | `16_wifi_interview_bank_and_troubleshooting.md` | Cross-topic scenarios: cannot connect, slow, drops while roaming, voice choppy, 6 GHz clients missing, DFS events, mesh backhaul, multicast video; a diagnosis order; design questions for a Wi-Fi platform; "how to answer" | `mac80211_hwsim`, captures, the earlier labs |
 | 1 | NET 20 | `20_observability_time_and_troubleshooting_craft.md` | SNMP, syslog, streaming telemetry (gNMI); NetFlow, IPFIX, sFlow; SPAN, ERSPAN, taps; IP SLA and TWAMP; capture craft (BPF filters, `tshark`); traffic generation (`iperf3`, `pktgen`, TRex in outline); NTP and PTP, hardware timestamps, SyncE; a systematic method | Namespaces with `tshark`, `softflowd` or `nftables` flow accounting, a PTP or `chrony` model |
