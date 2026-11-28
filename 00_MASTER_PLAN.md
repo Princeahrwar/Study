@@ -145,7 +145,7 @@ Each week is about 25 hours: roughly 8 h DSA, 8 h systems, 6 h design, and 3 h f
 | Week | Starts | DSA | Systems | Design | C/C++ · projects · interviews |
 |---|---|---|---|---|---|
 | 7 | 23 Nov | Trees 03–05 | OS 04 (done), OS 05 (done); LX 04 (done) | LLD 10, 11 | C 07 |
-| 8 | 30 Nov | Trees 06–08 | OS 06 (done), OS 07 (done); DBG 01 (done), DBG 02 | LLD 12, 13, 14 | C 08 |
+| 8 | 30 Nov | Trees 06–08 | OS 06 (done), OS 07 (done); DBG 01 (done), DBG 02 (done) | LLD 12, 13, 14 | C 08 |
 | 9 | 7 Dec | Trees 09–11 | OS 08 (done), OS 09 (done); LX 05 (done); DBG 03 | LLD 15, 16, 17 | C 09; CPP 01 |
 | 10 | 14 Dec | Trees 12, 15, 16 (heaps) | OS 10 (done), OS 11 (done); NET 01 (done); LX 06 (done); DBG 04 | LLD-P 01, 06, 02 | C 10; CPP 02 |
 | 11 | 21 Dec | Trees 17–18 (tries); graphs I | OS 12 (done), OS 13 (done), OS 14 (done); NET 02 (done); DBG 05 | LLD-P 03, 07, 04; HLD 01, 02 | C 11; CPP 03 (holiday week: use as buffer if needed) |
