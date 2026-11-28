@@ -1,449 +1,321 @@
-# NET 13: Load balancing, proxies and anycast
+# NET 13: Load balancing, proxies and anycast: forwarding modes, consistent hashing, health checks, L7 proxies and the network as the first balancer
 
-*Part of the [networking plan](00_plan.md) · Time: about 8 hours · You need: [NET 11](11_routing_protocols_and_datacenter_fabrics.md) (ECMP and its hash in section 8, resilient next hop groups, the leaf-spine fabric and BGP in the datacenter), [NET 09](09_network_security_firewalls_ips_dpi.md) (connection tracking, NAT and SYN cookies), and [NET 07](07_zero_copy_networking.md) (XDP). A load balancer sits in front of many identical servers behind one address and decides, for every new connection, which server gets it. That one decision hides four problems: **choosing** a backend, **remembering** the choice for the rest of the connection, **noticing** that a backend died, and **routing the reply** back. This tutorial takes each in turn on a real Linux data path (nftables NAT and direct server return, an XDP selector, haproxy as a layer 7 proxy), measures what the sandbox can, and says which is which.*
+*Part of the [networking plan](00_plan.md) · You need: [NET 11](11_routing_protocols_and_datacenter_fabrics.md) (ECMP and its hash, resilient next hop groups, BGP in the datacenter), [NET 09](09_network_security_firewalls_ips_dpi.md) (connection tracking, NAT, SYN cookies), [NET 07](07_zero_copy_networking.md) (XDP). TLS and HTTP internals are in [NET 08](08_application_protocols_dns_http_tls.md).*
 
-"Design a load balancer that survives a backend being added or removed without breaking existing connections" is a standard question at Google, Meta and Cloudflare-style infrastructure teams, and "where would you put an L4 and where an L7 balancer" is the first follow-up to almost every system design question. A Staff level answer has five parts that connect: the **forwarding mode** (NAT, direct server return or encapsulation, and which direction carries the bytes), the **selection** (a consistent hash and what it does when the backend set changes), the **state** (where the flow table lives and what happens when it is lost), the **health model** (how long a dead backend stays in rotation) and the **front door** (anycast and ECMP, and what they do to long connections). This tutorial puts a measured number on each.
+A load balancer takes traffic aimed at one name and spreads it over many machines, and stays correct while those machines come and go. "Design a load balancer that survives a backend being added or removed without breaking existing connections" is a standard question at Google, Meta, Cloudflare-style infrastructure teams and Nvidia, and "where would you put an L4 and where an L7 balancer" is the first follow-up to almost every system design question.
 
-**Eight honest limits, stated first.**
-
-1. **No IPVS.** The kernel (Linux 6.18, Firecracker VM, 2 vCPUs, root) has `CONFIG_IP_VS` switched off, so the classic Linux layer 4 balancer is **not here**: its three modes, its schedulers and its connection hash table are explained from memory and marked so. What runs instead is **nftables** (`dnat` with `numgen` and `jhash`, and a `netdev` ingress rule that rewrites the destination MAC and forwards), which implements the same ideas with the pieces exposed.
-2. **No real NIC and no native XDP.** The XDP program in section 10 runs in **generic** mode on a veth device, so its **picks are real, but its speed is not representative**. Katran, DPDK balancers and NIC offload are from memory.
-3. **No BGP in the anycast experiment.** Anycast in section 9 uses **static multipath routes and resilient next hop groups** on a router namespace, which is what a BGP-learned route becomes in the kernel after best path selection. The announcements, withdrawals and their timers were measured in NET 11 and are not repeated.
-4. **The Maglev and consistent hash numbers come from my implementations** (`chash.py`, a few dozen lines, hashing with `blake2b`), not from Google's code. I implemented the table population from the paper's description **as I remember it**; I did not re-read the paper for this tutorial. The paper's own sizes and throughput figures are **from memory**.
-5. **One host, three roles.** The client, the balancer and the backends are namespaces on the same two vCPUs, and the backends are small Python servers. **Throughput and latency figures are therefore relative, never absolute**; counts, byte totals and which connection went where are exact.
-6. **TLS costs are measured as proxy CPU per connection** (a one thread haproxy answering 200 itself, read from `/proc`), because a client and a proxy fighting for two cores make a connections per second figure meaningless. The ticks are 10 ms, so the cost per connection has a resolution of 5 µs.
-7. **haproxy is Ubuntu's 2.8.30.** Its defaults (`retries 3`, `http-reuse safe`) are the ones that shipped; other versions differ, and I name each setting I rely on.
-8. **Hardware is from memory:** NIC receive-side scaling and its indirection table, a switch's ECMP hash seed and bucket count, how a hardware load balancer fails over its state, and every cloud provider's balancer internals.
+A weak answer lists algorithms (round robin, least connections). A strong answer treats the balancer as five connected decisions: **where it sits** and who sends traffic to it, **how it forwards** a packet (and whether replies come back through it), **how it picks a backend** (and what that pick does when the backend set changes), **what it remembers** (and what a restart loses), and **how it notices failure** (and what the notice window costs). Each decision constrains the next, and the interview is about following the chain.
 
 By the end you can:
 
-- **choose a forwarding mode and say what it costs** (measured: 300 requests of 100 KB through NAT mode put **31,474 KB** on the balancer's client side; the same 300 requests with direct server return put **0 KB** there and the balancer received **187 KB** against **604 KB**; a backend with no route back through the balancer lost **3 of 9** connections silently);
-- **say what a stateful balancer holds** (measured: one conntrack entry carries both tuples, `src=10.0.1.2 dst=10.0.1.100` and the reply `src=10.0.12.2 dst=10.0.1.2`, and the client address the backends saw was the real one in all 3,000 connections);
-- **compare four consistent hashes with numbers** (measured, 100,000 flows, 10 backends, one removed: **hash mod N** moved **89.8 %** with **79.7 %** collateral; a ring with 100 points moved **9.5 %** with **0 %** collateral and a busiest backend at **1.14** times the average; rendezvous **10.0 %**, **0 %**, **1.02**; Maglev with a 65,537 entry table **10.2 %**, **0.2 %**, **1.02**);
-- **size a Maglev table** (measured: 100 backends, one removed: a table of 1,009 entries moved **4.22 %** with **3.19 %** collateral, 65,537 gave **1.54 %** and **0.55 %**, 655,373 gave **1.11 %** and **0.15 %**; ideal is 1 % and 0);
-- **say what happens to open connections when the backend set changes** (measured, 300 connections held open through a rule change: **0** broke while the connection table was kept, **158** broke when the table was lost at the same moment; nftables `jhash ... mod N` is not a modulo: growing 2 backends to 3 kept **54 %** of flows, where a true modulo keeps 33 %);
-- **put a number on health check delay** (measured, haproxy, 20 requests per second, one backend of three killed, `inter 1s fall 3`: **14 failed requests** in two seconds with `retries 0`; **0** with `retries 3` and `option redispatch`; computed: detection takes between `(fall - 1) × inter` and `fall × inter`);
-- **say what an L7 proxy buys and costs** (measured: 1,000 requests, each on a new client connection, made **1,001** backend connections in `mode tcp` and with `http-reuse safe`, and **2** with `http-reuse always`; `/api` went to one backend and everything else to two others; the backend saw the proxy as its peer and the client in `X-Forwarded-For`);
-- **cost TLS termination** (measured, proxy CPU per new connection, one thread: **40 µs** plain, **890 µs** TLS 1.3 with an RSA-2048 certificate, **500 µs** with ECDSA P-256, **405 µs** when the client resumes);
-- **explain what anycast does to a long connection** (measured: three sites behind a 3-way ECMP route took **989, 1,021 and 990** of 3,000 connections; withdrawing one site broke **39** connections on it and **28 of 50** on a surviving site with a plain multipath route, but **0** surviving ones with a resilient group);
-- **write the selection step of an XDP balancer** (measured, generic XDP: **1,006, 1,066, 928** picks of 3,000 by hash modulo 3; **1,017, 1,001, 982** from a 1,009 entry Maglev table; **1,463, 1,537, 0** after the table was rebuilt for 2 backends and written);
-- **say why random choice is not enough** (simulated: 400 equal connections on 20 backends put the busiest at **1.46** times the average with random choice, **1.07** with the better of two random choices; with Pareto sized work the busiest stayed at **1.70** even with least loaded choice).
-
-## Where the numbers come from
-
-Each experiment is a script `eN_*.sh` in `prog/` with its output frozen in `v/`, run with `run.sh`. `lbnet.sh` builds the topology used by most of them: a client `c`, a balancer `lb` and three backends `b1` to `b3`, one veth pair per backend, the VIP `10.0.1.100` on the balancer. `be.py` and `be11.py` are the backends (HTTP/1.0 and HTTP/1.1 with keep-alive), `echo.py` an echo server for long connections, `cl.py`, `hold.py`, `fresh.py`, `rate.py` and `tlsrate.py` the clients. `chash.py` holds the four hashing schemes, `e3_hashing.py` compares them, `xdp_sel.c` is the XDP program with `xdp_fill.py` and `xdp_picks.py` around it. The answers to the problems are `ans_a` to `ans_e`.
-
-Every number in the text is copied from `v/*.out` or computed from a printed figure with the arithmetic shown. A number that is not measured, modelled or computed here is marked **from memory**. The hashing and balance simulations use fixed seeds or fixed flow lists, so each run prints the same figures.
-
-## Data and timing
-
-| What | Size or time |
-|---|---|
-| NAT mode (`e1_nat_lb.sh`) | 3 backends, 2 times 3,000 connections, 9 connections with a broken return path |
-| Direct server return (`e2_dsr.sh`) | 300 requests of 100 KB in each mode, interface byte counters, `tcpdump` of 3 packets |
-| Hashing (`e3_hashing.py`) | 100,000 flows, 6 schemes, 5 sections, about 8 s |
-| Connection state (`e4_state.sh`) | 300 long connections twice, 400 fixed-port flows twice, about 1 minute |
-| Health checks (`e5_haproxy.sh`) | 3 haproxy configurations, 12 s each at 20 requests per second |
-| Layer 7 proxy (`e6_proxy.sh`) | 4 modes of 1,000 connections, a forwarded-for request, 200 routed requests |
-| Anycast (`e7_anycast.sh`) | 3 sites, 3,000 connections, 2 times 150 long connections with a withdrawal |
-| XDP selector (`e8_xdp.sh`) | one compiled program, 3 times 3,000 connections |
-| TLS termination (`e9_tls.sh`) | 4 times 2,000 connections, proxy CPU from `/proc` |
+- explain the difference between L4 and L7 balancing, and what each buys;
+- compare the forwarding modes (proxy, NAT, direct server return, tunnelling) by what they cost and where the reply goes;
+- compare backend selection: round robin, least connections, power of two choices, and the consistent hashes (ring, rendezvous, Maglev), with what each does when a backend leaves;
+- explain connection tracking, resilient hashing and draining, and what happens to open connections on a change;
+- put a number on health check delay and design checks that do not make outages worse;
+- explain what an L7 proxy adds (routing, retries, pooling, TLS termination) and its traps;
+- explain anycast, what it does to long connections, and how ECMP and L4 and L7 tiers stack;
+- sketch a data plane in nftables, IPVS, XDP or user-space, and say where each fits.
 
 ---
-
 
 ## 1. What a load balancer decides
 
-A **virtual IP (VIP)** is an address that belongs to a service, not to a machine. Clients connect to the VIP; a balancer takes each new connection and sends it to one of N **backends** (also called real servers). Everything else in this tutorial is a consequence of four questions:
+A client connects to a **virtual IP (VIP)** or a name. Something must choose a real server, and everything after that depends on how that something is built.
 
-| Question | What goes wrong if you ignore it |
-|---|---|
-| **Choose:** which backend gets this connection? | uneven load; or a choice that changes when the backend set changes (section 4) |
-| **Remember:** how do later packets of the same connection reach the same backend? | open connections break whenever a backend is added or removed (section 5) |
-| **Notice:** how do you learn a backend is dead? | clients are sent to a dead server for as long as detection takes (section 6) |
-| **Return:** how does the reply get back to the client with the right addresses? | the client sees a reply from an address it never contacted, and drops it (sections 2 and 3) |
+```mermaid
+flowchart LR
+  C["clients"] --> N["network: DNS or anycast or ECMP"]
+  N --> L4["L4 balancer tier"]
+  L4 --> L7["L7 proxy tier"]
+  L7 --> B["backends"]
+```
+
+Not every system has all tiers. A small service has one proxy. A large one has the network spread traffic over a fleet of L4 balancers, which spread connections over a fleet of L7 proxies, which spread requests over backends. Each tier exists because the one before it cannot do something.
 
 ### 1.1 Layer 4 against layer 7
 
-A **layer 4** balancer looks at the IP and TCP or UDP headers only: addresses, ports, flags. It never terminates the client's TCP connection; it rewrites or forwards packets, and the backend and the client end up in the **same** TCP connection. It is cheap (a table lookup per packet), it handles any protocol over TCP or UDP, and it cannot see a URL, a header, a cookie or a TLS server name. A **layer 7** balancer is a **proxy**: it **terminates** the client's connection, reads the request, picks a backend using what it read, and opens or reuses a **second** connection to that backend. It is costly (two sockets and a parser per request) and it can route by path, retry a failed request, add headers, terminate TLS and reuse backend connections. Production systems stack them: an L4 tier spreads connections over many L7 proxies, and the proxies spread requests over the services (section 11).
+| | **L4** (transport) | **L7** (application) |
+|---|---|---|
+| Looks at | IP addresses, ports, TCP/UDP flags | the HTTP request, headers, path, cookies, gRPC method |
+| Unit of balancing | a **connection** (or a packet) | a **request** |
+| Connection to the client | passes through or rewrites; one end-to-end TCP connection in most modes | terminates it: two separate connections, client side and server side |
+| Per-packet cost | very low (hash, table lookup, rewrite) | high (parse, buffer, copy, maybe TLS) |
+| Can do | spread connections, keep affinity, absorb a DDoS | route by path or host, retry, rate limit, add headers, terminate TLS, pool connections, shed load per user |
+| Cannot do | see inside HTTP, balance requests inside one long connection | scale as cheaply, or survive without state |
+| Typical software | IPVS, Maglev, Katran, nftables, hardware balancers | Envoy, nginx, HAProxy, cloud application balancers |
 
-```text
-client ---- VIP ----> [ L4: picks per connection, never reads a byte of payload ]
-                          | same TCP connection continues to the backend
-                          v
-                      backend
-
-client ---- VIP ----> [ L7 proxy: terminates TCP, parses HTTP, picks per request ]
-                          |  second TCP connection (pooled, reused)
-                          v
-                      backend
-```
+The rule of thumb: **use L4 where you need volume and simplicity, L7 where you need to make a decision per request**. The main reason L7 matters for modern traffic is multiplexing: one HTTP/2 or gRPC connection carries thousands of requests, and an L4 balancer that picks one backend per connection would send all of them to the same server. Per-request balancing needs a proxy that speaks the protocol.
 
 ### 1.2 Four ways to forward
 
-| Mode | What the balancer does to the packet | Reply path | Costs and limits | Section |
-|---|---|---|---|---|
-| **NAT** (DNAT, sometimes with SNAT) | rewrites the destination address (and port) to the backend; remembers the translation | **through** the balancer, which translates back | the balancer carries both directions; needs connection state; backends must route replies via it | 2 |
-| **Direct server return (DSR)** | rewrites only the destination **MAC** (same L2 segment) or **encapsulates** the packet (IP in IP, GRE) toward the backend | **straight** from the backend to the client, source address = the VIP | the balancer sees only requests; backends must own the VIP; no port translation; no L7 | 3 |
-| **Proxy** (L7) | terminates the client connection and opens its own to the backend | back through the proxy, on the proxy's connection | per-request CPU; the backend sees the proxy as its peer; full flexibility | 7 |
-| **Anycast in front** | does nothing itself: the network (ECMP over routes to the same prefix) picks a site or a balancer instance | direct | long connections break when the route set changes (section 9) | 9 |
+| Mode | What the balancer does | Where the reply goes | Cost |
+|---|---|---|---|
+| **Proxy** (full proxy, L7 or L4) | terminates the client connection, opens its own to the backend | back through the balancer | two connections, a copy of every byte, but full control |
+| **NAT** (destination NAT, "full NAT" if the source is also rewritten) | rewrites the destination (and maybe source) address, keeps a table entry per connection | **must** come back through the balancer so the rewrite can be reversed | the balancer carries both directions |
+| **Direct server return (DSR)** | changes only the link-layer destination (L2 DSR) or wraps the packet in a tunnel (GRE, IPIP, GUE) to the backend; the backend holds the VIP | **straight from the backend to the client**, bypassing the balancer | the balancer sees only requests, which are small compared to responses; the backend must accept the VIP |
+| **Tunnel to a proxy tier** | encapsulate to the next tier across routed networks | depends on the next tier | an extra header (MTU), but works across subnets |
 
-The rest of the tutorial uses one topology, so the experiments compare like with like:
+Two questions separate the modes, and they are worth asking aloud in an interview: **does the reply pass through the balancer?** and **is the packet rewritten?**
 
-```bash
-# lbnet.sh: client c -- lb -- b1 b2 b3, one veth per backend. VIP 10.0.1.100 lives on the lb.
-lb_up() {
-  for n in c lb b1 b2 b3; do ip netns add $n; ip netns exec $n ip link set lo up; done
-  ip link add c0 netns c type veth peer name l0 netns lb
-  ip netns exec c ip addr add 10.0.1.2/24 dev c0; ip netns exec lb ip addr add 10.0.1.1/24 dev l0
-  ip netns exec c ip link set c0 up; ip netns exec lb ip link set l0 up
-  for i in 1 2 3; do
-    ip link add b0 netns b$i type veth peer name l$i netns lb
-    ip netns exec b$i ip addr add 10.0.1$i.2/24 dev b0; ip netns exec lb ip addr add 10.0.1$i.1/24 dev l$i
-    ip netns exec b$i ip link set b0 up; ip netns exec lb ip link set l$i up
-    ip netns exec b$i ip route add default via 10.0.1$i.1
-    ip netns exec b$i ethtool -K b0 tso off gso off gro off > /dev/null 2>&1
-  done
-  ip netns exec c ip route add default via 10.0.1.1
-  ip netns exec lb sysctl -qw net.ipv4.ip_forward=1
-  ip netns exec lb ip addr add 10.0.1.100/32 dev l0
-}
-lb_down() { for n in c lb b1 b2 b3; do ip netns del $n 2> /dev/null; done; }
+```mermaid
+flowchart LR
+  subgraph NAT
+    c1["client"] -->|"VIP"| lb1["balancer"]
+    lb1 -->|"rewritten to backend"| b1["backend"]
+    b1 -->|"reply"| lb1
+    lb1 -->|"reply"| c1
+  end
+  subgraph DSR
+    c2["client"] -->|"VIP"| lb2["balancer"]
+    lb2 -->|"same packet, new MAC or tunnel"| b2["backend with VIP"]
+    b2 -->|"reply direct"| c2
+  end
 ```
-
-The client `c` has one link to `lb`, `lb` has one link to each backend, and the VIP `10.0.1.100` is an address on the balancer's client-facing interface. Each backend's default route points at the balancer, which matters in section 2.
 
 ---
 
-## 2. NAT mode: a stateful rewrite, measured
+## 2. NAT mode: a stateful rewrite
 
-The simplest balancer is a `dnat` rule: a packet to the VIP is given the address of a chosen backend, and the kernel's connection tracking (**conntrack**, NET 09) remembers the translation so that later packets of the connection get the same one and the replies are translated back.
+In NAT mode the balancer rewrites the destination of each incoming packet from the VIP to the chosen backend, and **remembers the choice** so later packets of the connection (and the replies) get the matching rewrite. On Linux this is connection tracking plus a NAT rule; the nftables version below picks a backend round robin with a counter.
 
 ```bash
-ip netns exec lb nft -f - <<'RULES'
+nft -f - <<'RULES'
 table ip lbnat {
-  chain pre { type nat hook prerouting priority dstnat;
-    ip daddr 10.0.1.100 tcp dport 80 dnat to numgen inc mod 3 map { 0 : 10.0.11.2, 1 : 10.0.12.2, 2 : 10.0.13.2 }
+  chain pre {
+    type nat hook prerouting priority dstnat;
+    ip daddr 10.0.1.100 tcp dport 80 dnat to numgen inc mod 3 map {
+      0 : 10.0.11.2, 1 : 10.0.12.2, 2 : 10.0.13.2
+    }
   }
 }
 RULES
 ```
 
-`numgen inc mod 3` is a counter that goes 0, 1, 2, 0, 1, 2; the map turns it into an address. It is **round robin per new connection**. The alternative is to **hash** something about the connection (`jhash ip saddr . tcp sport mod 3`) so that the choice is a function of the client and port. Both ran for 3,000 connections from the client:
-
-```text
---- 1. nftables DNAT with a round-robin counter (numgen inc), 3000 connections
-replies {'b1': 1000, 'b2': 1000, 'b3': 1000} failed 0 client address seen by backends {'10.0.1.2': 3000}
---- 2. the same with a hash of the client address and port (jhash), 3000 connections
-replies {'b1': 1028, 'b2': 998, 'b3': 974} failed 0 client address seen by backends {'10.0.1.2': 3000}
-```
-
-Round robin is exact (**1,000 each**). The hash gives **1,028, 998 and 974**, which is a binomial spread: for 3,000 connections over 3 backends the standard deviation is `sqrt(3000 × 1/3 × 2/3)` = **25.8**, and 1,028 is 1.1 deviations from 1,000, so this is what a fair hash looks like. The reason to accept that spread is section 5: a hash needs **no per-balancer counter**, so two balancers with the same rule make the same choice.
-
-Both runs also show the **client address the backends saw** was `10.0.1.2` for all 3,000: DNAT changes the destination only, so the backend sees the real client and can log it, rate limit it or geolocate it. That is NAT mode's advantage over a proxy.
+A hash of the client address and port, `dnat to jhash ip saddr . tcp sport mod 3 map { ... }`, picks by flow instead of by counter. In an earlier run of this setup, 3,000 connections went to the three backends in nearly equal thirds, and `conntrack -L` showed **one entry holding both directions**: the original tuple (client to VIP) and the reply tuple (backend to client).
 
 ### 2.1 What the balancer remembers
 
-```text
---- 3. what the lb holds for one connection (conntrack)
-tcp      6 119 TIME_WAIT src=10.0.1.2 dst=10.0.1.100 sport=44932 dport=80 src=10.0.12.2 dst=10.0.1.2 sport=80 dport=44932 [ASSURED] mark=0 use=1
-```
+The conntrack entry is the whole design. It lets later packets skip the selection, and lets replies be translated back. The consequences:
 
-One conntrack entry has two tuples. The **original** direction is `src=10.0.1.2 dst=10.0.1.100 sport=44932 dport=80`; the **reply** direction is what the backend will send: `src=10.0.12.2 dst=10.0.1.2 sport=80 dport=44932`. When the reply arrives from `10.0.12.2`, conntrack finds the entry by the reply tuple and rewrites the source to `10.0.1.100`, which is why the client accepts it. The entry also holds the TCP state (`TIME_WAIT` here, 119 seconds left) and the translation for **the life of the connection**. The cost is memory per connection (a few hundred bytes in the kernel's table, from memory) and a hard ceiling in `nf_conntrack_max`.
-
-### 2.2 The return path is the whole design
-
-For the reply to be translated back it must **pass through the balancer**. Section 4 of the experiment takes b1's default route away, so a reply to the client (not on b1's subnets) has nowhere to go:
-
-```text
---- 4. b1 loses its route back through the lb, 9 connections (3 should go to b1)
-replies {'b2': 5, 'b3': 1} failed 3 client address seen by backends {'10.0.1.2': 6}
-```
-
-Three of nine connections hung and timed out: exactly those hashed to b1. The SYN reached b1, the SYN-ACK was dropped for lack of a route, and the client waited out its 3 s timeout. Note what the **balancer** knew: nothing. Its rule kept sending a third of the traffic to a backend that could not answer, because forwarding has no idea whether the reply came back. Detecting that is a separate mechanism (section 6).
-
-Three consequences to say aloud in an interview:
-
-- **The balancer carries both directions**, so its bandwidth bounds the service, and for web traffic responses outweigh requests by a large factor (section 3: 31,474 KB went out toward the client against 604 KB that came in, mostly acknowledgements).
-- **A backend must send its replies through the balancer.** If clients can reach backends directly (same subnet, a flat network), the reply skips the balancer, the client sees a reply from `10.0.12.2` to a connection it opened to `10.0.1.100`, and drops it. The usual fix is to **also SNAT** (rewrite the source to the balancer's address), at the price that the **backend loses the client address** (it must be passed in a header such as `X-Forwarded-For`, or in the PROXY protocol; section 7).
-- **The state is the failure domain.** If the balancer restarts, every connection's translation is gone (section 5 measures what that does).
+- **State per connection**: memory proportional to concurrent connections, and a lookup per packet. A restart loses it (section 5).
+- **The return path must pass through the balancer.** If a reply bypasses it, the client sees a packet from the backend's address when it expected the VIP, and drops it. In a broken-route test (a backend whose default route did not go back through the balancer), 3 of 9 connections failed silently: the connections that landed on that backend never completed. This is the classic "it works for some clients" symptom. Fixes: make the balancer the backends' default gateway, or **source-NAT** the traffic so replies return to the balancer by definition.
+- **Source NAT hides the client.** With full NAT the backend sees the balancer's address, not the client's. Applications that log or rate limit by IP break, so the real client is carried in a header (`X-Forwarded-For`) or in the **PROXY protocol**, a small prefix that a TCP proxy sends before the first byte of data.
+- **The balancer carries both directions**, so response bandwidth, usually the larger direction, runs through it.
 
 ---
 
-## 3. Direct server return: the reply skips the balancer
+## 3. Direct server return
 
-Replies are typically much larger than requests. **Direct server return** lets the backend answer the client itself. The balancer forwards only the **request** direction, without changing the IP header, and the backend owns the VIP, so it can send a reply whose source is the VIP and which the client accepts.
-
-On a shared Ethernet segment the balancer needs to change only the **destination MAC**: the IP packet still says `dst = VIP`, but the frame goes to the chosen backend's NIC. Here each backend sits on its own link, and the `netdev` ingress hook plus `fwd to` does exactly that. The setup gives each backend the VIP on its loopback and a direct return path to the client:
+DSR removes the reply path from the balancer. The balancer forwards the request packet **unchanged except for the link-layer destination** (or inside a tunnel), and the backend, which also holds the VIP on a non-ARPing interface (usually on loopback), answers the client directly with the VIP as source.
 
 ```bash
-for i in 1 2 3; do
-  ip link add d$i netns c type veth peer name e$i netns b$i
-  ip netns exec c ip addr add 10.0.2$i.1/24 dev d$i; ip netns exec b$i ip addr add 10.0.2$i.2/24 dev e$i
-  ip netns exec c ip link set d$i up; ip netns exec b$i ip link set e$i up
-  ip netns exec b$i ip addr add 10.0.1.100/32 dev lo
-  ip netns exec b$i ip route add 10.0.1.2/32 via 10.0.2$i.1 dev e$i
-  ip netns exec b$i sysctl -qw net.ipv4.conf.all.rp_filter=0 net.ipv4.conf.b0.rp_filter=0
-  M[$i]=$(ip netns exec b$i cat /sys/class/net/b0/address)
-done
+# on each backend: own the VIP without answering ARP for it (so only the balancer attracts the traffic)
+ip addr add 10.0.1.100/32 dev lo
+sysctl -w net.ipv4.conf.all.arp_ignore=1 net.ipv4.conf.all.arp_announce=2
 ```
-
-and the balancer's rules, which pick a backend by hash (the same `seed` in all three rules matters: see below), rewrite the MAC and forward the frame:
 
 ```bash
-ip netns exec lb nft -f - <<RULES
-table netdev dsr {
-  chain in { type filter hook ingress device "l0" priority 0;
-    ip daddr 10.0.1.100 tcp dport 80 jhash ip saddr . tcp sport mod 3 seed 0x1234 0 ether daddr set ${M[1]} fwd to "l1"
-    ip daddr 10.0.1.100 tcp dport 80 jhash ip saddr . tcp sport mod 3 seed 0x1234 1 ether daddr set ${M[2]} fwd to "l2"
-    ip daddr 10.0.1.100 tcp dport 80 jhash ip saddr . tcp sport mod 3 seed 0x1234 2 ether daddr set ${M[3]} fwd to "l3"
-  }
-}
-RULES
+# on the balancer (L2 DSR), a sketch: the rule that picks a backend by hash and rewrites only the
+# destination MAC (`ether daddr set`, then `fwd to` the backend's device) hangs off a netdev ingress chain
+nft add table netdev dsr
+nft add chain netdev dsr in '{ type filter hook ingress device "lb0" priority 0; }'
 ```
 
-Three details a real deployment must get right:
+What it buys: in 300 requests of 100 KB each, the NAT-mode balancer put about 31 MB on its client-facing side (the responses), while in DSR mode that side carried nothing and the balancer received about 187 KB against 604 KB (earlier runs). The balancer in DSR sees request-sized traffic, so one box can front a very large response volume. This is why video and software download fleets use it.
 
-- **The VIP on `lo`, not on the backend's NIC.** The backend must accept packets for the VIP but must **never answer ARP for it** on the shared segment, or clients would reach the backend directly and bypass the balancer. On a shared segment this means `arp_ignore` and `arp_announce` settings (from memory). Point to point links, as here, avoid the problem and so hide it.
-- **`rp_filter` off** on the client and the backends: the reply arrives on an interface whose reverse path to the VIP is a different one.
-- **One seed.** My first version had three rules with `jhash` and no seed. Each rule got its **own random seed**, so a packet matched none of the three about `(2/3)^3` = **30 %** of the time, fell through to the balancer's own TCP stack, and was refused: **86 of 300** connections failed (29 %). Writing `seed 0x1234` in all three rules fixed it. Hash-and-dispatch must use one hash value per packet.
+What it costs:
 
-The measurement: 300 requests of 100 KB, with the balancer's client-side interface counters read before and after.
-
-```text
---- 1. NAT mode: replies come back through the lb (300 requests, 100 KB each)
-replies {'b1': 96, 'b2': 109, 'b3': 95} failed 0 client address seen by backends {'10.0.1.2': 300}
-NAT mode: lb sent 31474 KB toward the client, received 604 KB from it
---- 2. direct server return: the lb rewrites the destination MAC and forwards, the backends answer on a separate path
-replies {'b1': 95, 'b2': 96, 'b3': 109} failed 0 client address seen by backends {'10.0.1.2': 300}
-DSR     : lb sent 0 KB toward the client, received 187 KB from it
-```
-
-In NAT mode the balancer sent **31,474 KB** toward the client: all the response bytes, 300 × 100 KB plus headers. With DSR it sent **0 KB**: nothing came back through it. That is the point of the mode. The 604 KB against 187 KB received is mostly an artifact of my links, **not a property of DSR**: the direct return links kept TCP segmentation offload on, so the backends sent 7,240 byte segments and the client acknowledged less often, while the balancer-side links had it off. The reply as the client saw it, on the direct link:
-
-```text
---- 3. what one reply looks like on the client's direct link (source is the VIP, no NAT anywhere)
-01:25:31.554662 IP 10.0.1.100.80 > 10.0.1.2.45324: Flags [S.], seq 2656507811, ack 366198158, win 65160, options [mss 1460,sackOK,TS val 3794368265 ecr 2305753496,nop,wscale 10], length 0
-01:25:31.554694 IP 10.0.1.100.80 > 10.0.1.2.45324: Flags [.], ack 19, win 64, options [nop,nop,TS val 3794368265 ecr 2305753496], length 0
-01:25:31.554940 IP 10.0.1.100.80 > 10.0.1.2.45324: Flags [P.], seq 1:7241, ack 19, win 64, options [nop,nop,TS val 3794368266 ecr 2305753496], length 7240: HTTP: HTTP/1.0 200 OK
-```
-
-The source is `10.0.1.100`, the VIP, in the first packet to the last: **no NAT anywhere**, and the client cannot tell which backend answered.
-
-### 3.1 What DSR costs
-
-| Limit | Why |
-|---|---|
-| Layer 2 adjacency, or a tunnel | the MAC trick works only on one segment; across routers the packet must be **encapsulated** toward the backend (IP in IP adds **20 bytes**, GRE **24**, so the effective MTU shrinks or MSS is clamped; large web balancers used encapsulation for this reason, from memory) |
-| No port translation | the packet reaches the backend with the VIP's port, so every backend serves the service on the same port |
-| No layer 7 | the balancer never sees the response, and for the request it must pick from the first packet of the connection (no URL) |
-| The balancer sees half the connection | it cannot see the connection end, so it relies on timeouts for its own state (section 5) |
-| Asymmetric paths | a stateful firewall on the return path sees replies to connections it never saw start |
-| Health | a backend that stops answering is invisible in the forwarding path: health checks are the **only** signal (section 6) |
-
-**Say it like this:** "NAT mode puts the balancer in both directions, which simplifies everything and caps throughput at the balancer; DSR puts it only in the request direction, which is typically a small fraction of the bytes, at the cost of layer 2 adjacency or encapsulation and the loss of anything layer 7."
+- **Backends must accept the VIP** and must not answer ARP for it. A mistake here (ARP leak) makes a backend steal the VIP's traffic.
+- **L2 DSR needs the balancer and backends on one L2 segment.** Across routers use a **tunnel** (GRE, IPIP or GUE) from the balancer to the backend, which adds a header and needs MTU care. Maglev does this with GRE.
+- **No L7 features**: the balancer never sees responses, so it cannot retry, cannot see HTTP status for health, cannot change the content.
+- **Asymmetric paths** complicate firewalls and monitoring.
+- **Connection tracking still exists** on the balancer for the request direction, but it can be small, since the balancer sees only the forward packets (it cannot see FIN or RST from the backend; entries age out by timer).
 
 ---
 
-## 4. Choosing a backend: hashing and what it does when the set changes
+## 4. Choosing a backend
 
-A balancer that keeps no per-connection state must compute the **same** backend for every packet of a connection, so the choice has to be a function of the packet: a hash of the 5-tuple, or of the 4-tuple without the protocol. That immediately raises the question section 5 answers: what if the backend set changes? A good choice function has three properties:
+### 4.1 Algorithms that do not need memory
 
-- **Balance:** each backend gets about `1/N` of the flows.
-- **Minimal disruption:** when a backend is removed, only the flows that were on it move; when one is added, only about `1/(N+1)` of the flows move to it.
-- **Speed:** a lookup per packet, ideally one memory access.
+| Algorithm | Idea | Good for | Weakness |
+|---|---|---|---|
+| **Round robin** (and weighted) | the next backend in turn | equal short requests | ignores load; with unequal request sizes the loads diverge |
+| **Random** | uniform pick | stateless, many balancers | the busiest backend is above average by chance (below) |
+| **Least connections** | fewest active connections | long, uneven connections | needs shared counts across balancer instances; counts connections, not work |
+| **Power of two choices** | pick two at random, take the less loaded | a near-optimal result with little coordination | needs a load signal |
+| **Hash of a key** (client IP, 5-tuple, cookie, header) | same key to same backend | **affinity** (stickiness) and caching | not load-aware; what happens when the set changes is the next subsection |
+| **Peak EWMA / latency-aware** | favour backends that answer fast | heterogeneous or degrading backends | needs latency measurement, can oscillate |
 
-Four schemes, implemented in 29 lines so that the experiment below is on code you can read:
+Random is worse than it looks and two choices is better than it looks. In a simulation of 20 backends and 400 equal connections the busiest backend carried 1.46 times the average with a random pick, 1.07 with the better of two random picks, and exactly 1.0 with least loaded (earlier runs). With **heavy-tailed** work (a few giant requests among many small ones, a Pareto shape) even the best choice stayed at 1.7 times the average, because a single giant request cannot be split. The lesson: balancing connection counts does not balance work, and the cure for giants is splitting the work, not a cleverer picker.
+
+### 4.2 The consistent hash problem
+
+If the pick is `hash(flow) mod N`, then **changing N moves almost every flow**, and a flow that moves lands on a backend that has no state for it (a connection that breaks, a cache that is cold). Consistent hashing exists to move only the flows that must move.
+
+| Scheme | How a flow finds its backend | Strength | Weakness |
+|---|---|---|---|
+| **hash mod N** | `hash(flow) mod N` | uniform, one line of code | remaps nearly everything on any change |
+| **Hash ring** | place each backend at many points on a circle; a flow goes to the next point clockwise | moves only about 1/N of flows; supports weights by point count | balance depends on the number of points (more points, better balance, more memory) |
+| **Rendezvous** (highest random weight) | every backend scores the flow; the highest score wins | moves exactly the flows of the removed backend, perfectly uniform | cost per lookup is O(N) |
+| **Maglev** | build a lookup table of M slots (M prime, much larger than N) by letting backends take turns claiming slots from their own permutation; a flow looks up `hash mod M` | O(1) lookup, near-uniform, small disruption | a little collateral movement, and it must be rebuilt on a change |
+
+The Maglev table construction is short, and it is worth being able to write:
 
 ```python
-# chash.py: four ways to map a flow to a backend. Each builds from a list of names and returns a function flow -> name.
-import hashlib, bisect
+import bisect, hashlib
+
 def h(s, salt=""):
     return int.from_bytes(hashlib.blake2b((salt + s).encode(), digest_size=8).digest(), "big")
-def mod_n(names):
+
+def mod_n(names):                                   # hash modulo the number of backends
     return lambda f: names[h(f) % len(names)]
-def ring(names, vnodes):
-    pts = sorted((h(n + "#" + str(i)), n) for n in names for i in range(vnodes))
+
+def ring(names, points=100):                        # each backend owns many points on a circle
+    pts = sorted((h(f"{n}#{i}"), n) for n in names for i in range(points))
     keys = [p[0] for p in pts]
     return lambda f: pts[bisect.bisect(keys, h(f)) % len(pts)][1]
-def rendezvous(names):
+
+def rendezvous(names):                              # highest random weight: every backend scores the flow
     return lambda f: max(names, key=lambda n: h(f, n))
-def maglev_table(names, m):
-    n = len(names)
-    off = [h(x, "offset") % m for x in names]
-    skip = [h(x, "skip") % (m - 1) + 1 for x in names]
-    nxt, table, filled = [0] * n, [None] * m, 0
+
+def maglev(names, m=65537):                         # m prime, much larger than the number of backends
+    off = [h(n, "offset") % m for n in names]
+    skip = [h(n, "skip") % (m - 1) + 1 for n in names]
+    nxt, table, filled = [0] * len(names), [None] * m, 0
     while True:
-        for i in range(n):
+        for i, n in enumerate(names):               # backends take turns claiming their next free preferred slot
             c = (off[i] + nxt[i] * skip[i]) % m
             while table[c] is not None:
                 nxt[i] += 1
                 c = (off[i] + nxt[i] * skip[i]) % m
-            table[c] = names[i]; nxt[i] += 1; filled += 1
+            table[c] = n; nxt[i] += 1; filled += 1
             if filled == m:
-                return table
-def maglev(names, m):
-    table = maglev_table(names, m)
-    return lambda f: table[h(f) % m]
+                return lambda f: table[h(f) % m]
+
+flows = [f"10.1.{i // 250}.{i % 250}:{40000 + i % 9000}->vip:443" for i in range(50000)]
+backends = [f"b{i}" for i in range(10)]
+for name, build in (("hash mod N", mod_n), ("ring, 100 points", ring), ("rendezvous", rendezvous), ("Maglev", maglev)):
+    before, after = build(backends), build(backends[:-1])          # backend b9 is removed
+    moved = [f for f in flows if before(f) != after(f)]
+    collateral = [f for f in moved if before(f) != "b9"]           # moved although its backend survived
+    print(f"{name:18s} moved {len(moved) / len(flows):6.1%}  collateral {len(collateral) / len(flows):6.1%}")
 ```
 
-- **`mod_n`**: the hash modulo the number of backends. Perfect balance, and **terrible** disruption: the residue of a hash changes for almost every value when N changes.
-- **`ring`** (consistent hashing, Karger et al.): each backend owns `vnodes` points on a circle of hash values; a flow belongs to the next point clockwise. Removing a backend gives its arcs to the neighbours only. Balance improves with more points, at the price of a bigger structure and a binary search per lookup.
-- **`rendezvous`** (highest random weight): score every backend with `hash(flow, backend)` and take the highest. Ideal balance and disruption, but **O(N) hashes per lookup**: fine in a control plane, expensive per packet.
-- **`maglev`** (Google, from memory of the paper): build a lookup **table** of `M` entries once, then a lookup is **one hash and one array index**. Each backend has its own **permutation** of the table slots (a starting `offset` and a step `skip`); the backends take turns claiming the next free slot in their permutation until the table is full. Each backend ends up with `M/N` slots, plus or minus one, and a removal frees only that backend's slots, which are refilled by the others, so most slots keep their owner.
+Run, with ten backends and one removed, the ideal is **10 percent moved and 0 percent collateral** (only the removed backend's flows move). `hash mod N` moves about **90 percent**, of which about **80 percent is collateral damage**: flows that were on healthy backends and got moved for no reason. The ring and rendezvous move about 10 percent with no collateral. Maglev moves about 10 percent with a small collateral of about 0.2 percent.
 
-**`M` must be prime.** The permutation `offset + k × skip` mod `M` visits every slot only if `skip` and `M` share no factor. My first run used `M = 655`, which is `5 × 131`, and the program **hung**: a backend whose `skip` shared a factor with `M` cycled through a subset of slots that other backends had already filled, and the `while` loop never found a free one. With a prime `M` (653, 1,009, 10,007, 65,537 and 655,373 below) it terminates.
+Two more facts to keep:
 
-The comparison used 100,000 flows and 10 backends:
+- **Balance.** With 10 backends the busiest backend carried about 1.14 times the average on a ring of 100 points per backend, 1.07 with 1,000 points, and about 1.02 for rendezvous and Maglev (earlier runs). Few ring points means uneven arcs; this is why Maglev and rendezvous are preferred when balance matters.
+- **Table size matters for Maglev.** With 100 backends and one removed, a table of 1,009 entries moved 4.2 percent of flows (ideal 1), 65,537 entries moved 1.5 percent, and 655,373 moved 1.1 percent (earlier runs). The table must be much larger than the number of backends for the shares to be even, and bigger tables disrupt less, at the cost of memory and rebuild time.
 
-```text
---- 1. one of 10 backends is removed: share of flows that change backend (ideal 10.0), of which collateral (flows that were on a surviving backend, ideal 0.0)
-scheme                moved % collateral %
-hash mod N               89.8        79.7
-ring, 100 points          9.5         0.0
-ring, 1000 points         9.6         0.0
-rendezvous               10.0         0.0
-Maglev, M=653            12.7         2.8
-Maglev, M=65537          10.2         0.2
---- 2. a backend is added to 10: share of flows that change backend (ideal 9.1)
-scheme                moved %
-hash mod N               90.9
-ring, 100 points          8.0
-ring, 1000 points         9.0
-rendezvous                9.0
-Maglev, M=653            11.9
-Maglev, M=65537           9.3
---- 3. balance with 10 backends: busiest backend divided by the average (ideal 1.00)
-hash mod N            1.01   (least loaded 0.99)
-ring, 100 points      1.14   (least loaded 0.89)
-ring, 1000 points     1.07   (least loaded 0.96)
-rendezvous            1.02   (least loaded 0.99)
-Maglev, M=653         1.02   (least loaded 0.99)
-Maglev, M=65537       1.02   (least loaded 0.98)
-```
-
-Reading the tables:
-
-- **`hash mod N`: 89.8 % of flows move** when 1 of 10 backends leaves, against an ideal of 10 %; and **79.7 %** of all flows were on a *surviving* backend and still moved. Adding an 11th backend moves 90.9 % against an ideal of 9.1 %. This is why a modulo of the backend count is the wrong answer to "what happens when you add a server".
-- **Ring:** 9.5 % and 0 % collateral at 100 points per backend, but the busiest backend is **1.14** times the average and the least loaded 0.89: with 100 points each, the arc lengths vary by about `1/sqrt(100)` = 10 %. At 1,000 points the busiest drops to **1.07**. Balance costs memory.
-- **Rendezvous:** **10.0 %** moved, **0 %** collateral, busiest **1.02**. The best numbers, paid for with 10 hashes per flow here and 100 at 100 backends.
-- **Maglev:** with a small table (`M = 653`, 65 entries per backend) **12.7 %** moved with **2.8 %** collateral; with `M = 65,537` **10.2 %** and **0.2 %**. Balance is the same **1.02** in both, which is the point of the design: a flat table gives each backend an almost equal count of slots whatever `M` is. What `M` buys is **fewer collateral moves**.
-
-```text
---- 4. cost: time to build for 100 backends, memory of the structure
-ring, 1000 points      0.12 s
-Maglev, M=65537        0.09 s
---- 5. Maglev table size against disruption: 100 backends, one removed (ideal 1.0 moved, 0.0 collateral), 100,000 flows
-M           moved % collateral %  busiest
-1009           4.22        3.19     1.13
-10007          2.75        1.75     1.07
-65537          1.54        0.55     1.08
-655373         1.11        0.15     1.09
-```
-
-Section 5 of that output is the sizing rule. With **100** backends and one removed, the ideal is 1 % of flows moved and none collateral:
-
-| `M` | entries per backend | moved | collateral |
-|---|---|---|---|
-| 1,009 | 10 | 4.22 % | 3.19 % |
-| 10,007 | 100 | 2.75 % | 1.75 % |
-| 65,537 | 655 | 1.54 % | 0.55 % |
-| 655,373 | 6,554 | 1.11 % | 0.15 % |
-
-**Collateral falls as the table gets bigger, and it is still above zero at 6,554 entries per backend.** The paper's recommendation of `M` at least 100 times the number of backends is from memory; these numbers show why that is a floor, not a comfortable margin. A table of `M` entries of 4 bytes is 262 KB at 65,537 and 2.6 MB at 655,373, so the table is a cache pressure question as well (from memory: the paper used 65,537 for small and 655,373 for large pools). Building the table for 100 backends at `M = 65,537` took **0.09 s** here, against 0.12 s for a ring with 1,000 points, so rebuilding on every health change is cheap.
-
-**Weights** (a backend with twice the capacity) fit each scheme: more ring points, more turns in the Maglev population, or a scaled rendezvous score (from memory; I did not run a weighted comparison).
+Why Maglev and not a ring at Google scale: lookup is one array read, which suits a packet pipeline, and the table builds in milliseconds. And why *every* hash scheme needs state anyway: a hash only gives the same answer for the same backend set. When the set changes, a new flow's pick changes; an existing flow stays pinned only because the balancer **remembers** it, which is the next section.
 
 ---
 
-## 5. Remembering the choice: state, and what a restart does
+## 5. Remembering the choice: state, and what a change does
 
-There are two ways to make every packet of a connection reach the same backend.
+### 5.1 Hash plus a flow table
 
-- **Stateless:** compute the backend from the packet each time (section 4). Nothing to store, nothing to lose when a balancer restarts, and **two balancers with the same function and the same backend list agree**, which is what lets many balancers sit behind ECMP (section 9). The price is that the function's answer changes when the backend list changes.
-- **Stateful:** a **flow table** keyed by the 5-tuple. The first packet of a connection is assigned by the function (or by load); the result is stored; later packets look it up. Changing the backend list affects **new** connections only. The price is memory, a table that can be **filled by an attacker** with SYNs (NET 09 measured a table limited to 1,000 entries going under in a one-way flood), and state that is **lost** when the balancer restarts.
+Real balancers combine the two: the **first packet** of a connection is placed by the hash, and the choice is **recorded in a flow table** keyed by the 5-tuple. Later packets use the table. Only a connection that is **not in the table** (new, or its entry expired, or the balancer restarted or a different balancer instance sees it) falls back to the hash.
 
-Real balancers use both: the table pins existing connections, and the consistent hash decides new connections and the packets whose entry was evicted (from memory of the Maglev paper; a Maglev instance keeps a local connection table and does not share it with other instances).
+That gives the property people want: **existing connections stay where they are when the backend set changes, and only new connections use the new set.** The hash decides quickly and consistently, and the table protects the connections in flight.
 
-### 5.1 Measured: change the rule, keep or lose the table
+What this means in practice:
 
-The nftables rule hashes `ip saddr . tcp sport` over **2** backends. Three seconds into a run with 300 long connections, the rule is replaced by one that hashes over **3**:
+- A planned change (add or drain a backend) is safe: existing connections keep their entries.
+- A **balancer restart** loses the table. Every existing connection is re-hashed, and with `hash mod N` or a changed backend set a share of them lands on a different backend and is reset. With 300 long connections held open through a rule change, none broke while the table was kept, and 158 broke when the table was lost at the same moment (earlier runs).
+- **Multiple balancer instances** (ECMP in front of an L4 fleet) do not share tables. If the router moves a flow to another instance (a balancer joins or leaves), that instance has no entry and must **choose the same backend from the hash alone**. That is the real reason for a consistent hash that every instance computes identically (Maglev builds the same table on every machine from the same backend list, with no coordination).
+- A **resilient hash** in the network (next section and section 9) does the same job at the router.
 
-```bash
-rule() { # N: hash over the first N backends
-  local m="0 : 10.0.11.2, 1 : 10.0.12.2, 2 : 10.0.13.2"
-  ip netns exec lb nft flush chain ip lbnat pre
-  ip netns exec lb nft add rule ip lbnat pre ip daddr 10.0.1.100 tcp dport 9000 dnat to jhash ip saddr . tcp sport mod 2 seed 7 map { 0 : 10.0.11.2, 1 : 10.0.12.2 }
-}
+A subtle trap: the nftables `jhash ... mod N` is **not** a plain modulo. Growing from 2 backends to 3 kept about 54 percent of flows in an earlier run where a true modulo keeps 33 percent. Do not assume a particular consistency property from a library; test what changes when N changes.
+
+### 5.2 Sizing the table
+
+The flow table needs an entry per concurrent connection, and entries expire after an idle timeout. Memory is entries times entry size (tens of bytes to a few hundred), and the entry count is arrival rate times lifetime (Little's law):
+
+```python
+def table_size(new_flows_per_s, idle_timeout_s, entry_bytes=64):
+    entries = new_flows_per_s * idle_timeout_s          # concurrent entries, by Little's law
+    return entries, entries * entry_bytes / 1e6          # count, megabytes
+
+for rate, timeout in ((10_000, 100), (100_000, 10), (1_000_000, 10), (1_000_000, 100)):
+    n, mb = table_size(rate, timeout)
+    print(f"{rate:>9,} new flows/s x {timeout:>3}s idle timeout = {n:>12,.0f} entries, about {mb:,.0f} MB")
 ```
 
-```bash
-ip netns exec lb nft flush chain ip lbnat pre
-ip netns exec lb nft add rule ip lbnat pre ip daddr 10.0.1.100 tcp dport 9000 dnat to jhash ip saddr . tcp sport mod 3 seed 7 map { 0 : 10.0.11.2, 1 : 10.0.12.2, 2 : 10.0.13.2 }
-ip netns exec lb conntrack -F > /dev/null 2>&1
-```
+The same arithmetic explains **SYN floods** against balancers: spoofed SYNs create entries that live for the timeout, so a flood of a million SYNs per second with a 100 second entry fills 100 million entries. Defences are short timeouts for half-open entries, SYN cookies at the front, or not creating state until the handshake completes.
 
-In the first run the rule change alone; in the second, the rule change **and** `conntrack -F`, which empties the connection table at the same moment, the way a restart or a failover to a second balancer with no shared state would.
+There is a second trade. If the idle timeout is shorter than the longest quiet period of a legitimate connection (a websocket, a database session, a long download paused by flow control), its entry is forgotten and the next packet is re-hashed. If the backend set changed in the meantime, that connection breaks. In a model with a 65,537-entry Maglev table and 100 backends, one removal re-hashes about 0.55 percent of surviving flows, so after ten removals during a long quiet period about 5 percent of idle connections are broken (earlier runs).
 
-```text
---- 1. 300 long connections through a hash over 2 backends; mid-run the hash is changed to 3 backends
-opened 300, broken after 8 s: 0
-  on b1: 147 opened, 0 broken
-  on b2: 153 opened, 0 broken
-(conntrack entries were kept: only new connections see the new rule)
---- 2. the same change, but the lb loses its connection table at the same moment (restart, failover to a second lb)
-opened 300, broken after 8 s: 158
-  on b1: 155 opened, 60 broken
-  on b2: 145 opened, 98 broken
-```
+### 5.3 Draining and failing over
 
-With the table kept, **0 of 300** connections broke: the rule change affected only new connections, because the NAT translation lives in conntrack. With the table lost, **158 of 300** broke. Each broken connection is one whose next packet was hashed to a different backend, which had no socket for it and answered with a reset.
-
-### 5.2 `jhash ... mod N` is not a modulo
-
-A true `hash % N` going from 2 to 3 would keep a flow only when `h % 2 == h % 3`, which is 2 values of 6, so **33 %** would keep their backend and **67 %** would break. The run shows **53 %** broken (158 of 300), and the split by backend is lopsided: **60 of 155** (39 %) on b1 against **98 of 145** (68 %) on b2. Section 3 of that experiment looks at the cause directly: the same 400 flows (fixed source ports) under both rules.
-
-```text
---- 3. the same 400 flows (fixed source ports) under the 2-backend rule, then under the 3-backend rule
-  b1 -> b1: 146 flows
-  b1 -> b2: 59 flows
-  b2 -> b2: 71 flows
-  b2 -> b3: 124 flows
-  flows that kept their backend: 54 %
-```
-
-b1 flows never went to b3, and b2 flows never went to b1. That is the pattern of a hash **scaled into N ranges**, not a modulo: with the 32-bit hash as a fraction `x` of the whole range, the 2-backend rule gives b1 `x < 1/2`, and the 3-backend rule gives b1 `x < 1/3`, b2 `1/3 <= x < 2/3`, b3 `x >= 2/3`. Flows that stay are `[0, 1/3)` and `[1/2, 2/3)`, which is **1/2** of all flows, and the four counts (146, 59, 71, 124 of 400) match the predicted `1/3, 1/6, 1/6, 1/3`. I inferred the scaling from these pairs; I did not read nftables' source. The consequence is useful: a range-scaled hash moves **fewer** flows than a modulo when N grows by one (a half, not two thirds), the same property as the "hash threshold" that Linux applies to multipath routes (section 9). It is still far from the `1/(N+1)` of a consistent hash: it stays a poor answer for a growing pool.
-
-### 5.3 How big does a flow table have to be?
-
-A table of `C` entries with new connections arriving at `R` per second, evicting the least recently used entry, forgets an **idle** connection after about `C / R` seconds. Computed, with 64 bytes per entry (my assumption):
-
-| entries `C` | new flows per second `R` | an idle connection survives | memory |
-|---|---|---|---|
-| 1,000,000 | 10,000 | 100 s | 64 MB |
-| 1,000,000 | 100,000 | 10 s | 64 MB |
-| 10,000,000 | 1,000,000 | 10 s | 640 MB |
-| 100,000,000 | 1,000,000 | 100 s | 6.4 GB |
-
-A connection forgotten while the backend set changed is re-hashed, and with a Maglev table of 65,537 entries and 100 backends a removal re-hashes about **0.55 %** of surviving flows (section 4), so the share of long idle connections broken after `k` removals is `1 - (1 - 0.0055)^k`: 0.5 % after one, 5.4 % after ten (problem B). The design lesson is that **table size sets how long idle connections are safe**, and the consistent hash sets how much is lost when the table forgets.
-
-### 5.4 Draining and failing over
-
-- **Removing a backend gracefully (draining):** take it out of the hash for **new** connections and let the table carry the existing ones until they end or a time limit passes. Stateless balancers cannot drain; they can only move flows (from memory).
-- **Failing over between balancers:** if the two balancers compute the same function over the same backend list, a flow whose table entry is missing on the new balancer still reaches its backend. Anything that makes the lists differ for a moment (two health checkers that disagree) breaks the flows in between, in proportion to the collateral figure of the hash in use. That is the argument for Maglev style tables over a modulo.
+To remove a backend without breaking users: **stop sending it new connections** (remove it from the hash or set its weight to zero) but **keep its existing entries** until the connections end or a drain timeout expires, then remove it. This is **connection draining**, and it is why a deploy that kills backends instantly produces a burst of resets. Application protocols help: `Connection: close`, HTTP/2 GOAWAY, and gRPC max connection age tell clients to reconnect, which moves long-lived connections gradually.
 
 ---
 
 ## 6. Noticing failure: health checks and the window they leave open
 
-A forwarding rule has no idea whether a backend works (section 2.2: a third of the connections hung with no signal at the balancer). **Health checks** supply it. An **active** check probes each backend on a schedule: a TCP connect, an HTTP request that must return a given status, or a script. A **passive** check watches real traffic for errors and timeouts (from memory; not run here). Each backend is marked down after `fall` consecutive failed checks and up again after `rise` consecutive successes; `inter` is the time between checks.
+### 6.1 Active and passive checks
 
-### 6.1 The detection window
+- **Active checks**: the balancer probes each backend at an interval (`inter`): a TCP connect, an HTTP GET to a health path, or a gRPC health call. It marks the backend down after `fall` consecutive failures and up again after `rise` successes.
+- **Passive checks (outlier detection)**: the balancer watches real traffic and ejects a backend that returns errors or times out, for a growing time, with a cap on how many backends it will eject at once.
 
-If a backend dies at a random moment, the first failing check comes between 0 and `inter` later, and it is marked down at the `fall`-th failure. The window during which requests are still sent to it is therefore between `(fall - 1) × inter` and `fall × inter` (add the check's own timeout when the failure is silence rather than a refusal). Measured with haproxy, three backends round robin, 20 requests per second, b1 killed 3 s into a 12 s run, `inter 1s fall 3`:
+Active checks find a dead backend before users do. Passive checks find the sick-but-answering backend that a shallow probe misses. Production proxies use both.
 
-```bash
-  cat <<CFG
+### 6.2 The detection window
+
+Between a backend's death and its removal, the balancer keeps sending it traffic, and every request in that window fails (unless retried). The window is bounded by the check settings:
+
+```python
+def window(inter, fall):
+    return (fall - 1) * inter, fall * inter      # shortest and longest time until the backend is marked down
+
+def failed_requests(rate_per_s, backends, inter, fall):
+    lo, hi = window(inter, fall)
+    share = 1 / backends                          # the dead backend's share of the traffic
+    return rate_per_s * share * lo, rate_per_s * share * hi
+
+for inter, fall in ((2, 3), (1, 3), (0.5, 3), (0.1, 2)):
+    lo, hi = window(inter, fall)
+    a, b = failed_requests(20, 3, inter, fall)
+    print(f"inter {inter}s fall {fall}: detected in {lo:.1f} to {hi:.1f} s; 20 req/s over 3 backends loses {a:.0f} to {b:.0f} requests")
+```
+
+With `inter 1s fall 3` the backend is marked down in 2 to 3 seconds. In an earlier haproxy run at 20 requests per second over three backends, killing one backend produced **14 failed requests** with retries off, and **0** with `retries 3` and `option redispatch`. Retrying on a *different* backend hides the window from the user entirely, which is why proxies retry connection failures by default. Faster checks shorten the window, but cost: every balancer probes every backend, so 100 proxies at a 100 ms interval put 1,000 checks per second on each backend, and tight timers make a loaded backend flap.
+
+### 6.3 What a check should test
+
+- **Too shallow** (a TCP connect): the process is alive but its database is down, so the check passes and requests fail.
+- **Too deep** (checks the database and three dependencies): a dependency blip fails every backend's check at once, and the balancer removes the whole fleet.
+- **Good practice**: a dedicated health endpoint that checks what this instance needs to serve (it is initialised, its local resources work), kept cheap; separate **liveness** (restart me) from **readiness** (send me traffic); use `rise` greater than `fall` or hysteresis so a flapping backend does not bounce in and out.
+- **Panic mode**: if too many backends fail checks (for example more than half), sending everything to the survivors collapses them. Envoy's panic threshold and similar features then ignore health and spread over everything, on the logic that a dependency problem is more likely than every backend being dead.
+- **Slow start**: a freshly started backend with a cold cache and JIT should get a growing share, not an equal one.
+
+---
+
+## 7. Layer 7 proxies: what you buy, and the connection pool
+
+An L7 proxy terminates the client's connection, reads the request, chooses a backend **per request**, and sends it over a connection of its own. That buys:
+
+- **Routing by content**: host, path, header, cookie, gRPC method, to different backend pools (canary releases, A/B tests, API versioning).
+- **Protocol bridging**: HTTP/2 or HTTP/3 to the client and HTTP/1.1 to backends, TLS to the client and plain inside.
+- **Retries, timeouts, circuit breaking and rate limiting** with knowledge of the request.
+- **Connection pooling to backends**: the proxy keeps warm connections and reuses them. In one run, 1,000 requests each arriving on a new client connection created **1,001 backend connections** in plain TCP mode and with conservative reuse, and **only 2** when the proxy was allowed to reuse backend connections aggressively (haproxy `http-reuse always`; earlier runs). That saves handshakes, port exhaustion and backend memory.
+- **Observability**: per-route latency, status and error metrics.
+- **Security**: a place to terminate TLS, apply WAF rules, authenticate.
+
+The costs and traps:
+
+- **The backend sees the proxy, not the client.** Pass the client address in `X-Forwarded-For` or `Forwarded`, or with the PROXY protocol; and **trust it only from your own proxies**, or a client can forge it.
+- **Retries multiply load.** A retry is a new request: three retries of a failing call can triple traffic to a struggling backend. Use **retry budgets** (retries as a fraction of requests), retry only **idempotent** requests (or those that failed before being sent), and add **jittered backoff**. Without these, retries turn a partial failure into a **retry storm**.
+- **Timeouts must nest**: a client timeout shorter than the proxy's and the proxy's shorter than the backend's means work continues after the caller has given up. Set per-hop timeouts and propagate a **deadline**.
+- **Head-of-line blocking and big buffers**: a slow client holding a connection and a slow upload make proxy memory the limit. Set client timeouts and buffer limits.
+- **A proxy is a state-holding hop that can fail**: it needs its own redundancy, which is the L4 tier above it.
+
+A minimal HAProxy configuration that shows the pieces named above (routing, health checks, retries with redispatch, forwarding the client address):
+
+```
 global
   maxconn 4096
 defaults
@@ -451,260 +323,132 @@ defaults
   timeout connect 1s
   timeout client 5s
   timeout server 5s
+  retries 3
+  option redispatch 1
 frontend fe
-  bind 10.0.1.100:80
-  default_backend be
-backend be
+  bind :80
+  option forwardfor
+  acl is_api path_beg /api
+  use_backend api if is_api
+  default_backend web
+backend api
+  balance leastconn
+  option httpchk GET /health
+  server a1 10.0.21.2:80 check inter 1s fall 3 rise 2
+  server a2 10.0.22.2:80 check inter 1s fall 3 rise 2
+backend web
   balance roundrobin
-  option httpchk GET /
-$1
-  server b1 10.0.11.2:80 check inter 1s fall 3 rise 2
-  server b2 10.0.12.2:80 check inter 1s fall 3 rise 2
-  server b3 10.0.13.2:80 check inter 1s fall 3 rise 2
-CFG
+  option httpchk GET /health
+  server w1 10.0.11.2:80 check inter 1s fall 3 rise 2
+  server w2 10.0.12.2:80 check inter 1s fall 3 rise 2
 ```
-
-```text
---- 1. no retry (retries 0): b1 is killed 3 s into a 12 s run at 20 requests per second (check inter 1s fall 3)
-requests 240, failed 14, slower than 0.5 s 0 (slowest 0.0 s); failures per second: 0 0 0 7 7 0 0 0 0 0 0 0
---- 2. the default (retries 3, same server each time): b1 is killed 3 s into a 12 s run at 20 requests per second (check inter 1s fall 3)
-requests 240, failed 2, slower than 0.5 s 2 (slowest 2.0 s); failures per second: 0 0 0 0 0 1 0 1 0 0 0 0
---- 3. retries 3 with redispatch: b1 is killed 3 s into a 12 s run at 20 requests per second (check inter 1s fall 3)
-requests 240, failed 0, slower than 0.5 s 0 (slowest 0.0 s); failures per second: 0 0 0 0 0 0 0 0 0 0 0 0
-```
-
-- **`retries 0`:** a request that lands on b1 gets a refused connection and an error, **14 failures**, 7 in each of two seconds. That is `20 requests/s × 1/3` = 6.7 per second for **2.1 s** of detection time, inside the predicted 2 to 3 s.
-- **The default (`retries 3`):** only **2 failures**, but **2 requests were slower than 0.5 s and the slowest took 2.0 s**, the client's timeout. My client sends one request at a time, so a request stuck behind retries to the dead server holds up everything after it: two stalls of 2 s covered the whole 4 s window. A real population of clients would see **dozens** of stalled requests, not two. I did not read how haproxy spaces its retries; the stall is what I observed.
-- **`retries 3` with `option redispatch 1`:** **0 failures** and no slow request: a refused connection is retried on **another** server, and the client saw no failure and no slow request.
-
-The lesson is general. **Retrying on a different backend hides detection delay for failures that are fast and safe to retry** (a refused connection, nothing sent yet). It does not help for failures that are slow (a hung server holds each request until the timeout) or unsafe (a `POST` that may have been processed). Retries also multiply load on a struggling service (a retry storm), which is why services bound them with a **retry budget** (from memory).
-
-Choosing the numbers is arithmetic (problem C): halving `inter` halves the window but doubles the check traffic, and a check that is too sensitive (`fall 1`) flaps a healthy backend on one dropped probe. `rise` bigger than `fall` keeps a half-recovered backend out until it is stable.
-
-### 6.2 What to check
-
-- **Shallow** (TCP connect): proves the process listens, not that it works.
-- **Deep** (HTTP `GET /healthz` that touches the database): proves more, and a shared dependency failing makes **every backend fail at once**, taking the whole service out. The usual compromise: the check reports the process's own health and a separate signal covers dependencies (from memory).
-- **Where the check comes from:** from the balancer, over the **same path** real traffic uses. With DSR a check to the backend's own address does not prove that the VIP path works (from memory).
 
 ---
 
-## 7. Layer 7 proxies: what you buy, and the connection pool
+## 8. TLS termination
 
-A layer 7 proxy terminates the client's TCP connection and makes its own to the backend. Four things follow that a layer 4 balancer cannot do.
+Terminating TLS at the balancer centralises certificates and lets the proxy see HTTP, at a CPU cost that is dominated by the **handshake** (the public-key operations), not the data (symmetric encryption is cheap with hardware support). Measured as proxy CPU per new connection on one thread (earlier runs, relative and not absolute): about **40 microseconds** for plain TCP, about **890 microseconds** for a TLS 1.3 handshake with an RSA-2048 certificate, about **500 microseconds** with an ECDSA P-256 certificate, and about **405 microseconds** when the client **resumes** a session. So a new TLS connection costs roughly twelve to twenty times a plain one, and the levers are all about not doing full handshakes:
 
-**1. Route by what is in the request.** Measured with haproxy: requests to `/api` go to b1, everything else is balanced over b2 and b3.
+- **Keep-alive and HTTP/2**: fewer connections.
+- **Session resumption and tickets** (shared ticket keys across the fleet, or a client that returns to a different proxy gets a full handshake).
+- **ECDSA certificates** instead of RSA.
+- **Offload** to hardware or a dedicated TLS tier.
+- Decide **where the plaintext boundary is**: re-encrypting to backends (mTLS) is the safe default inside a zero-trust network and doubles the TLS work; terminating at the edge and running plain inside is cheaper but trusts the internal network.
 
-```bash
-cfg() { # mode extra-backend-lines
-  cat > /tmp/p.cfg <<CFG
-global
-  maxconn 4096
-defaults
-  mode $1
-  timeout connect 1s
-  timeout client 5s
-  timeout server 5s
-  timeout http-keep-alive 5s
-frontend fe
-  bind 10.0.1.100:80
-  default_backend be
-backend be
-  balance roundrobin
-$2
-  server b1 10.0.11.2:80
-CFG
-  [ -n "$HP" ] && kill $HP 2> /dev/null && wait $HP 2> /dev/null
-  ip netns exec lb haproxy -f /tmp/p.cfg > /dev/null 2>&1 &
-  HP=$!; sleep 1
-}
-```
-
-```text
---- 3. layer 7 routing: /api goes to b1, everything else to b2 and b3 (a layer 4 balancer cannot see the path)
-100 requests to /api/x:
-replies by backend {'b1': 100}
-100 requests to /img/y:
-replies by backend {'b2': 50, 'b3': 50}
-```
-
-**2. Reuse backend connections.** 1,000 requests, each on its **own new client connection**, to one backend:
-
-```text
---- 1. 1000 requests, each from a new client connection, to one backend: connections the backend accepted
-mode tcp (no http-reuse line):
-    backend b1 accepted 1001 connections for 1001 requests (the stats request itself is one of each)
-mode http   http-reuse never:
-    backend b1 accepted 1001 connections for 1001 requests (the stats request itself is one of each)
-mode http   http-reuse safe:
-    backend b1 accepted 1001 connections for 1001 requests (the stats request itself is one of each)
-mode http   http-reuse always:
-    backend b1 accepted 2 connections for 1001 requests (the stats request itself is one of each)
-```
-
-In `mode tcp` the proxy passes bytes: every client connection makes **one backend connection**, 1,001 (the 1,000 plus the stats request). In `mode http` the proxy knows where requests start and end, but with `http-reuse never` it still opens one backend connection per request (1,001). With `http-reuse safe`, which is haproxy's default and the setting I did not change, the result is also **1,001**: from memory of its documentation, "safe" lets a request reuse a backend connection only for later requests on the **same client connection**, and each client connection here carried one request. With `http-reuse always` the backend accepted **2** connections for 1,001 requests: the proxy kept a pool of idle keep-alive connections and handed one to each request. A backend that accepts 2 connections instead of 1,001 spends no time in `accept`, no kernel memory on connections in `TIME_WAIT`, and, if the backend leg is TLS, **no TLS handshakes** (section 8). The risk of `always` is that connections are shared **across clients**: a backend that keeps per-connection state (some authentication schemes) would mix users.
-
-**3. Tell the backend who the client was.** The backend's peer is the proxy:
-
-```text
---- 2. what the backend sees: the proxy is the peer, the client address travels in a header (option forwardfor)
-last reply: b1 connections=1 requests=1 path=/who peer=10.0.11.1 xff=10.0.1.2
-```
-
-`peer=10.0.11.1` is the proxy's address, and `xff=10.0.1.2` is the real client, added by `option forwardfor` as an `X-Forwarded-For` header. A header can be forged by a client, so a backend must trust it only from the proxy and the proxy must **replace or append**, never pass a client's header through (from memory). For **non HTTP** protocols and for TLS passthrough there is no header: the **PROXY protocol** prepends one line (v1, text) or a binary block (v2) to the TCP stream with the original source and destination addresses (from memory; not run here).
-
-**4. Retry, limit, observe.** Retrying a request on another backend (section 6), rate limiting per key, per-request latency and status counters: these exist at L7 because the proxy sees requests.
-
-**Costs.** Per request the proxy parses headers and copies bytes in and out; it holds **two** sockets per connection; it must buffer or stream bodies and set **three timeouts** (`connect`, `client`, `server`) so that a slow client cannot hold a backend (the slow-loris class of attack; from memory). The boundary between proxy and backend is where HTTP request smuggling happens, when the two parse a request differently (from memory). And a proxy fleet is itself something to balance (section 11).
-
----
-
-## 8. TLS termination: what the handshake costs the balancer
-
-A proxy that **terminates** TLS does the handshake for the whole backend fleet. Three arrangements:
-
-| Arrangement | Proxy sees | Cost |
-|---|---|---|
-| **Termination:** TLS to the client, plain HTTP to the backend | everything | one handshake per client connection, no TLS on the backend leg |
-| **Re-encryption:** TLS to the client, TLS to the backend | everything | handshake costs on both legs; pooling (section 7) amortises the backend leg |
-| **Passthrough:** the proxy forwards TLS bytes unread, choosing the backend by the **SNI** in the ClientHello (from memory) | only the server name | no decryption cost; no L7 features; the backend holds the certificate |
-
-The cost of terminating was measured as the proxy's **CPU time per new connection**, from `/proc`, for a single haproxy thread that answers 200 itself (so no backend is involved), 2,000 connections per row from a Python client:
-
-```bash
-cpu() { awk '{print $14 + $15}' /proc/$HP/stat; }   # user + system ticks of the proxy, 100 per second
-cost() { # label port mode: 2000 connections, proxy CPU per connection
-  local a=$(cpu); ip netns exec c python3 prog/tlsrate.py 10.0.1.100 $2 2000 $3; local b=$(cpu)
-  printf '%-34s proxy CPU %5d us per connection\n' "$1" $(( (b - a) * 10000 / 2000 ))
-}
-echo "--- 1. haproxy CPU per new connection, 2000 connections each (answers 200 itself, one thread; ticks are 10 ms)"
-cost "plain HTTP" 80 plain
-cost "TLS 1.3, RSA-2048 certificate" 443 tls
-cost "TLS 1.3, ECDSA P-256 certificate" 444 tls
-echo "--- 2. the same with the client resuming its session"
-cost "TLS 1.3 resumed, RSA-2048" 443 resume
-```
-
-```text
---- 1. haproxy CPU per new connection, 2000 connections each (answers 200 itself, one thread; ticks are 10 ms)
-plain HTTP                         proxy CPU    40 us per connection
-TLS 1.3, RSA-2048 certificate      proxy CPU   890 us per connection
-TLS 1.3, ECDSA P-256 certificate   proxy CPU   500 us per connection
---- 2. the same with the client resuming its session
-TLS 1.3 resumed, RSA-2048          proxy CPU   405 us per connection
-```
-
-| | CPU per connection | connections per second per core, `1,000,000 ÷ cost` |
-|---|---|---|
-| plain HTTP | 40 µs | 25,000 |
-| TLS 1.3, RSA-2048 certificate | 890 µs | 1,124 |
-| TLS 1.3, ECDSA P-256 certificate | 500 µs | 2,000 |
-| TLS 1.3, session resumed, RSA-2048 | 405 µs | 2,469 |
-
-- **A full handshake costs 12 to 22 times a plain connection**, and the difference is cryptography, not data: none of these connections carried more than "ok".
-- **The certificate's key type matters:** the server signs the handshake, and an RSA-2048 signature costs about **390 µs** more than an ECDSA P-256 one here (890 against 500). An ECDSA certificate is the cheaper choice for the fleet.
-- **Resumption saves the signature, not the key exchange:** the resumed RSA run cost **405 µs**, which is a little below the ECDSA figure. TLS 1.3 resumption normally still performs an ephemeral key exchange (from memory), which is why a resumed connection is far from free. Resumption across a proxy fleet needs the proxies to **share ticket keys** (from memory).
-- **These are one VM's numbers**, with a client sharing the two vCPUs, so use the ratios. They say: a fleet's capacity for *new* TLS connections is two orders of magnitude lower than for plain ones, so a client population that reconnects constantly (mobile networks, short lived connections) needs far more proxy cores than a steady one, and **keeping connections alive** is a capacity decision, not just a latency one.
-
-NET 08 covers the handshake record by record and the 0-RTT replay risk; this section adds only what it costs the balancer.
+NET 08 covers the handshake and QUIC. For balancing, QUIC adds a twist: connections are identified by a **connection ID** and not the 5-tuple, so a balancer can route by connection ID and survive client IP changes and NAT rebinding, which a 5-tuple hash cannot.
 
 ---
 
 ## 9. Anycast and ECMP: the network as the first balancer
 
-**Anycast** means the same address (usually a /32 for a VIP) is **announced from several places**, and the routing system sends each client to one of them. Between sites it is BGP's shortest path; inside a site, when several balancer instances announce the VIP to the same router, the router sees **equal cost paths** and spreads flows over them with **ECMP** (NET 11 section 8). Nothing stateful is involved: the router hashes the packet header and picks a next hop. That makes anycast the cheapest way to scale the layer 4 tier horizontally, and it is why long connections are the problem.
+### 9.1 Anycast
 
-The experiment: a router `r`, three sites `s1` to `s3` each owning `10.99.0.1/32` on `lo`, a 3-way multipath route, and the hash set to include ports (`fib_multipath_hash_policy=1`; the default hashes addresses only, from memory):
+**Anycast** announces the same IP prefix from many locations (typically by BGP). Routers send each packet to the **closest** announcement by routing metric. It gives you geographic proximity, failover (withdraw the route and traffic goes elsewhere), and DDoS dilution (the attack is spread across all sites) with no DNS tricks. DNS resolvers, CDNs, and public DNS services use it.
+
+Inside one site, the same idea repeats: the router sees several equal-cost paths to the VIP (one per L4 balancer, each announcing the VIP) and **ECMP** spreads flows over them, using the hash from [NET 11](11_routing_protocols_and_datacenter_fabrics.md). Maglev works this way: every Maglev machine announces the VIP and the router picks one by hash.
+
+```mermaid
+flowchart TB
+  C["client"] --> A["anycast: nearest site by BGP"]
+  A --> R["site router: ECMP over L4 balancers"]
+  R --> M1["L4 balancer 1"]
+  R --> M2["L4 balancer 2"]
+  R --> M3["L4 balancer 3"]
+  M1 --> P["L7 proxy tier"]
+  M2 --> P
+  M3 --> P
+  P --> B["backends"]
+```
+
+### 9.2 What a change does to long connections
+
+Here the earlier consistent hash lesson reappears at the router. Three sites behind a three-way ECMP route took 989, 1,021 and 990 of 3,000 new connections, so the spread works. Then one site was withdrawn with 150 long connections open (earlier runs):
+
+- With a **plain multipath route**, the router's hash is taken modulo the number of next hops, so removing one **re-hashes everything**: the 39 connections on the withdrawn site broke (expected), and **28 of 50 connections on a surviving site broke too**, a collateral loss.
+- With a **resilient next hop group** (the kernel's `ip nexthop add ... group 1/2/3 type resilient buckets 128`), the hash indexes a fixed table of buckets and only the removed site's buckets are reassigned, so **no surviving connection broke**.
 
 ```bash
-echo "--- 1. anycast address 10.99.0.1 behind a 3-way ECMP route, 3000 new connections (hash over addresses and ports)"
-ip netns exec r ip route add 10.99.0.1/32 nexthop via 10.9.1.2 nexthop via 10.9.2.2 nexthop via 10.9.3.2
-ip netns exec c python3 prog/cl.py 10.99.0.1 3000
+# a resilient ECMP group: 128 buckets, a bucket is reassigned only when it has been idle for 120 s
+ip nexthop add id 1 via 10.9.1.2 dev r1
+ip nexthop add id 2 via 10.9.2.2 dev r2
+ip nexthop add id 3 via 10.9.3.2 dev r3
+ip nexthop add id 100 group 1/2/3 type resilient buckets 128 idle_timer 120
+ip route add 10.99.0.1/32 nhid 100
 ```
 
-```text
---- 1. anycast address 10.99.0.1 behind a 3-way ECMP route, 3000 new connections (hash over addresses and ports)
-replies {'s1': 989, 's2': 1021, 's3': 990} failed 0 client address seen by backends {'10.9.0.2': 3000}
-```
+So the three levels share one design principle: hash to choose, **keep the mapping stable when the set changes**, and **remember what is in flight**. Resilient hashing at the router, Maglev at the L4 tier, and connection draining at the proxy are the same idea.
 
-3,000 connections spread **989, 1,021 and 990**: a fair hash over 5-tuples. A client population with **few source addresses** and the default address-only hash would land on one site; the port-aware hash fixes that for many connections from few clients.
-
-### 9.1 Withdrawing a site breaks flows that were not on it
-
-Now 150 long connections, and at 3 s site `s1` is **withdrawn** (the route stops using it; its server keeps running so the experiment can see where each connection ends up). Two kinds of route:
-
-```bash
-echo "--- 2. 150 long connections; site s1 is withdrawn at 3 s (its server keeps running, the route stops using it)"
-echo "plain multipath route (the hash is taken modulo the number of next hops):"
-ip netns exec c python3 prog/hold.py 10.99.0.1 150 8 &
-HP=$!; sleep 3
-ip netns exec r ip route replace 10.99.0.1/32 nexthop via 10.9.2.2 nexthop via 10.9.3.2
-wait $HP
-echo "resilient next hop group (128 buckets):"
-ip netns exec r ip route del 10.99.0.1/32
-ip netns exec r ip nexthop add id 1 via 10.9.1.2 dev r1; ip netns exec r ip nexthop add id 2 via 10.9.2.2 dev r2; ip netns exec r ip nexthop add id 3 via 10.9.3.2 dev r3
-ip netns exec r ip nexthop add id 100 group 1/2/3 type resilient buckets 128 idle_timer 120
-ip netns exec r ip route add 10.99.0.1/32 nhid 100
-ip netns exec c python3 prog/hold.py 10.99.0.1 150 8 &
-HP=$!; sleep 3
-ip netns exec r ip nexthop del id 1
-wait $HP
-```
-
-```text
---- 2. 150 long connections; site s1 is withdrawn at 3 s (its server keeps running, the route stops using it)
-plain multipath route (the hash is taken modulo the number of next hops):
-opened 150, broken after 8 s: 67
-  on s1: 39 opened, 39 broken
-  on s2: 50 opened, 28 broken
-  on s3: 61 opened, 0 broken
-resilient next hop group (128 buckets):
-opened 150, broken after 8 s: 61
-  on s1: 61 opened, 61 broken
-  on s2: 46 opened, 0 broken
-  on s3: 43 opened, 0 broken
-```
-
-| | on the withdrawn site `s1` | on `s2` | on `s3` | survivors broken |
-|---|---|---|---|---|
-| **plain multipath route** | 39 of 39 | **28 of 50** | 0 of 61 | **28 of 111** |
-| **resilient next hop group** (128 buckets) | 61 of 61 | 0 of 46 | 0 of 43 | **0 of 89** |
-
-All the connections on `s1` break in both cases, which is expected: they are re-hashed to a server that has no socket for them. The difference is the **collateral**. With a plain multipath route, **28 of the 50 connections on `s2`**, a site that never failed, broke: the kernel divides the hash range into N regions, one per next hop (called hash-threshold, from memory of the kernel documentation), and removing the first next hop shifts the boundaries. `s2`'s region `[1/3, 2/3)` becomes `[0, 1/2)`, so the part of it above `1/2` now belongs to `s3`: half of `s2`'s flows, and the 28 of 50 observed match. `s3`'s region only grows, so `s3` lost nothing. A **resilient group** has a fixed table of buckets, each assigned to one member; removing a member reassigns **only its buckets**, so no survivor's flows move.
-
-NET 11 introduced the resilient group for ECMP in the fabric; this is the same mechanism applied to a balancer tier, and the numbers say why it is worth the extra configuration. Two caveats:
-
-- **Granularity:** a group with `B` buckets can only divide load in multiples of `1/B`. With 100 members and 128 buckets some member has two buckets against an even share of 1.28, so the busiest is **1.56** times the average (problem D). Use many more buckets than members.
-- **Adding a member back:** moving buckets to the returning member would break their flows, so the kernel moves a bucket only when it has been idle for `idle_timer` (from memory of the nexthop documentation; the group above set `idle_timer 120`). Until then the load is uneven.
-
-### 9.2 Making the tier behind ECMP agree
-
-If a router's ECMP set changes (a balancer is added or fails), some flows arrive at a **different balancer instance**. For a stateless balancer using a consistent hash over the same backend list, the new instance sends the flow to the **same backend** as the old one: the state it lacks is not needed. That is the design of Google's Maglev, as I remember the paper: ECMP at the router, a local connection table per instance, and the same consistent hash table everywhere. It is why section 4's collateral figures matter in production: they are the fraction of flows lost when two instances' views of the backend set differ for a moment (health checkers disagreeing, or a table update reaching one instance first).
+Bucket count matters: with few buckets, the shares among sites are uneven (with 50 sites and 64 buckets the busiest site had 1.56 times its share), so size the group to a multiple of the site count by a good margin (1,024 buckets gave 1.03).
 
 ### 9.3 What anycast does not give you
 
-- **Failure detection is the routing protocol's:** a dead site stays in the route until BGP withdraws it, or until the node's own agent withdraws it after its health check fails; NET 11 measured convergence after carrier loss and silent failure, with hold timers and with BFD. The time a failed balancer keeps attracting traffic is `health detection + withdrawal + FIB update` (from memory for the sum).
-- **TCP is only as stable as the route:** a route flap or a topology change mid-connection can send packets to another site, which resets them. Anycast fits UDP (DNS) well and TCP when routes are stable or the connections are short.
-- **No load awareness:** ECMP hashes, so one heavy flow stays on one path (NET 11 section 8, and NET 12 for what that does to collectives).
+- **Load awareness.** Routing is by BGP distance, not by load, so a busy site keeps attracting traffic. Operators shift traffic by changing announcements (prepending, communities, partial withdrawal).
+- **Stickiness across routing changes.** A BGP change can move a client to another site mid-connection, and TCP connections break. This is fine for short requests (DNS, HTTP with retries) and harmful for long ones. QUIC's connection IDs and application-level retry are the mitigations; for TCP-heavy services, providers keep the anycast to a front tier that does little and terminates quickly.
+- **Control of which site.** Closest in routing terms is not closest in latency, and a path can be longer than expected.
+- **A health signal.** A site that is announcing but broken attracts traffic and blackholes it. The announcement must be **tied to health**: a local agent withdraws the route when the service fails, and the same withdrawal-versus-convergence timing from NET 11 applies.
+
+Compare **DNS-based global balancing** (GSLB): it returns different addresses by location and health, with finer policy, but cached answers and TTLs mean a slow, imprecise failover, and clients may ignore TTLs. Many systems use both: anycast for the entry point, DNS for steering between regions.
 
 ---
 
-## 10. Data planes: nftables, IPVS, XDP
+## 10. Data planes: where the selection runs
 
-Where the forwarding rule runs decides its cost per packet and how it fails.
+| Data plane | How | Speed | Fits |
+|---|---|---|---|
+| **IPVS** (kernel, `ip_vs`) | the classic Linux L4 balancer: NAT, DR and tunnel modes, schedulers (rr, wlc, sh, mh Maglev-hash), its own connection hash table | millions of packets per second per box | Kubernetes `kube-proxy` IPVS mode, simple fleets |
+| **nftables / iptables** | `dnat` with `numgen` or `jhash`, conntrack for state | good, not specialised | small setups, cluster-internal services, tests |
+| **XDP / eBPF** | a program at the driver hook selects a backend and rewrites or encapsulates before the kernel stack runs | tens of millions of packets per second per box in native mode | Katran (Meta), Cilium, Cloudflare's L4 tier |
+| **User-space kernel bypass** (DPDK, Maglev) | poll the NIC from user space, one core per queue | line rate on modern NICs | Google's Maglev, some hardware-adjacent balancers |
+| **Hardware** (switch ASIC, SmartNIC, dedicated appliance) | tables in silicon | line rate | cloud providers' edges, appliances |
 
-| Data plane | Where | State | Strength | Limit |
-|---|---|---|---|---|
-| **nftables / iptables NAT** (sections 2 and 3) | netfilter hooks, with conntrack | conntrack entry per flow | already in the kernel and scriptable | conntrack cost on every packet; a `dnat` per new flow |
-| **IPVS** | kernel module `ip_vs`, a connection hash table | its own table | built for balancing: `ipvsadm`, three modes **NAT, DR (direct routing), TUN (IP in IP)**, schedulers including round robin, weighted least connection, source hash and Maglev hashing, connection sync between a master and a backup | **not in this kernel** (`CONFIG_IP_VS` off); everything in this row is **from memory** |
-| **XDP** (Katran style) | driver receive path, before the stack allocates an `sk_buff` | BPF maps | highest packet rate on one core; no conntrack | needs driver support for native mode; you write the whole forwarding logic |
-| **L7 proxy** (haproxy, nginx, Envoy) | user space | per connection | all of section 7 | sockets and parsing per request |
+NET 07 explains why XDP and bypass are fast: no per-packet allocation, no stack traversal, batched, per-CPU data. A balancer's job (hash a few fields, look up a table, rewrite a header) is small enough to fit in that model.
 
-### 10.1 An XDP backend selector, measured
+### 10.1 The selection step of an XDP balancer
 
-The program parses Ethernet, IPv4 and TCP, hashes the 4-tuple, finds a backend, counts the pick, and **passes the packet on** (the nftables rule from section 2 still does the real forwarding; this program shows the **selection step** a Katran-like balancer performs, and counts what it picked). It runs in **generic** XDP mode on a veth device, so the picks are real and the speed is not representative.
+This program parses to TCP, hashes the 4-tuple, picks a backend either by modulo or from a user-space-filled Maglev table, and counts SYN picks per backend. It then passes the packet on (a real balancer would rewrite or encapsulate and return `XDP_TX`). It compiles with `clang -O2 -target bpf`; run in generic mode on a veth in an earlier lab, its picks were 1,006, 1,066 and 928 of 3,000 connections with hash modulo 3, and 1,017, 1,001 and 982 from a 1,009 entry table. Generic mode is not fast, so the picks matter, not the speed.
 
 ```c
+// xdp_sel.c: pick a backend for each TCP packet by hashing the 4-tuple, count the picks, pass the packet on.
+#include <linux/bpf.h>
+#include <linux/if_ether.h>
+#include <linux/ip.h>
+#include <linux/tcp.h>
+#include <linux/in.h>
+#include <bpf/bpf_helpers.h>
+#include <bpf/bpf_endian.h>
+
+#define M 1009
+struct { __uint(type, BPF_MAP_TYPE_ARRAY); __uint(max_entries, M); __type(key, __u32); __type(value, __u32); } table SEC(".maps");
+struct { __uint(type, BPF_MAP_TYPE_ARRAY); __uint(max_entries, 16); __type(key, __u32); __type(value, __u64); } picks SEC(".maps");
+struct { __uint(type, BPF_MAP_TYPE_ARRAY); __uint(max_entries, 1); __type(key, __u32); __type(value, __u32); } mode SEC(".maps");
+
+static __always_inline __u32 mix(__u32 a, __u32 b, __u32 c)
+{
+    __u32 h = (a ^ (b << 16) ^ (b >> 16) ^ c) * 0x9E3779B1u;
+    h ^= h >> 15; h *= 0x85EBCA6Bu; h ^= h >> 13;
+    return h;
+}
+
 SEC("xdp")
 int select_backend(struct xdp_md *ctx)
 {
@@ -730,297 +474,178 @@ int select_backend(struct xdp_md *ctx)
     if (c && tcp->syn && !tcp->ack) __sync_fetch_and_add(c, 1);
     return XDP_PASS;
 }
+char LICENSE[] SEC("license") = "GPL";
 ```
 
-Reading it, the parts every XDP balancer has:
-
-- **Bounds checks before every header access.** The verifier rejects a program that might read past `data_end`; each `if ((void *)(x + 1) > end)` is what lets the load succeed.
-- **A hash of the flow**, here a small mixing function over source address, source port and a combination of destination address and port.
-- **A table in a BPF map** (`table`, 1,009 entries) that **user space fills**: the lookup is `table[h % M]`. This is the Maglev lookup of section 4 in the kernel: one hash, one array read.
-- **A per-backend counter** (`picks`), incremented only on a SYN, so each connection is counted once.
-
-A real forwarder would continue after the lookup: set the outer destination (add an outer IP header for IP in IP with `bpf_xdp_adjust_head`, or rewrite the MAC), and return `XDP_TX` to send the frame out of the same interface, with a per-CPU LRU hash map for pinned flows (from memory of Katran's design; I did not run any of that).
-
-`xdp_fill.py` builds the table with `chash.maglev_table` and writes it with `bpftool batch`; the experiment compares the two modes and then rebuilds the table for 2 backends:
-
-```text
---- 1. mode 0: the program hashes the 4-tuple and takes it modulo 3; 3000 connections
-replies {'b1': 1048, 'b2': 1008, 'b3': 944} failed 0 client
-picks per backend (new connections seen by the program): be0 1006  be1 1066  be2 928
---- 2. mode 1: one lookup in a 1009 entry Maglev table for 3 backends, filled by user space
-replies {'b1': 999, 'b2': 955, 'b3': 1046} failed 0 client a
-picks per backend (new connections seen by the program): be0 1017  be1 1001  be2 982
---- 3. backend be2 is removed: the table is rebuilt for 2 backends and written, then 3000 new connections arrive
-replies {'b1': 1055, 'b2': 940, 'b3': 1005} failed 0 client
-picks per backend (new connections seen by the program): be0 1463  be1 1537  be2 0
-```
-
-Hash modulo 3 gave **1,006, 1,066, 928** of 3,000; the Maglev table gave **1,017, 1,001, 982**; after removing backend 2 the table sent **1,463 and 1,537** to the two survivors and **0** to the removed one. The program is the same in all three; **only the table changed**, which is the property that makes a control plane able to add and remove backends without touching the data plane. One caution: `bpftool batch` updates the 1,009 entries one at a time, so a packet arriving mid-update sees a mixture of old and new entries. A production design writes the new table into a second map and **swaps** (from memory), so every packet sees one consistent table.
+What to notice: the bounds checks before every header access are demanded by the eBPF verifier, the table lives in a **map** that user space updates atomically (so a backend change is a map write, not a program reload), and a real balancer keeps a per-CPU **flow table** in a map, checks it first, and only on a miss consults the Maglev table. After the table was rebuilt for two backends and written, the picks were 1,463, 1,537 and 0, which is the whole control plane: compute a table in user space, write it into a map.
 
 ---
 
-## 11. Putting it together: a path, a failure walk, and what to check
+## 11. Putting it together
 
 ### 11.1 The usual shape
 
-```text
-clients
-   |  DNS (geo) or BGP anycast  -> picks a site
-   v
-site edge: ECMP over L4 balancer instances (all announce the VIP)
-   |  consistent hash, DSR or encapsulation, no shared state     (sections 3, 4, 9)
-   v
-L7 proxy fleet: TLS termination, pooling, retries, routing        (sections 7, 8)
-   |  per request, least loaded or two choices
-   v
-services: backends with health checks                             (section 6)
-```
+For a large service: anycast or DNS steers users to a site; the site router uses ECMP (resilient) over a fleet of **L4 balancers** that all announce the VIP; each L4 balancer sends the flow to an **L7 proxy** using a flow table and a shared consistent hash (often with DSR or a tunnel, so replies skip the L4 tier); the proxies terminate TLS, route per request, pool connections and retry; the backends report health through checks and outlier detection. Each tier is **stateless where it can be** (so any instance can take over) and **has a consistent way to pick** (so a missing table entry is not a catastrophe).
 
-The L4 tier is sized by **packets**, the L7 tier by **new connections and requests**, the services by their own work. Because the tiers fail differently, each needs its own detection and its own consistency story.
+### 11.2 A failure walk
 
-### 11.2 Sizing arithmetic, with the numbers measured here
+**An L4 balancer dies.** The router's next hop disappears (a BFD or link event, section 10 of NET 11), resilient hashing reassigns only that balancer's buckets, and the surviving balancers receive flows they have no entry for. Because every balancer computes the same Maglev table, they choose the same backend as the dead one did, and **existing connections survive** unless the backend set also changed. Cost: a short window of loss until the router converges.
 
-An example with **stated assumptions**, to show the method (the per-connection costs come from section 8, on this VM; use your own hardware's): 50,000 new TLS connections per second, ECDSA certificate, answered by one thread per core.
+**A proxy dies.** Its connections reset (it held both ends); clients reconnect. The L4 tier notices via checks and stops sending it new connections. Clients with retry and idempotent requests recover with a small blip.
 
-- TLS handshakes alone: `50,000 × 500 µs` = **25 cores** of proxy handshake work (RSA-2048: `50,000 × 890 µs` = **44.5 cores**). Plain HTTP at 40 µs each would be 2 cores; the same load needs **12 to 22 times** more cores once terminated.
-- Bytes: 200,000 responses per second of 20 KB is **4 GB/s = 32 Gb/s** toward clients. In **NAT mode** the balancer must carry all of it; with **DSR** it carries the requests only, which for 1 KB requests is **1.6 Gb/s** (an assumption: a 1 KB request is a guess). That is the case for DSR at the L4 tier even though the L7 proxies, which must see the responses, cannot use it.
+**A backend dies.** Active checks take `(fall - 1) x inter` to `fall x inter` to notice; the proxy retries connect failures on another backend in the meantime; outlier detection ejects a backend that returns errors; panic mode prevents an over-aggressive removal from collapsing the pool.
 
-### 11.3 A failure walk
+**A deploy.** Drain: stop new connections, wait for the existing ones, GOAWAY or max-age to move long connections, then stop. Slow start brings the new instance in gradually.
 
-| What fails | Who notices | After how long | What breaks |
-|---|---|---|---|
-| A backend process | health check | `(fall - 1) × inter` to `fall × inter`, measured 2.1 s at `inter 1s fall 3` | requests to it until detected, unless retried on another server (measured: 14 failures with `retries 0`, 0 with redispatch) |
-| An L7 proxy instance | ECMP router: health or BGP | seconds, set by BFD and BGP timers (NET 11) | its in-flight connections; the rest re-hashed: 28 of 111 survivors with a plain multipath route, 0 with a resilient group |
-| An L4 balancer instance | the same | the same | with identical consistent tables 0.2 to 0.55 % collateral (measured, section 4); with a modulo and lost state about half (measured: 158 of 300) |
-| A bad deploy on every backend | the same health check, all at once | one detection window | the whole service, if health checks depend on a shared dependency (section 6.2) |
+**A thundering herd after an outage.** All clients retry at once and the recovering fleet is knocked down again. Mitigations: jittered backoff at clients, retry budgets at proxies, admission control and load shedding (reject early with 503 and `Retry-After`), and warm-up.
 
-### 11.4 What to configure and check
+### 11.3 What to configure and check
 
-- **One hash, one seed, everywhere**: every L4 instance must compute the same function over the same backend list; a per-rule random seed (section 3) or a per-instance seed breaks agreement. Hash seeds **between tiers** should differ, or the polarisation of NET 11 section 8 appears.
-- **MTU on the path:** encapsulation adds 20 bytes (IP in IP) or 24 (GRE); an unclamped MSS gives connections that stall on large responses.
-- **Return path:** backends' default route through the balancer (NAT), the VIP on `lo` with ARP suppressed and `rp_filter` off (DSR).
-- **Capacity of state:** `nf_conntrack_max`, the flow table size against new connection rate (section 5.3), the SYN flood defence of NET 09.
-- **Health checks:** depth, `inter`, `fall`, `rise`, and what they depend on.
-- **Draining:** a procedure that takes a backend out of new flows and waits for old ones before stopping it.
-- **Timeouts:** an idle timeout in the balancer shorter than the clients' keepalive interval resets healthy idle connections (from memory).
-- **Observability:** per backend connection counts, error and retry rates, health state changes, and the L4 tier's table occupancy.
+| Concern | What to check |
+|---|---|
+| Return path | with NAT, replies pass through the balancer; with DSR, the backend holds the VIP and does not ARP |
+| MTU | tunnelling and VXLAN subtract bytes; path MTU and MSS clamping |
+| Hash fields | include the source port, so one client IP does not pin to one backend; same hash function and seed on every balancer instance |
+| Flow table | size by arrival rate times idle timeout; timeout above the quietest legitimate connection |
+| Health | cheap, relevant, with hysteresis; separate liveness and readiness; panic threshold |
+| Retries | idempotent only, a budget, redispatch to another backend |
+| Timeouts | nested and propagated as a deadline |
+| Client address | PROXY protocol or `X-Forwarded-For`, trusted from known proxies only |
+| Draining | connection draining, GOAWAY, max connection age |
+| Observability | per backend: connections, errors, latency percentiles, ejections; per balancer: table occupancy, drops |
 
 ---
 
 ## 12. Common mistakes
 
-1. **Using `hash mod N` and calling it consistent.** Removing 1 of 10 backends moved **89.8 %** of flows with **79.7 %** collateral (section 4). Use a ring, rendezvous hashing or a Maglev table, or keep a flow table.
-2. **Assuming `jhash ... mod N` in nftables is a modulo.** It behaves as a range-scaled hash: growing 2 to 3 backends kept **54 %** of flows, not 33 % (section 5.2). The behaviour is fine; the mistake is predicting disruption with the wrong model.
-3. **Different hash seeds on different rules or instances.** Three `jhash` rules without a common seed let **86 of 300** connections match no rule (section 3); two balancers with different seeds disagree about every flow.
-4. **A Maglev table size that is not prime.** `M = 655` hung the population loop (section 4). Use a prime, and one at least 100 times the backend count; at 100 backends even `M = 65,537` left **0.55 %** collateral.
-5. **Sending replies around the balancer in NAT mode.** The client drops a reply from an address it never contacted; with the return route missing, **3 of 9** connections hung with no signal at the balancer (section 2.2).
-6. **SNAT without passing the client address on.** The backend's logs, rate limits and geolocation see the balancer. Pass `X-Forwarded-For` or the PROXY protocol, and trust the header only from the proxy (section 7).
-7. **DSR on a shared segment without suppressing ARP for the VIP.** A backend that answers ARP for the VIP pulls client traffic directly to itself and bypasses the balancer (section 3; from memory for the settings).
-8. **Thinking DSR saves nothing because requests are small.** That is exactly why it saves: **31,474 KB** crossed the balancer in NAT mode and **0 KB** with DSR for the same 300 requests. But it costs layer 2 adjacency or encapsulation, and the MTU (section 3.1).
-9. **Treating the flow table as free.** It is the failure domain: losing it at a rule change broke **158 of 300** connections, keeping it broke **0**; and an attacker can fill it (NET 09).
-10. **Setting health checks without doing the arithmetic.** `inter 1s fall 3` leaves a 2 to 3 s window (measured: **14 failed requests** at 20 requests per second with no retries). A check every 100 ms at 100 proxies is **1,000** checks per second at each backend (problem C).
-11. **Letting a deep health check depend on a shared dependency.** When the database fails, every backend fails its check together and the balancer removes the whole service (section 6.2).
-12. **Trusting retries blindly.** A retry on another backend hid detection delay completely (**0** failures) for a refused connection, but it does nothing for a hung server, can duplicate a non-idempotent request, and multiplies load on a struggling service.
-13. **Believing `mode http` pools backend connections by itself.** 1,000 requests on new client connections made **1,001** backend connections in `mode tcp`, with `http-reuse never` and with the default `safe`; only `http-reuse always` brought it to **2**, with the cross-client risk that carries (section 7).
-14. **Counting TLS as a latency cost only.** A full TLS 1.3 handshake cost the proxy **890 µs** (RSA-2048) against **40 µs** for plain TCP, so capacity for new connections falls by 12 to 22 times (section 8). Keep connections alive and prefer ECDSA.
-15. **Using a plain multipath route behind anycast and expecting graceful changes.** Withdrawing one of three sites broke **28 of 50** connections on a site that never failed; a resilient group broke **0** (section 9).
-16. **Too few buckets in a resilient group.** With 100 members and 128 buckets the busiest member carries **1.56** times the average (problem D).
-17. **Assuming random choice balances.** 400 equal connections on 20 backends put the busiest at **1.46** times the average with random choice; with heavy-tailed work it stayed at **1.70** even for least loaded choice (problem E).
-18. **Presenting an XDP program in generic mode as a speed result.** The picks are real; the speed is not. The program also only counted: forwarding was nftables (section 10).
+1. **`hash mod N` with a changing N**, so every backend change reshuffles most flows.
+2. **NAT mode without a return path through the balancer**, so some clients silently fail.
+3. **DSR backends that answer ARP for the VIP.**
+4. **Balancing connections when the traffic is multiplexed** (HTTP/2, gRPC), so one connection carries almost all the load. Use an L7 proxy.
+5. **Health checks that are too shallow or too deep**, and no panic mode.
+6. **Retrying non-idempotent requests, or retrying without a budget**, which creates retry storms.
+7. **Flow table timeout shorter than a legitimate quiet period**, so idle connections break on a change.
+8. **No connection draining** during deploys.
+9. **A plain ECMP hash in front of a balancer fleet**, so losing one balancer re-hashes every flow. Use resilient hashing.
+10. **Trusting `X-Forwarded-For` from the internet.**
+11. **Hashing only the source address** (a large NAT or corporate proxy sends everything to one backend).
+12. **Treating anycast as load balancing**: it is proximity, not load.
+13. **No slow start** for fresh backends.
+14. **A load balancer that is itself a single point of failure.**
 
 ---
 
-## 13. Twelve interview questions
+## 13. Interview questions
 
-Each has an outline of a good answer; the section to go back to is in brackets.
-
-1. **L4 against L7 load balancing?** L4 sees addresses and ports and keeps one TCP connection end to end; it is cheap and protocol agnostic. L7 terminates the connection, parses the request, and routes per request, with retries, header changes, TLS termination and pooled backend connections, at a per-request CPU cost. Production stacks both. [1, 7]
-2. **NAT mode against DSR?** NAT: both directions through the balancer, which keeps state and the backends see the client address; DSR: only requests through it, replies direct with the VIP as source, needs L2 adjacency or encapsulation, no port translation, no L7. Measured: 31,474 KB against 0 KB on the balancer's client side. [2, 3]
-3. **Why does a backend need the VIP on a loopback in DSR, and what must it not do?** To accept packets addressed to the VIP and reply with it as source; it must not answer ARP for the VIP on a shared segment or it bypasses the balancer. [3]
-4. **Design a balancer that survives adding and removing backends without breaking connections.** A flow table pins existing connections; a consistent hash (Maglev table, ring or rendezvous) chooses new ones and covers table misses; every instance uses the same function and backend list, so failover between instances loses little; drain a backend by removing it for new flows only. [4, 5]
-5. **How does Maglev hashing work, and what does `M` do?** A table of `M` prime entries is filled by backends taking turns claiming the next free slot in their own pseudo-random permutation; lookup is `table[hash % M]`. Each backend gets `M/N` slots; removal frees only its slots. `M` sets how many other flows move: collateral fell from 3.19 % to 0.15 % as `M` went from 1,009 to 655,373 at 100 backends. [4]
-6. **Compare mod N, ring, rendezvous and Maglev.** Modulo moves almost everything; ring is cheap but needs many points for balance (busiest 1.14 at 100 points); rendezvous is ideal but costs O(N) hashes per lookup; Maglev is O(1) lookup with near-ideal balance and a little extra disruption. [4]
-7. **What happens to existing connections when the balancer restarts?** If it keeps per-flow state in memory, the state is gone and flows are re-hashed: with a modulo, about half broke (158 of 300 measured); with a consistent table that every instance shares, only the collateral fraction. State sync or a stateless design avoids the loss. [5]
-8. **How long can a dead backend keep receiving traffic, and how do you reduce the cost?** Between `(fall - 1) × inter` and `fall × inter`, plus the check timeout for silent failures; measured 2.1 s at `inter 1s fall 3`. Retry refused connections on another backend, shorten the window within a check budget, and add passive checks. [6]
-9. **What does a layer 7 proxy do to the backend's view of a connection, and how is the client address preserved?** The peer is the proxy; the client address goes in `X-Forwarded-For` (HTTP) or the PROXY protocol (any TCP). Trust it only from the proxy. [7]
-10. **How expensive is TLS termination, and how do you cut it?** A full handshake cost 12 to 22 times a plain connection at the proxy here (500 to 890 µs against 40 µs). Use ECDSA certificates, resumption with shared ticket keys, long lived client connections and pooled backend connections. [8]
-11. **Explain anycast for a service, and what goes wrong with long connections.** The VIP is announced from several places; routers pick by path and ECMP. A change in the next hop set re-hashes flows; with a plain multipath route 28 of 50 connections on a healthy site broke when another site left, with a resilient group none. [9]
-12. **Where would you put XDP in a balancer, and what does it not do for you?** In the L4 tier: parse, hash, look up a table that the control plane updates, encapsulate and `XDP_TX`, with an LRU map for pinned flows; it gives the highest packet rate per core and no conntrack, but you own forwarding, health, draining and the MTU effects. [10]
-
----
-
-## 14. Problems
-
-Do each on paper first, then with the script named. The scripts run from `/home/claude/net13` (or your copy of `prog/`), and the parameters are at the top of each file.
-
-**Problem A (paper, then `ans_a.py`): which hash for a 20 backend pool?** Twenty backends, one leaves. For a ring with 100 and 1,000 points, rendezvous hashing, and Maglev tables of 1,009, 10,007 and 65,537 entries: what share of flows move, how many of those moves are collateral, and how unbalanced is the busiest backend? Which schemes meet "collateral under 1 % and busiest under 1.10", and which would you pick if each lookup must take one memory access? *Approach:* predict from section 4's tables (ideal move is 5 %), then run `python3 prog/ans_a.py`.
-
-**Problem B (paper, then `ans_b.py`): how long is an idle connection safe?** A balancer keeps a flow table with LRU eviction. For tables of 1 million to 100 million entries and 10,000 to 1 million new flows per second: how long does an idle connection survive, how much memory does the table need, and what share of long idle connections is broken after `k` backend removals if the consistent table re-hashes 0.55 % of survivors per removal? *Approach:* the idle lifetime is `C ÷ R`; the broken share is `1 - (1 - 0.0055)^k`; then run `python3 prog/ans_b.py`.
-
-**Problem C (paper, then `ans_c.py`): choose the health check numbers.** For `inter` from 2 s to 0.1 s with `fall` 2 or 3: the minimum and maximum time a dead backend stays in rotation, and the failed requests for a service at 20 requests per second over 3 backends and at 20,000 requests per second over 50. How many checks per second does each backend receive from 100 proxies at `inter 0.1s`? *Approach:* the window is `(fall - 1) × inter` to `fall × inter`; failures are `rate ÷ backends × window`; compare with the measured 14 failures at `inter 1s fall 3`, then run `python3 prog/ans_c.py`.
-
-**Problem D (paper, then `ans_d.py`): bucket count for a resilient group.** For 3, 10, 50, 100 and 200 members and 64, 128, 1,024 and 8,192 buckets: how much more than an even share does the busiest member carry? When one of 10 members leaves a 128 bucket group, how many buckets does each remaining member gain, and is the group still balanced? *Approach:* the busiest member has `ceil(B/N)` buckets against `B/N`; then run `python3 prog/ans_d.py`.
-
-**Problem E (script, `ans_e.py`): is random choice enough?** For 20 backends and 400, 4,000 or 40,000 connections, compare random choice, the better of two random choices and least loaded choice, first with equal connections and then with Pareto sized work. What is the busiest backend over the average in each case, and why does least loaded choice not reach 1.00 with heavy tailed work? *Approach:* run `python3 prog/ans_e.py`; reason about the largest single connection relative to the average load per backend.
+1. Compare L4 and L7 load balancing. When do you need each?
+2. Walk through NAT mode and direct server return. Where does the reply go and why does it matter?
+3. What breaks if the return path of a NAT balancer does not go through it?
+4. What does DSR cost you, and why do large-response services like it?
+5. Compare round robin, least connections and power of two choices. Why is random worse than you expect and two choices better?
+6. Why is `hash mod N` a bad way to pick a backend when the set changes?
+7. Explain consistent hashing with a ring, then rendezvous hashing and Maglev. When would you choose each?
+8. How does Maglev build its lookup table, and why must the table be much larger than the number of backends?
+9. If the balancer remembers each connection, why does it also need a consistent hash?
+10. What happens to open connections when you add a backend? When the balancer restarts?
+11. Size the flow table for one million new connections per second.
+12. How long does it take to notice a dead backend, and how do you stop users from seeing it?
+13. Design a health check. What is panic mode?
+14. What does an L7 proxy buy you, and what are its traps (retries, timeouts, client address)?
+15. How much does TLS termination cost, and how do you reduce it?
+16. What is anycast, and what does it do to a long-lived TCP connection when a site is withdrawn?
+17. Why does a resilient ECMP group help, and what is the property it shares with Maglev?
+18. How would you drain a backend without breaking users?
+19. Design the load balancing for a service with a billion users and global traffic.
+20. How would you build an L4 balancer with XDP? What goes in the program and what in user space?
 
 ---
 
-## 15. Answers
+## 14. Scenarios and design questions
 
-### Problem A: hash for 20 backends
+**S1. Design a load balancer that survives a backend being added or removed without breaking existing connections.** Cover the hash, the flow table, the control plane and what a balancer restart does.
 
-```python
-# ans_a.py: 20 backends, one leaves. Moved flows, collateral and balance for six ways of choosing a backend.
-import sys, collections
-sys.path.insert(0, "prog")
-from chash import *
-FLOWS = ["10.2.%d.%d:%d" % (i // 250 % 250, i % 250, 1024 + i * 11 % 60000) for i in range(100000)]
-B = ["be%d" % i for i in range(20)]
-print("%-20s %8s %11s %9s" % ("scheme", "moved %", "collateral %", "busiest"))
-for name, mk in [("ring, 100 points", lambda n: ring(n, 100)), ("ring, 1000 points", lambda n: ring(n, 1000)), ("rendezvous", rendezvous),
-                 ("Maglev, M=1009", lambda n: maglev(n, 1009)), ("Maglev, M=10007", lambda n: maglev(n, 10007)), ("Maglev, M=65537", lambda n: maglev(n, 65537))]:
-    f, g = mk(B), mk(B[:-1])
-    a = [f(x) for x in FLOWS]; b = [g(x) for x in FLOWS]
-    moved = sum(1 for p, q in zip(a, b) if p != q); coll = sum(1 for p, q in zip(a, b) if p != q and p != "be19")
-    c = collections.Counter(a)
-    print("%-20s %8.2f %11.2f %9.2f" % (name, 100.0 * moved / len(a), 100.0 * coll / len(a), max(c.values()) / (len(a) / 20.0)))
-```
+**S2. After one of four L4 balancers is rebooted, a few percent of long-lived connections reset.** Why and what do you change?
 
-scheme                moved % collateral %   busiest
-ring, 100 points         4.70        0.00      1.13
-ring, 1000 points        5.18        0.00      1.07
-rendezvous               4.99        0.00      1.03
-Maglev, M=1009           8.20        3.28      1.02
-Maglev, M=10007          6.00        0.89      1.02
-Maglev, M=65537          5.42        0.36      1.03
+**S3. A gRPC service behind an L4 balancer has one backend at 90 percent CPU and the rest idle.** Diagnose and fix.
 
-With 20 backends the ideal is **5.0 %** moved and **0 %** collateral. The **ring** (4.70 and 5.18 % moved) and **rendezvous** (4.99 %) all have **0.00 %** collateral. Of the Maglev tables only 65,537 comes near: **0.36 %** collateral, against **0.89 %** at 10,007 and **3.28 %** at 1,009. Balance (the busiest over the average): rendezvous **1.03**, Maglev **1.02 to 1.03**, ring **1.13** at 100 points and **1.07** at 1,000. So "collateral under 1 % and busiest under 1.10" is met by the ring with 1,000 points, by rendezvous, and by Maglev at 10,007 and 65,537; it is not met by the ring with 100 points (busiest 1.13) or by Maglev at 1,009 (3.28 % collateral). If a lookup must be one memory access, only the **Maglev table** qualifies (a ring needs a binary search, rendezvous 20 hashes), and 65,537 entries is the choice: 262 KB at 4 bytes per entry.
+**S4. Some clients get timeouts through a NAT balancer, others do not.** What do you check?
 
-### Problem B: idle connection lifetime
+**S5. A backend fails and the error rate spikes for a few seconds, then recovers.** Reduce the spike.
 
-```text
-   entries C    new flows/s  idle lifetime memory at 64 B
-     1000000          10000        100.0 s        64 MB
-     1000000         100000         10.0 s        64 MB
-     1000000        1000000          1.0 s        64 MB
-    10000000         100000        100.0 s       640 MB
-    10000000        1000000         10.0 s       640 MB
-   100000000        1000000        100.0 s      6400 MB
+**S6. A flash sale triples traffic and retries amplify the overload.** What do you put in place?
 
-a flow idle longer than that is forgotten; if the table changed while it was forgotten, it is re-hashed:
-with a Maglev table of M=65537 and 100 backends a removal re-hashes about 0.55 % of surviving flows (e3 section 5)
-so the expected share of long idle flows broken by one removal is about 0.55 %, and by ten removals in that time about 5 %
-share broken after k removals: k=1: 0.5 %  k=2: 1.1 %  k=5: 2.7 %  k=10: 5.4 %  k=20: 10.4 %
-```
+**S7. You must load balance UDP (game servers, DNS or QUIC).** What changes compared with TCP?
 
-The lifetime is `C ÷ R`: 100 s for a 1 million entry table at 10,000 new flows per second, but **1 s** at 1 million per second, where any connection idle for a second is forgotten. Memory at 64 bytes per entry (my assumption) is 64 MB at a million entries and 6.4 GB at a hundred million. With 0.55 % collateral per removal, **0.5 %** of long idle connections break after one removal and **5.4 %** after ten (**10.4 %** after twenty). The calculation assumes removals are independent and that every idle connection was forgotten, so it is an upper bound for connections that stayed in the table.
+**S8. A site announces the anycast VIP but its application is broken.** How does this happen and how do you prevent it?
 
-### Problem C: health check numbers
+**Where to practise.** Build the hashing snippet of section 4 and extend it with weights and with a flow table, then measure what a removal and a restart do. Run HAProxy or Envoy locally in front of three small servers, kill one, and watch the failed requests under different `inter`, `fall` and `retries`. In a Linux network namespace lab, reproduce NAT mode, break the return route, then switch to DSR. Read the Maglev paper and the Katran README, and re-derive the table-size trade-off. For drill, explain scenarios S1 to S8 aloud in two minutes each, naming the failing component first.
 
-```text
-inter, fall        min detect max detect | failed requests: 20 req/s over 3 backends | 20,000 req/s over 50 backends
-2.0s, 3                  4.0s       6.0s |    33 (up to    40)             |   2000 (up to   2400)
-1.0s, 3                  2.0s       3.0s |    17 (up to    20)             |   1000 (up to   1200)
-1.0s, 2                  1.0s       2.0s |    10 (up to    13)             |    600 (up to    800)
-0.5s, 3                  1.0s       1.5s |     8 (up to    10)             |    500 (up to    600)
-0.2s, 2                  0.2s       0.4s |     2 (up to     3)             |    120 (up to    160)
-0.1s, 2                  0.1s       0.2s |     1 (up to     1)             |     60 (up to     80)
+---
 
-measured in e5 (inter 1 s, fall 3, 20 req/s, retries 0): 14 failures, which is 14 / (20/3) = 2.1 s of one third of the traffic
-check traffic: 1 check per backend per inter; with 50 backends and 100 proxies at inter 0.1 s the backends see 1000 checks per second
-```
+## 15. Strong answers (outlines)
 
-These are **arithmetic from the formula**, not new measurements. The window for `inter 1s fall 3` is 2 to 3 s, and at 20 requests per second over 3 backends the expected failures are `6.67 × 2.5` = **17** (up to **20**); the measured run had **14**, inside the range of 13 to 20 that the window predicts (`6.67 × 2 s` to `6.67 × 3 s`), with a detection time of **2.1 s**. At 20,000 requests per second over 50 backends the same setting costs **1,000** failed requests per dead backend; `0.2 s, 2` brings it to **120**, at the price of five times the check traffic of `1 s`. A check every 100 ms from 100 proxies is **1,000 checks per second** at each backend, which is why large fleets use fewer, centralised checkers or shared health state (from memory).
+**Q1.** L4 balances connections by addresses and ports: cheap, fast, protocol-agnostic. L7 terminates and reads requests: routing by content, retries, pooling, TLS, per-request balancing for multiplexed protocols, at higher cost. Use L4 for volume and as the front tier, L7 where the decision depends on the request.
 
-### Problem D: buckets in a resilient group
+**Q2.** NAT rewrites the destination and keeps a conntrack entry so replies are rewritten back; replies must pass through the balancer. DSR rewrites only the link layer or tunnels, the backend holds the VIP and replies directly. DSR takes the large response direction off the balancer at the cost of L7 visibility and backend VIP setup.
 
-```text
- sites      B=64     B=128    B=1024     B=8192
-     3      1.03      1.01      1.00      1.00
-    10      1.09      1.02      1.01      1.00
-    50      1.56      1.17      1.03      1.00
-   100      1.56      1.56      1.07      1.00
-   200      3.12      1.56      1.17      1.00
+**Q3.** The client receives a reply from the backend's address instead of the VIP and drops it; connections to that backend fail, so some clients work and some do not. Fix by making the balancer the gateway or source-NATting.
 
-when one of N sites leaves, its buckets are shared among the others: each other site gains about B/N/(N-1) buckets
-N=3, B=128: leaving site had 43 buckets, each of the 2 others gains 21.3; the busiest other site now has 64 buckets against an even share of 64.0
-N=10, B=128: leaving site had 13 buckets, each of the 9 others gains 1.4; the busiest other site now has 15 buckets against an even share of 14.2
-N=50, B=1024: leaving site had 21 buckets, each of the 49 others gains 0.4; the busiest other site now has 21 buckets against an even share of 20.9
-```
+**Q4.** Backends must hold the VIP without ARPing, L2 DSR needs one segment (else a tunnel with MTU cost), no response visibility for retries or health. Large-response services like it because the balancer sees only requests.
 
-The busiest member carries `ceil(B/N) ÷ (B/N)` of an even share, so the table has to be **much larger than the member count**: 100 members need 1,024 buckets to reach **1.07**, and 128 buckets give **1.56**. When one of 10 members leaves a 128 bucket group, the 13 buckets it held spread over 9 members: each gains **1.4** on average, so some gain 1 and some 2 buckets, and the busiest survivor has **15** buckets against an even share of **14.2**: balanced to within about 5 %. At 3 members the 43 buckets split into 21 and 22 exactly. A group of 50 members on 1,024 buckets is balanced within 3 % and hardly notices one leaving.
+**Q5.** Round robin ignores load, least connections needs shared counts and ignores work size, random leaves the busiest above average by chance, two choices cuts the imbalance sharply with little coordination. Heavy-tailed work is not fixed by any picker.
 
-### Problem E: is random choice enough?
+**Q6.** The modulus changes with N, so most flows get a new backend, including those on healthy backends: broken connections and cold caches.
 
-```python
-# ans_e.py: 20 backends, 4000 connections with Pareto-sized work. Busiest backend over the average, for random choice, power of two choices and least loaded.
-import random
-random.seed(5)
-def trial(conns, k, heavy):
-    work = [random.paretovariate(1.5) if heavy else 1.0 for _ in range(conns)]
-    res = {}
-    for name in ("hash (random)", "two choices", "least loaded"):
-        load = [0.0] * k
-        for w in work:
-            if name == "hash (random)": i = random.randrange(k)
-            elif name == "two choices":
-                a, b = random.randrange(k), random.randrange(k); i = a if load[a] <= load[b] else b
-            else: i = min(range(k), key=load.__getitem__)
-            load[i] += w
-        res[name] = max(load) / (sum(load) / k)
-    return res
-for conns, heavy, label in [(400, False, "400 equal connections"), (4000, False, "4000 equal connections"), (4000, True, "4000 Pareto(1.5) connections, load = work"), (40000, True, "40000 Pareto(1.5) connections, load = work")]:
-    runs = [trial(conns, 20, heavy) for _ in range(20)]
-    print("%-46s" % label + "".join("  %s %.2f" % (k, sum(r[k] for r in runs) / len(runs)) for k in runs[0]))
-```
+**Q7.** Ring: points on a circle, moves about 1/N, balance depends on point count. Rendezvous: highest score wins, exact and uniform, O(N) per lookup. Maglev: a permutation-based lookup table, O(1) lookups, near-uniform, a little collateral. Choose rendezvous for small sets, Maglev for packet paths.
 
-400 equal connections                           hash (random) 1.46  two choices 1.07  least loaded 1.00
-4000 equal connections                          hash (random) 1.13  two choices 1.01  least loaded 1.00
-4000 Pareto(1.5) connections, load = work       hash (random) 2.07  two choices 1.71  least loaded 1.70
-40000 Pareto(1.5) connections, load = work      hash (random) 1.35  two choices 1.10  least loaded 1.10
+**Q8.** Each backend has offset and skip from two hashes of its name, giving a permutation of the M slots; backends take turns claiming their next unclaimed slot until the table is full. M prime and much larger than N so shares are even and a removal disturbs few slots.
 
-With **equal** connections, random choice leaves the busiest at **1.46** times the average at 400 connections and **1.13** at 4,000: the imbalance shrinks as `1/sqrt(connections per backend)`, which is the binomial spread seen in section 2. **Two choices** brings 400 connections to **1.07** and least loaded to 1.00, because comparing two random backends removes the worst collisions. With **Pareto(1.5)** work the picture changes: random choice gives **2.07**, and **two choices (1.71) and least loaded (1.70) barely improve on it** at 4,000 connections. Heavy tailed work contains connections whose single weight is a large share of a backend's total; once one of them lands on a backend, no assignment rule can move it, so the floor is set by the **largest connection**, not by the choice policy. At 40,000 connections the biggest one is a smaller share, and two choices and least loaded reach **1.10**. In practice this is why a balancer cannot fix a few huge flows or hot keys: the fix is to split the work (sharding, request level balancing at L7, or splitting large transfers).
+**Q9.** The table protects connections within one balancer. Across balancers, after restarts or when ECMP moves a flow, a missing entry must be recreated, and only a hash that every instance computes identically gives the same backend.
+
+**Q10.** Add: existing entries stay, only new connections use the new set. Restart: the table is lost, so connections are re-hashed, and any that map elsewhere reset. Mitigate with a consistent hash shared across instances and connection draining.
+
+**Q11.** Entries equal rate times idle timeout (Little's law); at one million per second and 10 seconds that is 10 million entries, about 640 MB at 64 bytes. Shorter timeouts for half-open state, because of SYN floods.
+
+**Q12.** Between `(fall - 1) x inter` and `fall x inter`. Hide it with retries on a different backend, passive outlier detection, and fast but hysteretic checks.
+
+**Q13.** A cheap endpoint that checks what the instance needs, readiness separate from liveness, hysteresis; panic mode ignores health when too many backends fail so the survivors are not crushed by a shared dependency failure.
+
+**Q14.** Content routing, bridging, retries, pooling, observability, TLS and security. Traps: lost client IP (header or PROXY protocol, trust only your proxies), retry storms (budgets, idempotency, backoff), non-nested timeouts, slow clients holding buffers.
+
+**Q15.** The handshake dominates: tens of microseconds plain against hundreds for TLS 1.3, more for RSA than ECDSA, less on resumption. Reduce with keep-alive, HTTP/2, resumption with shared ticket keys, ECDSA, offload.
+
+**Q16.** The same prefix announced from many sites, traffic goes to the nearest. A withdrawal or routing change can move a client to another site, and a TCP connection there has no state and resets; short requests recover by retry, long ones break. Mitigate with QUIC connection IDs and a thin anycast tier.
+
+**Q17.** A resilient group hashes into a fixed bucket table and reassigns only the removed next hop's buckets, so surviving flows keep their paths. Maglev does the same at the L4 tier.
+
+**Q18.** Stop sending new connections, keep existing entries, signal long connections to reconnect (GOAWAY, max age), wait for a drain timeout, then stop.
+
+**Q19.** Anycast or GSLB to a site, resilient ECMP to an L4 Maglev-style fleet, L7 proxies per site, health tied to route announcements, retry budgets and load shedding, drains, and per-tier redundancy.
+
+**Q20.** User space computes the Maglev table and writes it to a map, health changes rewrite it, the XDP program parses headers, checks a per-CPU flow table, falls back to the table, rewrites or encapsulates and returns XDP_TX; the verifier demands bounds checks.
 
 ---
 
 ## 16. Cheat sheet
 
-**Modes:** NAT: both directions through the balancer, backends see the client, return route must pass the balancer. DSR: MAC rewrite or encapsulation, VIP on `lo`, ARP suppressed, replies direct; measured 31,474 KB against 0 KB on the client side. Proxy: two connections, per request. Encapsulation overhead: 20 B (IP in IP), 24 B (GRE).
-
-**Hash choices (10 backends, one removed; 100,000 flows):** mod N 89.8 % moved, 79.7 % collateral. Ring 100 points 9.5 %, 0 %, busiest 1.14. Rendezvous 10.0 %, 0 %, 1.02. Maglev 65,537: 10.2 %, 0.2 %, 1.02. Maglev table needs `M` prime; 100 backends: M = 1,009 / 10,007 / 65,537 / 655,373 gave collateral 3.19 / 1.75 / 0.55 / 0.15 %.
-
-**State:** table kept, 0 of 300 broke; table lost, 158 of 300 broke. nftables `jhash mod N` scales the hash into N ranges: 2 to 3 backends keeps 1/2 of flows (54 % measured). Idle lifetime of an LRU table = entries ÷ new flows per second.
-
-**Health:** window = `(fall - 1) × inter` to `fall × inter` (+ check timeout if silent). Measured: 14 failures with `retries 0` (inter 1s fall 3, 20 requests per second), 0 with `retries 3` and `option redispatch 1`.
-
-**L7:** 1,000 requests on new client connections: 1,001 backend connections (tcp, never, safe), 2 (always). `X-Forwarded-For` for HTTP, PROXY protocol for TCP.
-
-**TLS (proxy CPU per new connection, one thread, this VM):** plain 40 µs; TLS 1.3 RSA-2048 890 µs; ECDSA P-256 500 µs; resumed 405 µs.
-
-**Anycast:** 3 sites, 3,000 connections: 989 / 1,021 / 990. Withdraw one: plain multipath breaks 28 of 50 on a surviving site, a resilient group breaks 0. Busiest member of a group = `ceil(B/N) ÷ (B/N)`.
-
-**XDP selector:** bounds checks, hash the 4-tuple, `table[h % M]` from a BPF array map, count, pass; picks 1,017 / 1,001 / 982 of 3,000 from a 1,009 entry table.
-
-**Random choice:** 400 equal connections on 20 backends: busiest 1.46 (random), 1.07 (two choices), 1.00 (least loaded); Pareto work: 2.07, 1.70, 1.70.
-
-**Debug order:** return path and `rp_filter`, MTU on the encapsulation path, VIP and ARP on backends, conntrack size and entries, health check state and window, per backend connection counts, hash seed agreement across instances, route set behind the anycast address.
+- L4: connections, cheap, fronts the fleet. L7: requests, content aware, retries, TLS, pooling.
+- Modes: proxy, NAT (reply must return through it), DSR (backend holds the VIP, reply direct), tunnel.
+- Pickers: round robin, least connections, power of two choices, hash. Heavy-tailed work needs splitting.
+- `hash mod N` remaps about N-1/N; ring, rendezvous and Maglev move about 1/N; Maglev table M prime and much greater than N.
+- Hash plus flow table; consistent hash across instances; resilient ECMP at the router; drain before removal.
+- Flow table entries = rate x idle timeout.
+- Health window: (fall-1) x inter to fall x inter; hide with retry to another backend; panic mode; liveness versus readiness.
+- Retries: idempotent, budget, jitter; nest timeouts; trust forwarded headers only from known proxies.
+- TLS: handshake cost dominates; resume, ECDSA, keep-alive.
+- Anycast: proximity not load; withdrawal breaks long TCP; tie announcement to health.
+- Data planes: IPVS, nftables, XDP (Katran), bypass (Maglev), hardware.
 
 ---
 
-## 17. Sources
+## 17. Sources and caveats
 
-Read or run for this tutorial:
+Sources used: "Maglev: A Fast and Reliable Software Network Load Balancer" (Eisenbud et al., NSDI 2016) and the [Paper Trail summary](https://www.the-paper-trail.org/post/2020-06-23-maglev/) (checked this session) and [The Morning Paper write-up](https://blog.acolyer.org/2016/03/21/maglev-a-fast-and-reliable-software-network-load-balancer/); the Katran documentation; the Linux Virtual Server (IPVS) and nftables documentation; the HAProxy and Envoy documentation (health checking, outlier detection, panic threshold, retry budgets); RFC 7938 and the kernel nexthop group documentation (resilient groups); "The Power of Two Choices in Randomized Load Balancing" (Mitzenmacher); and the interview-oriented lists on [techinterview.org](https://www.techinterview.org/post/3233474140/system-design-load-balancer-architecture-l4-l7-nginx-haproxy-round-robin-least-connections-health-checks-ssl-termination/), [IGotAnOffer](https://igotanoffer.com/blogs/tech/load-balancing-system-design-interview) and [Codemia](https://codemia.io/courses/system_design_fundamentals/load_balancing_fundamentals_algorithms).
 
-- Linux `nftables` (`dnat`, `numgen`, `jhash`, `netdev` ingress with `fwd to`), `conntrack`, the nexthop and multipath route interfaces of `iproute2`: used and observed on the sandbox kernel (6.18).
-- haproxy 2.8.30 (Ubuntu), clang and `bpftool` for the XDP program: all run here.
-- The behaviour of `jhash ... mod N` (range scaling) and of the kernel's multipath hash threshold is **inferred from measured flow pairs**, not from the source code.
+Caveats. The hashing comparison (hash mod N, ring, rendezvous, Maglev), the flow table and health check arithmetic, the HAProxy and nftables syntax checks, the resilient group commands and the XDP program compile were **run fresh for this tutorial** on one Linux 6.18 VM as root. The network experiments (NAT and DSR byte counts, the return-path failure, the 300-connection table-loss test, the haproxy failed-request counts, the connection pool counts, the TLS CPU per connection, the three-site anycast withdrawal, the XDP picks, the Maglev table-size sweep, the bucket-balance table and the power-of-two-choices simulation) come from **earlier runs** of the previous version of this tutorial and were not re-run. This kernel has no IPVS (`CONFIG_IP_VS` is off), so IPVS modes and schedulers are described from documentation. Anycast was modelled with static multipath and resilient next hop groups, not BGP. The XDP program ran in generic mode on a veth, so its picks are real and its speed is not. Everything ran on two vCPUs, so throughput and latency figures are relative. TLS costs are proxy CPU per connection (10 ms tick resolution). Katran, DPDK balancers, hardware balancers, cloud providers' internals and Maglev's own throughput numbers are from documentation, and defaults (haproxy 2.8, Envoy) vary by version.
 
-From memory (not re-read for this tutorial):
-
-- Eisenbud et al., *Maglev: A Fast and Reliable Software Network Load Balancer*, NSDI 2016: the table population algorithm, `M` sizes of 65,537 and 655,373, ECMP in front, per instance connection table, GRE encapsulation.
-- Karger et al., *Consistent Hashing and Random Trees*, STOC 1997 (ring); Thaler and Ravishankar, *Using name-based mappings to increase hit rates* (rendezvous hashing); Mitzenmacher, *The Power of Two Choices in Randomized Load Balancing*.
-- Meta's Katran (XDP load balancer) design and the Linux IPVS documentation (modes, schedulers, connection table, sync daemon).
-- The haproxy documentation for `http-reuse`, `retries`, `option redispatch`, health check parameters; the PROXY protocol specification (v1 and v2); RFC 7239 (`Forwarded`) and the de facto `X-Forwarded-For`.
-- The Linux kernel documentation for resilient nexthop groups (`idle_timer`, `unbalanced_timer`) and the `fib_multipath_hash_policy` sysctl.
-
-Cross references: NET 11 (ECMP and its hash in section 8, resilient groups, BGP and BFD convergence), NET 09 (conntrack, NAT, SYN cookies and table exhaustion), NET 08 (TLS handshake in detail), NET 07 (XDP), the load balancing design problem in `11_hld`.
+Earlier and later: [NET 07](07_zero_copy_networking.md), [NET 11](11_routing_protocols_and_datacenter_fabrics.md), [NET 14](14_queueing_qos_and_traffic_management.md), [the networking plan](00_plan.md).
