@@ -476,6 +476,17 @@ Answers are written to be **said aloud in 20 to 40 seconds**, then extended by t
 106. **Why can NTP and PTP not see a fixed path asymmetry?** The offset is half the sum of the one-way differences, assuming equal delays. Unequal delays give an error of half the asymmetry, while the round-trip delay is unchanged.
 107. **Boundary clock or transparent clock?** A boundary clock terminates PTP and re-originates time on each port; a transparent clock adds its residence time to a correction field that the slave subtracts. Both remove switch queueing error; hardware timestamps remove host stack noise.
 
+### 3.13 Containers and Kubernetes ([NET 21](21_container_and_kubernetes_networking.md))
+
+108. **What is a ClusterIP, physically?** Nothing: it is on no interface. It is the destination match of a rewrite rule that every node programs; conntrack records the rewrite so the reply is translated back and later packets follow the same pod. Balance is per connection.
+109. **Small requests work between pods on different nodes, large ones hang. Why?** The overlay's encapsulation (50 bytes for VXLAN) leaves a pod MTU of 1450 on a 1500 underlay. If the ICMP "fragmentation needed" message is blocked, TCP keeps retransmitting the oversized segment. Fix the pod MTU or the underlay, and allow the ICMP.
+110. **A pod calls a Service and fails about half the time; the Service has two pods and the caller is one of them. Why?** Hairpin: when the pick is the caller itself, the packet must return out the port it came in on, so the bridge needs hairpin mode and the source must be rewritten to the node address. Both are needed.
+111. **Why does a NodePort backend see the node address, not the client?** The node must rewrite the source as well as the destination so the reply returns through it (otherwise the client gets a packet from an address it never called). `externalTrafficPolicy: Local` avoids the second hop and keeps the client address, at the cost of uneven spreading.
+112. **What does `ndots:5` cost?** An external name with fewer than five dots is tried against each search suffix first: four queries for `api.example.com` in the lab, one with a trailing dot or `ndots:1`. It doubles again with AAAA on dual-stack.
+113. **A NetworkPolicy was applied and traffic still flows. Why?** The API server accepts policies whether or not anything enforces them; the CNI plugin must implement it. Policies are also additive allow lists, and a pod is open until a policy selects it.
+114. **After default-deny egress, names fail but IPs work. Why?** DNS is egress. Allow UDP and TCP 53 to the DNS pods, and allow kubelet probes if the CNI does not.
+115. **Why do iptables-mode Services slow down at scale, and what replaces them?** The top-level chain is checked rule by rule, so lookup and full updates grow with the number of Services (new connection time grew about tenfold from 0 to 20,000 rules in the lab, flat for a map). nftables mode uses a verdict map, eBPF a hash map; IPVS (deprecated) used a kernel hash table.
+
 ## 4. Design style questions
 
 A design question is answered in the same order every time: **requirements and numbers**, **the data path**, **state and what it costs**, **failure and how it is detected**, **what you would measure**. Say the numbers early; they decide the design.
