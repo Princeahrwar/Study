@@ -444,6 +444,16 @@ Answers are written to be **said aloud in 20 to 40 seconds**, then extended by t
 85. **NAT64, DNS64 and 464XLAT in one answer?** NAT64 translates IPv6 clients to IPv4 servers, DNS64 synthesises AAAA records by embedding the IPv4 address in `64:ff9b::/96`, and 464XLAT adds a client-side translator so IPv4-literal apps work. Mobile networks use it; IPv6-mostly networks use DHCPv4 option 108 to let capable hosts opt out of IPv4.
 86. **Why is IPv6 harder on Wi-Fi?** Neighbour discovery and router advertisements are multicast, which on Wi-Fi goes at a low rate after the DTIM with no retry, and each address needs its own group. Mitigations are multicast-to-unicast, ND proxy, RA throttling, MLD snooping and RA guard.
 
+### 3.10 Inside a switch and router ([NET 19](19_inside_a_switch_and_router.md))
+
+87. **What is a punt, and why is it policed?** The data plane hands a packet to the CPU: traffic to the router, TTL expiry, unresolved ARP or ND, learning, ACL logging. The CPU is small, so each class gets its own rate limit and queue (CoPP), so a flood of one class cannot starve routing protocols.
+88. **Why does a FIB entry point to a next-hop group and not a MAC?** Many prefixes share one next-hop entry, so one update repairs all of them when a neighbour fails (prefix-independent convergence). A one-level FIB would rewrite every prefix.
+89. **TCAM against SRAM?** TCAM matches all entries in parallel with don't-care bits, in constant time, but costs power, has about half the density and needs ordered entries, so inserts shift entries. SRAM with hashing or a trie is cheaper and updates incrementally. Real chips mix them, and the memory is divided among MAC, routes, ACLs and next-hop groups by a template.
+90. **What is head-of-line blocking?** A packet waiting for a busy output blocks packets behind it that could go elsewhere, capping an input-queued switch at about 60 percent. Virtual output queues with a scheduler remove it.
+91. **Why can a switch with a big buffer still drop an incast?** Headroom and reservations come out first, the rest is split among congested queues by thresholds (q = alpha x B / (1 + n x alpha)), and the burst lands on one egress queue.
+92. **Traceroute shows loss at one hop only. Real?** No. That hop rate-limits the ICMP it generates (a punt). Real loss continues through later hops. Test end to end.
+93. **Route is in the RIB but traffic fails. Check what?** Whether it was programmed into hardware (FIB, kernel, ASIC database, chip), table utilisation, an unresolved next hop, and the queue and ACL counters on egress.
+
 ---
 
 ## 4. Design style questions
